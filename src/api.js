@@ -43,7 +43,7 @@ export async function fetchForecast(latitude, longitude) {
     ].join(','),
     daily: ['sunrise', 'sunset'].join(','),
     timezone: 'auto',
-    forecast_days: '2',
+    forecast_days: '7',
   });
   const url = `${FORECAST_URL}?${params.toString()}`;
   const res = await fetch(url);
@@ -100,4 +100,19 @@ export function nextSunset(forecast, now = new Date()) {
   }
   const last = sunsets.length - 1;
   return { sunset: sunsets[last], sunrise: sunrises[last], dayIndex: last };
+}
+
+/**
+ * Elenca i giorni disponibili nella previsione, ciascuno con l'orario di alba
+ * e tramonto. Utile per la vista multi-giorno.
+ * @returns {Array<{dayIndex:number, date:string, sunrise:string, sunset:string}>}
+ */
+export function dailyList(forecast) {
+  const { time, sunrise, sunset } = forecast.daily;
+  return time.map((date, i) => ({
+    dayIndex: i,
+    date,
+    sunrise: sunrise[i],
+    sunset: sunset[i],
+  }));
 }

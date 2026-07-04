@@ -1,5 +1,12 @@
 // main.js — orchestrazione: geolocalizzazione/ricerca → previsioni → punteggio → UI.
-import { geocode, fetchForecast, conditionsAtTime, nextSunset, coordsLabel } from './api.js';
+import {
+  geocode,
+  fetchForecast,
+  conditionsAtTime,
+  nextSunset,
+  dailyList,
+  coordsLabel,
+} from './api.js';
 import { computeSunsetScore, scoreLabel, explainScore } from './score.js';
 import { sunPosition, azimuthToCardinal, moonPhase, moonPhaseName } from './astronomy.js';
 
@@ -11,33 +18,47 @@ const els = {
   status: document.getElementById('status'),
 };
 
+// Stato corrente: località e previsione caricate, giorno selezionato.
+const state = {
+  place: null,
+  forecast: null,
+  dayIndex: 0,
+};
+
 function setStatus(msg, kind = 'info') {
   els.status.textContent = msg || '';
   els.status.dataset.kind = kind;
 }
 
-/** Analizza una località (lat/lon con etichetta) e mostra il risultato. */
+/** Scarica i dati per una località e mostra il risultato. */
 async function analyze(place) {
   setStatus(`Recupero dati per ${place.label}…`, 'info');
   els.results.innerHTML = '';
   try {
     const forecast = await fetchForecast(place.latitude, place.longitude);
-    const now = new Date();
-    const { sunset } = nextSunset(forecast, now);
-    const cond = conditionsAtTime(forecast, sunset);
-    const { score, factors } = computeSunsetScore(cond);
-    const notes = explainScore(factors);
-
-    const sunsetDate = new Date(sunset);
-    const sun = sunPosition(sunsetDate, place.latitude, place.longitude);
-    const phase = moonPhase(sunsetDate);
-
-    renderResult({ place, sunset: sunsetDate, cond, score, notes, sun, phase });
+    const { dayIndex } = nextSunset(forecast, new Date());
+    state.place = place;
+    state.forecast = forecast;
+    state.dayIndex = dayIndex;
+    render();
     setStatus('', 'info');
   } catch (err) {
     console.error(err);
     setStatus(`Errore: ${err.message}`, 'error');
   }
+}
+
+/** Calcola punteggio + spiegazione per il tramonto di un dato giorno. */
+function evaluateDay(dayIndex) {
+  const { forecast, place } = state;
+  const day = dailyList(forecast)[dayIndex];
+  const cond = conditionsAtTime(forecast, day.sunset);
+  const { score, factors } = computeSunsetScore(cond);
+  const notes = explainScore(factors);
+  const sunsetDate = new Date(day.sunset);
+  const sun = sunPosition(sunsetDate, place.latitude, place.longitude);
+  const phase = moonPhase(sunsetDate);
+  return { day, sunsetDate, cond, score, notes, sun, phase };
 }
 
 function fmtTime(date) {
@@ -48,7 +69,54 @@ function fmtDay(date) {
   return date.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
 }
 
-function renderResult({ place, sunset, cond, score, notes, sun, phase }) {
+function fmtWeekdayShort(date) {
+  return date.toLocaleDateString('it-IT', { weekday: 'short' });
+}
+
+/** Colore del punteggio per le sfumature dell'indicatore. */
+function scoreHue(score) {
+  // da rosso (0) a verde-oro (100)
+  return Math.round((score / 100) * 120);
+}
+
+/** Ridisegna l'intera vista: striscia dei giorni + dettaglio del giorno scelto. */
+function render() {
+  const { forecast } = state;
+  els.results.innerHTML = '';
+
+  // --- Striscia multi-giorno ---
+  const days = dailyList(forecast);
+  const strip = document.createElement('div');
+  strip.className = 'daystrip';
+  strip.innerHTML = days
+    .map((d) => {
+      const cond = conditionsAtTime(forecast, d.sunset);
+      const { score } = computeSunsetScore(cond);
+      const date = new Date(d.sunset);
+      const active = d.dayIndex === state.dayIndex ? ' daychip--active' : '';
+      return `
+        <button class="daychip${active}" data-day="${d.dayIndex}">
+          <span class="daychip__day">${fmtWeekdayShort(date)}</span>
+          <span class="daychip__score" style="--hue:${scoreHue(score)}">${score}</span>
+          <span class="daychip__time">${fmtTime(date)}</span>
+        </button>`;
+    })
+    .join('');
+  els.results.appendChild(strip);
+
+  strip.querySelectorAll('.daychip').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      state.dayIndex = Number(btn.dataset.day);
+      render();
+    });
+  });
+
+  // --- Dettaglio del giorno selezionato ---
+  renderDetail(evaluateDay(state.dayIndex));
+}
+
+function renderDetail({ sunsetDate, cond, score, notes, sun, phase }) {
+  const { place } = state;
   const card = document.createElement('article');
   card.className = 'card';
 
@@ -69,7 +137,7 @@ function renderResult({ place, sunset, cond, score, notes, sun, phase }) {
     <header class="card__head">
       <div>
         <h2>${place.label}</h2>
-        <p class="muted">Tramonto di ${fmtDay(sunset)} · ore ${fmtTime(sunset)}</p>
+        <p class="muted">Tramonto di ${fmtDay(sunsetDate)} · ore ${fmtTime(sunsetDate)}</p>
       </div>
       <div class="gauge" style="--score:${score}">
         <div class="gauge__value">${score}</div>

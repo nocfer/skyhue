@@ -114,6 +114,57 @@ body {
   gap: 1.5rem;
 }
 
+/* Striscia dei prossimi giorni */
+.daystrip {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+  -webkit-overflow-scrolling: touch;
+}
+
+.daychip {
+  flex: 0 0 auto;
+  min-width: 74px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.7rem 0.5rem;
+  border-radius: 14px;
+  border: 1px solid var(--card-border);
+  background: rgba(0, 0, 0, 0.2);
+  color: var(--text);
+  cursor: pointer;
+  transition: transform 0.1s, border-color 0.1s;
+}
+
+.daychip:hover {
+  transform: translateY(-2px);
+}
+
+.daychip--active {
+  border-color: var(--accent);
+  background: rgba(255, 138, 92, 0.18);
+}
+
+.daychip__day {
+  font-size: 0.8rem;
+  color: var(--muted);
+  text-transform: capitalize;
+}
+
+.daychip__score {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: hsl(var(--hue, 40) 85% 62%);
+}
+
+.daychip__time {
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
 .card {
   background: var(--card);
   border: 1px solid var(--card-border);
