@@ -316,11 +316,10 @@ function fmtWeekdayShort(date) {
   return date.toLocaleDateString('it-IT', { weekday: 'short' });
 }
 
-/** Colore del punteggio per le sfumature dell'indicatore. */
+/** Tinta del punteggio: rampa calda e monocromatica, in tinta col tramonto.
+ *  Rosso-brace (basso, ~10°) → arancio → oro (alto, ~46°). Niente verde. */
 function scoreHue(score) {
-  // da rosso (0) a verde-oro caldo (100): fermiamo la scala prima del verde
-  // "semaforo" così i punteggi alti restano in tinta col tramonto.
-  return Math.round((score / 100) * 95);
+  return Math.round(10 + (score / 100) * 36);
 }
 
 /** Mini-mappa OpenStreetMap (iframe) con un segnalino sul punto analizzato. */

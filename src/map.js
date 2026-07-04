@@ -120,7 +120,7 @@ async function evaluatePoint(lat, lon) {
 }
 
 function renderPanel({ lat, lon, sunsetDate, score, sun, verdict }) {
-  const hue = Math.round((score / 100) * 95);
+  const hue = Math.round(10 + (score / 100) * 36);
   els.panel.innerHTML = `
     <div class="mp__head">
       <div class="mp__score" style="--hue:${hue}">${score}</div>
