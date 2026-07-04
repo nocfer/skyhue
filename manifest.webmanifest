@@ -1,0 +1,18 @@
+{
+  "name": "SkyHue — Sunset Score",
+  "short_name": "SkyHue",
+  "description": "Quanto sarà bello il prossimo tramonto? Punteggio da meteo reale e dati astronomici.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#1a1332",
+  "theme_color": "#d9663f",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -62,14 +62,24 @@ npm test        # oppure: node --test
 ## Struttura
 
 ```
-index.html          markup dell'app
-src/styles.css      tema "tramonto"
-src/api.js          Open-Meteo: geocoding + previsioni
-src/astronomy.js    posizione solare (NOAA), fase lunare
-src/score.js        algoritmo Sunset Score + spiegazione  ← cuore testabile
-src/main.js         orchestrazione e rendering
-test/score.test.js  test dell'algoritmo
+index.html            markup dell'app + registrazione service worker
+manifest.webmanifest  PWA: installabile su home screen
+sw.js                 service worker: guscio offline + cache API
+icon.svg              icona dell'app
+src/styles.css        tema "tramonto"
+src/api.js            Open-Meteo: geocoding, previsioni, qualità dell'aria
+src/astronomy.js      posizione solare (NOAA), fase lunare
+src/score.js          algoritmo Sunset Score + spiegazione  ← cuore testabile
+src/store.js          preferiti in localStorage
+src/main.js           orchestrazione e rendering
+test/score.test.js    test dell'algoritmo
 ```
+
+## PWA & offline
+
+L'app è installabile (Aggiungi a schermata Home) e funziona offline: il
+service worker mette in cache il guscio e l'ultima risposta delle API, così
+l'ultima località resta consultabile senza rete.
 
 ## Licenza
 
