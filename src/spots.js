@@ -86,7 +86,15 @@ export function evaluateHorizon(elevSpot, ahead) {
   return { maxAngle, seaFraction, obstructed };
 }
 
-const KIND_BASE = { lighthouse: 55, cape: 52, cliff: 50, viewpoint: 48, peak: 45, beach: 38 };
+const KIND_BASE = {
+  lighthouse: 55,
+  cape: 52,
+  cliff: 50,
+  viewpoint: 48,
+  peak: 45,
+  estimate: 44,
+  beach: 38,
+};
 
 /**
  * Punteggio qualitativo (0-100) e giudizio testuale di un punto, dato il tipo
@@ -126,6 +134,54 @@ export function spotVerdict(kind, horizon) {
 }
 
 /**
+ * Genera una griglia di punti candidati entro `radiusKm` (approssimazione in
+ * gradi, sufficiente per generare candidati). Serve alla ricerca "da coordinate"
+ * indipendente dai punti di interesse mappati.
+ * @returns {Array<{lat:number, lon:number}>}
+ */
+export function gridCandidates(lat, lon, radiusKm = 20, perSide = 9) {
+  const step = (2 * radiusKm) / (perSide - 1); // km tra i punti
+  const half = (perSide - 1) / 2;
+  const cosLat = Math.max(0.2, Math.cos(lat * DEG));
+  const pts = [];
+  for (let i = -half; i <= half; i++) {
+    for (let j = -half; j <= half; j++) {
+      const north = i * step;
+      const east = j * step;
+      if (Math.hypot(north, east) > radiusKm) continue;
+      pts.push({ lat: lat + north / 111, lon: lon + east / (111 * cosLat) });
+    }
+  }
+  return pts;
+}
+
+/**
+ * Pre-selezione dei candidati della griglia dalle sole quote: esclude i punti
+ * in mare, premia quelli su terra vicino alla costa (un vicino è a livello del
+ * mare) e leggermente quelli più elevati. Restituisce i punti con `prescore`.
+ * @param {Array<{lat,lon}>} points
+ * @param {number[]} elevations quote allineate ai punti
+ * @param {number} stepKm passo della griglia
+ */
+export function prescoreGrid(points, elevations, stepKm) {
+  const sea = 1; // m: soglia "mare / livello del mare"
+  const pts = points.map((p, i) => ({ ...p, elev: elevations[i] ?? null }));
+  return pts.map((p) => {
+    if (p.elev == null || p.elev <= sea) return { ...p, coastal: false, prescore: -Infinity };
+    let coastal = false;
+    for (const q of pts) {
+      if (q === p || q.elev == null) continue;
+      if (q.elev <= sea && distanceKm(p.lat, p.lon, q.lat, q.lon) <= stepKm * 1.5) {
+        coastal = true;
+        break;
+      }
+    }
+    const prescore = (coastal ? 20 : 0) + Math.min(p.elev, 200) * 0.05;
+    return { ...p, coastal, prescore };
+  });
+}
+
+/**
  * Scarica le quote (m) per una lista di punti, in un'unica chiamata batch.
  * @param {Array<{lat:number, lon:number}>} points
  * @returns {Promise<number[]>} quote allineate ai punti
@@ -149,6 +205,7 @@ const KINDS = {
   cliff: { label: 'Scogliera', icon: '🪨' },
   peak: { label: 'Cima', icon: '🏔️' },
   beach: { label: 'Spiaggia', icon: '🏖️' },
+  estimate: { label: 'Punto stimato', icon: '🧭' },
 };
 
 function classify(tags = {}) {

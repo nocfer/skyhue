@@ -10,6 +10,8 @@ import {
   spotVerdict,
   angleDiff,
   driveMinutes,
+  gridCandidates,
+  prescoreGrid,
 } from '../src/spots.js';
 
 test('distanceKm ~0 per lo stesso punto', () => {
@@ -94,4 +96,27 @@ test('driveMinutes cresce con la distanza ed è sempre ≥1', () => {
   assert.ok(driveMinutes(25) > driveMinutes(5));
   // ~25 km dovrebbero stare nell'ordine dei 30-45 min in auto
   assert.ok(driveMinutes(25) >= 25 && driveMinutes(25) <= 60);
+});
+
+test('gridCandidates resta entro il raggio e non è vuota', () => {
+  const pts = gridCandidates(38, 12, 20, 9);
+  assert.ok(pts.length > 10);
+  for (const p of pts) {
+    const d = distanceKm(38, 12, p.lat, p.lon);
+    assert.ok(d <= 20 + 0.5, `punto fuori raggio: ${d}`);
+  }
+});
+
+test('prescoreGrid esclude il mare e premia i punti costieri', () => {
+  // 3 punti: [0]=mare, [1]=terra costiera (vicino al mare), [2]=terra interna lontana
+  const points = [
+    { lat: 38.0, lon: 12.0 }, // mare
+    { lat: 38.01, lon: 12.0 }, // terra ~1.1 km dal mare
+    { lat: 38.5, lon: 12.0 }, // terra interna, lontana
+  ];
+  const elevations = [0, 30, 40];
+  const scored = prescoreGrid(points, elevations, 2);
+  assert.equal(scored[0].prescore, -Infinity, 'il punto in mare va escluso');
+  assert.equal(scored[1].coastal, true, 'il punto vicino al mare è costiero');
+  assert.ok(scored[1].prescore > scored[2].prescore, 'il costiero batte l’interno');
 });

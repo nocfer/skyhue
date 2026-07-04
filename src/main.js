@@ -26,6 +26,8 @@ import {
   fetchElevations,
   angleDiff,
   driveMinutes,
+  gridCandidates,
+  prescoreGrid,
 } from './spots.js';
 
 const els = {
@@ -48,6 +50,9 @@ const state = {
   spotsError: false,
   rawSpots: null, // cache dei punti grezzi da OSM (indipendenti dall'evento)
   rawSpotsFor: null, // riferimento alla località per cui rawSpots è valida
+  estimatedSpots: null, // punti "da coordinate" (griglia), su richiesta
+  estimating: false,
+  estimateError: false,
 };
 
 // Quanti punti valutare (per limitare la chiamata batch sulle quote) e mostrare.
@@ -85,6 +90,9 @@ async function analyze(place) {
     state.dayIndex = dayIndex;
     state.spots = null;
     state.spotsError = false;
+    state.estimatedSpots = null;
+    state.estimating = false;
+    state.estimateError = false;
     render();
     setStatus('', 'info');
     loadSpots(place); // in background: non blocca la vista principale
@@ -147,44 +155,8 @@ async function evaluateSpots() {
     .sort((a, b) => a.cost - b.cost)
     .slice(0, SPOTS_EVALUATE);
 
-  const points = [];
-  for (const s of nearest) {
-    for (const d of SAMPLE_DISTANCES) {
-      points.push(d === 0 ? { lat: s.lat, lon: s.lon } : destinationPoint(s.lat, s.lon, azimuth, d));
-    }
-  }
-
-  let elevations = null;
-  try {
-    elevations = await fetchElevations(points);
-  } catch (err) {
-    console.warn('Quote non disponibili, salto la valutazione affaccio:', err);
-  }
+  const evaluated = await refineCandidates(nearest, azimuth, place);
   if (state.place !== place) return;
-
-  const n = SAMPLE_DISTANCES.length;
-  const evaluated = nearest.map((s, i) => {
-    let horizon = null;
-    if (elevations && elevations.length >= (i + 1) * n) {
-      const elevSpot = elevations[i * n];
-      const ahead = SAMPLE_DISTANCES.slice(1).map((distKm, k) => ({
-        distKm,
-        elev: elevations[i * n + 1 + k],
-      }));
-      horizon = evaluateHorizon(elevSpot, ahead);
-    }
-    const verdict = spotVerdict(s.kind, horizon);
-    // Punteggio finale: qualità dell'affaccio con lieve penalità per la distanza,
-    // così un punto lontano deve essere nettamente migliore per superarne uno vicino.
-    const finalScore = verdict.score - Math.max(0, s.dist - NEAR_KM) * 0.4;
-    return {
-      ...s,
-      dir: azimuthToCardinal(bearing(place.latitude, place.longitude, s.lat, s.lon)),
-      driveMin: driveMinutes(s.dist),
-      verdict,
-      finalScore,
-    };
-  });
 
   // Ordina per punteggio finale (affaccio − distanza), poi per vicinanza.
   evaluated.sort((a, b) => b.finalScore - a.finalScore || a.dist - b.dist);
@@ -192,15 +164,100 @@ async function evaluateSpots() {
   render();
 
   // In background: calcola il punteggio-cielo direttamente nei punti finalisti.
-  loadSpotSky(place);
+  loadSky(state.spots, place);
 }
 
 /**
- * Per i primi finalisti scarica il meteo nel punto e ne calcola il Sunset Score,
- * così ogni meta mostra sia l'affaccio sia la qualità del cielo prevista lì.
+ * Rifinitura condivisa: per ogni candidato campiona il terreno lungo il raggio
+ * verso il sole, valuta l'affaccio e calcola verdetto + punteggio finale.
+ * Usata sia dai punti OSM sia dalla stima da coordinate.
  */
-async function loadSpotSky(place) {
-  const top = state.spots.slice(0, SPOTS_SKY);
+async function refineCandidates(candidates, azimuth, place) {
+  const points = [];
+  for (const s of candidates) {
+    for (const d of SAMPLE_DISTANCES) {
+      points.push(d === 0 ? { lat: s.lat, lon: s.lon } : destinationPoint(s.lat, s.lon, azimuth, d));
+    }
+  }
+  let elevations = null;
+  try {
+    elevations = await fetchElevations(points);
+  } catch (err) {
+    console.warn('Quote non disponibili, salto la valutazione affaccio:', err);
+  }
+  const n = SAMPLE_DISTANCES.length;
+  return candidates.map((s, i) => {
+    let horizon = null;
+    let elev = null;
+    if (elevations && elevations.length >= (i + 1) * n) {
+      elev = elevations[i * n];
+      const ahead = SAMPLE_DISTANCES.slice(1).map((distKm, k) => ({
+        distKm,
+        elev: elevations[i * n + 1 + k],
+      }));
+      horizon = evaluateHorizon(elev, ahead);
+    }
+    const verdict = spotVerdict(s.kind, horizon);
+    const dist = s.dist ?? distanceKm(place.latitude, place.longitude, s.lat, s.lon);
+    const finalScore = verdict.score - Math.max(0, dist - NEAR_KM) * 0.4;
+    return {
+      ...s,
+      dist,
+      elev,
+      dir: azimuthToCardinal(bearing(place.latitude, place.longitude, s.lat, s.lon)),
+      driveMin: driveMinutes(dist),
+      verdict,
+      finalScore,
+    };
+  });
+}
+
+/**
+ * Ricerca "da coordinate" (su richiesta): genera una griglia di punti, pre-
+ * seleziona quelli su terra vicino alla costa dalle sole quote, poi rifinisce
+ * i migliori con la stessa valutazione d'affaccio dei punti mappati.
+ */
+async function scanCoordinates() {
+  const place = state.place;
+  if (!place || state.estimating) return;
+  state.estimating = true;
+  state.estimateError = false;
+  render();
+  try {
+    const azimuth = currentAzimuth();
+    const radius = 20;
+    const perSide = 9;
+    const grid = gridCandidates(place.latitude, place.longitude, radius, perSide);
+    const gelev = await fetchElevations(grid);
+    if (state.place !== place) return;
+    const step = (2 * radius) / (perSide - 1);
+    const candidates = prescoreGrid(grid, gelev, step)
+      .filter((p) => p.prescore > -Infinity)
+      .sort((a, b) => b.prescore - a.prescore)
+      .slice(0, SPOTS_EVALUATE)
+      .map((p) => ({ lat: p.lat, lon: p.lon, kind: 'estimate', name: 'Punto stimato' }));
+    const evaluated = await refineCandidates(candidates, azimuth, place);
+    if (state.place !== place) return;
+    evaluated.sort((a, b) => b.finalScore - a.finalScore || a.dist - b.dist);
+    state.estimatedSpots = evaluated.slice(0, SPOTS_SHOW);
+    state.estimating = false;
+    render();
+    loadSky(state.estimatedSpots, place);
+  } catch (err) {
+    console.warn('Scansione da coordinate non riuscita:', err);
+    if (state.place !== place) return;
+    state.estimating = false;
+    state.estimateError = true;
+    render();
+  }
+}
+
+/**
+ * Per i primi finalisti di una lista scarica il meteo nel punto e ne calcola il
+ * Sunset Score, così ogni meta mostra sia l'affaccio sia la qualità del cielo.
+ */
+async function loadSky(list, place) {
+  const top = (list || []).slice(0, SPOTS_SKY);
   if (!top.length) return;
   const scores = await Promise.all(
     top.map(async (s) => {
@@ -278,6 +335,50 @@ function mapEmbedHtml(lat, lon) {
     <a class="map__link" href="${full}" target="_blank" rel="noopener">Apri mappa più grande ↗</a>`;
 }
 
+/** Riga di un punto suggerito (usata sia per i POI sia per i punti stimati). */
+function spotRowHtml(s) {
+  const info = kindInfo(s.kind);
+  const dist = s.dist < 10 ? s.dist.toFixed(1) : Math.round(s.dist);
+  const v = s.verdict;
+  const url = `https://www.openstreetmap.org/?mlat=${s.lat.toFixed(5)}&mlon=${s.lon.toFixed(
+    5
+  )}#map=15/${s.lat.toFixed(4)}/${s.lon.toFixed(4)}`;
+  const sky =
+    s.skyScore != null
+      ? `<span class="spot__sky" style="--hue:${scoreHue(
+          s.skyScore
+        )}" title="Sunset Score previsto nel punto">🌇 cielo ${s.skyScore}</span>`
+      : '';
+  const quota = s.kind === 'estimate' && s.elev != null ? ` · ${Math.round(s.elev)} m` : '';
+  return `<li class="spot spot--${v.sentiment}">
+    <span class="spot__icon">${info.icon}</span>
+    <div class="spot__body">
+      <a href="${url}" target="_blank" rel="noopener">${s.name}</a>
+      <span class="spot__verdict">${v.icon} ${v.label} ${sky}</span>
+      <span class="spot__meta">${info.label} · ${dist} km · ~${s.driveMin} min · verso ${s.dir}${quota}</span>
+    </div>
+    <span class="spot__score" title="Qualità dell’affaccio">${v.score}</span>
+  </li>`;
+}
+
+/** Blocco della stima "da coordinate" (pulsante + eventuale lista). */
+function estimateBlockHtml() {
+  let list = '';
+  if (state.estimateError) {
+    list = `<p class="muted">Stima non riuscita, riprova.</p>`;
+  } else if (state.estimatedSpots && state.estimatedSpots.length) {
+    list = `<ul class="spots">${state.estimatedSpots.map(spotRowHtml).join('')}</ul>
+      <p class="muted spots__hint">Punti stimati dalla morfologia del terreno: anonimi e non garantiti accessibili (verifica strade/accesso sulla mappa).</p>`;
+  } else if (state.estimatedSpots && state.estimatedSpots.length === 0) {
+    list = `<p class="muted">Nessun punto promettente trovato dalla stima.</p>`;
+  }
+  return `
+    <button class="scan-btn" ${state.estimating ? 'disabled' : ''}>
+      ${state.estimating ? 'Analizzo il territorio…' : '🧭 Cerca anche punti non mappati (stima)'}
+    </button>
+    ${list}`;
+}
+
 /** Sezione "Dove andare a guardarlo": punti panoramici vicini. */
 function spotsSectionHtml(place, sun) {
   const dirNote = `Il sole ${
@@ -294,32 +395,7 @@ function spotsSectionHtml(place, sun) {
   } else if (state.spots.length === 0) {
     body = `<p class="muted">Nessun punto panoramico mappato entro ~25 km.</p>`;
   } else {
-    const rows = state.spots.slice(0, SPOTS_SHOW);
-    body = `<ul class="spots">${rows
-      .map((s) => {
-        const info = kindInfo(s.kind);
-        const dist = s.dist < 10 ? s.dist.toFixed(1) : Math.round(s.dist);
-        const v = s.verdict;
-        const url = `https://www.openstreetmap.org/?mlat=${s.lat.toFixed(
-          5
-        )}&mlon=${s.lon.toFixed(5)}#map=15/${s.lat.toFixed(4)}/${s.lon.toFixed(4)}`;
-        const sky =
-          s.skyScore != null
-            ? `<span class="spot__sky" style="--hue:${scoreHue(
-                s.skyScore
-              )}" title="Sunset Score previsto nel punto">🌇 cielo ${s.skyScore}</span>`
-            : '';
-        return `<li class="spot spot--${v.sentiment}">
-          <span class="spot__icon">${info.icon}</span>
-          <div class="spot__body">
-            <a href="${url}" target="_blank" rel="noopener">${s.name}</a>
-            <span class="spot__verdict">${v.icon} ${v.label} ${sky}</span>
-            <span class="spot__meta">${info.label} · ${dist} km · ~${s.driveMin} min · verso ${s.dir}</span>
-          </div>
-          <span class="spot__score" title="Qualità dell’affaccio">${v.score}</span>
-        </li>`;
-      })
-      .join('')}</ul>`;
+    body = `<ul class="spots">${state.spots.slice(0, SPOTS_SHOW).map(spotRowHtml).join('')}</ul>`;
   }
 
   return `
@@ -327,6 +403,7 @@ function spotsSectionHtml(place, sun) {
       <h3>Dove andare a guardarlo</h3>
       <p class="muted spots__hint">${dirNote}</p>
       ${body}
+      <div class="estimate">${estimateBlockHtml()}</div>
     </section>`;
 }
 
@@ -518,6 +595,9 @@ function renderDetail({ eventDate, cond, score, factors, notes, sun, phase, time
   });
 
   card.querySelector('.share-btn').addEventListener('click', () => shareCurrent(score));
+
+  const scanBtn = card.querySelector('.scan-btn');
+  if (scanBtn) scanBtn.addEventListener('click', scanCoordinates);
 
   els.results.appendChild(card);
 }
