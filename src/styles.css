@@ -176,7 +176,8 @@ body {
   color: var(--bad);
 }
 
-.fav-toggle {
+.fav-toggle,
+.share-btn {
   border: none;
   background: transparent;
   color: var(--accent);
@@ -184,6 +185,10 @@ body {
   cursor: pointer;
   padding: 0 0.2rem;
   vertical-align: middle;
+}
+
+.share-btn {
+  font-size: 1.05rem;
 }
 
 .results {

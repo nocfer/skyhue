@@ -181,6 +181,7 @@ function renderDetail({ eventDate, cond, score, notes, sun, phase, timeline }) {
           <button class="fav-toggle" title="Salva tra i preferiti" aria-pressed="${isFavorite(
             place
           )}">${isFavorite(place) ? '★' : '☆'}</button>
+          <button class="share-btn" title="Condividi questa località" aria-label="Condividi">🔗</button>
         </h2>
         <p class="muted">${label.prep} ${fmtDay(eventDate)} · ore ${fmtTime(eventDate)}</p>
       </div>
@@ -236,7 +237,38 @@ function renderDetail({ eventDate, cond, score, notes, sun, phase, timeline }) {
     renderFavorites();
   });
 
+  card.querySelector('.share-btn').addEventListener('click', () => shareCurrent(score));
+
   els.results.appendChild(card);
+}
+
+/** Costruisce un link condivisibile allo stato corrente (località + evento). */
+function buildShareUrl() {
+  const { place, event } = state;
+  const url = new URL(location.origin + location.pathname);
+  url.searchParams.set('lat', place.latitude.toFixed(4));
+  url.searchParams.set('lon', place.longitude.toFixed(4));
+  url.searchParams.set('label', place.label);
+  url.searchParams.set('event', event);
+  return url.toString();
+}
+
+/** Condivide via Web Share API, con fallback alla copia negli appunti. */
+async function shareCurrent(score) {
+  const url = buildShareUrl();
+  const eventNoun = EVENT_LABELS[state.event].noun.toLowerCase();
+  const text = `SkyHue: ${eventNoun} a ${state.place.label} — punteggio ${score}/100`;
+  try {
+    if (navigator.share) {
+      await navigator.share({ title: 'SkyHue', text, url });
+      return;
+    }
+    await navigator.clipboard.writeText(url);
+    setStatus('Link copiato negli appunti ✓', 'info');
+  } catch {
+    // Ultima spiaggia: mostra l'URL nella barra di stato.
+    setStatus(url, 'info');
+  }
 }
 
 /** Disegna la barra dei preferiti (chip cliccabili con rimozione). */
@@ -317,5 +349,22 @@ document.querySelectorAll('.mode').forEach((btn) => {
   });
 });
 
-// Avvio: mostra i preferiti salvati.
+/** All'avvio, se l'URL contiene una località condivisa, la apre. */
+function initFromUrl() {
+  const p = new URLSearchParams(location.search);
+  const lat = parseFloat(p.get('lat'));
+  const lon = parseFloat(p.get('lon'));
+  if (Number.isFinite(lat) && Number.isFinite(lon)) {
+    const event = p.get('event') === 'sunrise' ? 'sunrise' : 'sunset';
+    state.event = event;
+    document
+      .querySelectorAll('.mode')
+      .forEach((b) => b.classList.toggle('mode--active', b.dataset.event === event));
+    const label = p.get('label') || coordsLabel(lat, lon);
+    analyze({ latitude: lat, longitude: lon, label });
+  }
+}
+
+// Avvio: mostra i preferiti salvati e apre l'eventuale link condiviso.
 renderFavorites();
+initFromUrl();
