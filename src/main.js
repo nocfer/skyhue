@@ -55,6 +55,7 @@ const state = {
 // del tramonto, così le performance restano sotto controllo.
 const SPOTS_EVALUATE = 14;
 const SPOTS_SHOW = 6;
+const SPOTS_SKY = 3; // per quanti finalisti calcolare il punteggio-cielo nel punto
 const NEAR_KM = 6; // entro questo raggio teniamo tutti i punti, a prescindere dalla direzione
 
 const EVENT_LABELS = {
@@ -189,6 +190,37 @@ async function evaluateSpots() {
   evaluated.sort((a, b) => b.finalScore - a.finalScore || a.dist - b.dist);
   state.spots = evaluated;
   render();
+
+  // In background: calcola il punteggio-cielo direttamente nei punti finalisti.
+  loadSpotSky(place);
+}
+
+/**
+ * Per i primi finalisti scarica il meteo nel punto e ne calcola il Sunset Score,
+ * così ogni meta mostra sia l'affaccio sia la qualità del cielo prevista lì.
+ */
+async function loadSpotSky(place) {
+  const top = state.spots.slice(0, SPOTS_SKY);
+  if (!top.length) return;
+  const scores = await Promise.all(
+    top.map(async (s) => {
+      try {
+        const f = await fetchForecast(s.lat, s.lon);
+        const day = dailyList(f)[state.dayIndex] ?? dailyList(f)[0];
+        const iso = day[state.event];
+        const cond = { ...conditionsAtTime(f, iso), ...airAtTime(state.air, iso) };
+        return computeSunsetScore(cond).score;
+      } catch (err) {
+        console.warn('Punteggio-cielo del punto non disponibile:', err);
+        return null;
+      }
+    })
+  );
+  if (state.place !== place) return;
+  top.forEach((s, i) => {
+    s.skyScore = scores[i];
+  });
+  render();
 }
 
 /** Calcola punteggio + spiegazione per l'evento (alba/tramonto) di un giorno. */
@@ -271,11 +303,17 @@ function spotsSectionHtml(place, sun) {
         const url = `https://www.openstreetmap.org/?mlat=${s.lat.toFixed(
           5
         )}&mlon=${s.lon.toFixed(5)}#map=15/${s.lat.toFixed(4)}/${s.lon.toFixed(4)}`;
+        const sky =
+          s.skyScore != null
+            ? `<span class="spot__sky" style="--hue:${scoreHue(
+                s.skyScore
+              )}" title="Sunset Score previsto nel punto">🌇 cielo ${s.skyScore}</span>`
+            : '';
         return `<li class="spot spot--${v.sentiment}">
           <span class="spot__icon">${info.icon}</span>
           <div class="spot__body">
             <a href="${url}" target="_blank" rel="noopener">${s.name}</a>
-            <span class="spot__verdict">${v.icon} ${v.label}</span>
+            <span class="spot__verdict">${v.icon} ${v.label} ${sky}</span>
             <span class="spot__meta">${info.label} · ${dist} km · ~${s.driveMin} min · verso ${s.dir}</span>
           </div>
           <span class="spot__score" title="Qualità dell’affaccio">${v.score}</span>

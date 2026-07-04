@@ -431,6 +431,13 @@ body {
   flex-shrink: 0;
 }
 
+.spot__sky {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: hsl(var(--hue, 40) 85% 62%);
+  margin-left: 0.3rem;
+}
+
 /* Mini-mappa del punto analizzato */
 .map-wrap {
   border-radius: 14px;
