@@ -18,6 +18,10 @@ e qualità dell'aria (gratuito, CORS abilitato).
 6. **Previsione multi-giorno** — striscia dei prossimi 7 giorni, ognuno col suo punteggio.
 7. **Timeline oraria** — andamento del punteggio nelle ore attorno all'evento.
 8. **Spiegazione** — perché quel punteggio: _"nuvole basse all'orizzonte"_, _"nuvole alte favorevoli"_, _"visibilità eccellente"_, _"foschia da particolato"_, ecc.
+9. **Anteprima del cielo** — un gradiente che simula i colori attesi in base a punteggio, nuvole e aerosol.
+10. **Bussola del sole** — dove guardare all'orizzonte (azimut sorgere/tramontare).
+11. **Preferiti** — salva le tue località (localStorage) e ricaricale con un tap.
+12. **Condivisione** — link diretto alla località+evento (Web Share API o copia link).
 
 ## Come funziona il punteggio
 
@@ -70,9 +74,11 @@ src/styles.css        tema "tramonto"
 src/api.js            Open-Meteo: geocoding, previsioni, qualità dell'aria
 src/astronomy.js      posizione solare (NOAA), fase lunare
 src/score.js          algoritmo Sunset Score + spiegazione  ← cuore testabile
+src/sky.js            palette del cielo previsto (gradiente)
 src/store.js          preferiti in localStorage
 src/main.js           orchestrazione e rendering
 test/score.test.js    test dell'algoritmo
+test/sky.test.js      test della palette
 ```
 
 ## PWA & offline
