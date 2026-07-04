@@ -314,6 +314,24 @@ body {
   margin-top: 2px;
 }
 
+/* Anteprima del cielo previsto */
+.skypreview {
+  margin-top: 1.25rem;
+  height: 96px;
+  border-radius: 14px;
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  padding: 0.6rem 0.8rem;
+  overflow: hidden;
+}
+
+.skypreview__label {
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.9);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
 .stats {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));

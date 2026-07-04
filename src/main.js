@@ -13,6 +13,7 @@ import {
 import { computeSunsetScore, scoreLabel, explainScore } from './score.js';
 import { sunPosition, azimuthToCardinal, moonPhase, moonPhaseName } from './astronomy.js';
 import { getFavorites, isFavorite, toggleFavorite, removeFavorite } from './store.js';
+import { skyGradient, skyGradientCss } from './sky.js';
 
 const els = {
   form: document.getElementById('search-form'),
@@ -84,7 +85,7 @@ function evaluateDay(dayIndex) {
     isCenter: c.isCenter,
   }));
 
-  return { day, eventDate, cond, score, notes, sun, phase, timeline };
+  return { day, eventDate, cond, score, factors, notes, sun, phase, timeline };
 }
 
 function fmtTime(date) {
@@ -141,11 +142,13 @@ function render() {
   renderDetail(evaluateDay(state.dayIndex));
 }
 
-function renderDetail({ eventDate, cond, score, notes, sun, phase, timeline }) {
+function renderDetail({ eventDate, cond, score, factors, notes, sun, phase, timeline }) {
   const { place, event } = state;
   const label = EVENT_LABELS[event];
   const card = document.createElement('article');
   card.className = 'card';
+
+  const skyCss = skyGradientCss(skyGradient(factors, score));
 
   const timelineHtml = timeline
     .map(
@@ -190,6 +193,10 @@ function renderDetail({ eventDate, cond, score, notes, sun, phase, timeline }) {
         <div class="gauge__label">${scoreLabel(score)}</div>
       </div>
     </header>
+
+    <div class="skypreview" style="background:${skyCss}">
+      <span class="skypreview__label">Anteprima del cielo previsto</span>
+    </div>
 
     <section class="stats">
       <div class="stat"><span>🧭 Direzione sole</span><strong>${azimuthToCardinal(
