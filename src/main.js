@@ -317,8 +317,9 @@ function fmtWeekdayShort(date) {
 
 /** Colore del punteggio per le sfumature dell'indicatore. */
 function scoreHue(score) {
-  // da rosso (0) a verde-oro (100)
-  return Math.round((score / 100) * 120);
+  // da rosso (0) a verde-oro caldo (100): fermiamo la scala prima del verde
+  // "semaforo" così i punteggi alti restano in tinta col tramonto.
+  return Math.round((score / 100) * 95);
 }
 
 /** Mini-mappa OpenStreetMap (iframe) con un segnalino sul punto analizzato. */
@@ -520,7 +521,7 @@ function renderDetail({ eventDate, cond, score, factors, notes, sun, phase, time
         </h2>
         <p class="muted">${label.prep} ${fmtDay(eventDate)} · ore ${fmtTime(eventDate)}</p>
       </div>
-      <div class="gauge" style="--score:${score}">
+      <div class="gauge" style="--score:${score};--hue:${scoreHue(score)}">
         <div class="gauge__value">${score}</div>
         <div class="gauge__label">${scoreLabel(score)}</div>
       </div>
@@ -574,7 +575,7 @@ function renderDetail({ eventDate, cond, score, factors, notes, sun, phase, time
     ${spotsSectionHtml(place, sun)}
 
     <section>
-      <h3>Andamento del cielo attorno all’${event === 'sunset' ? 'tramonto' : 'alba'}</h3>
+      <h3>Andamento del cielo attorno ${event === 'sunset' ? 'al tramonto' : 'all’alba'}</h3>
       <div class="timeline">${timelineHtml}</div>
       <p class="muted tl__hint">Punteggio ora per ora — la colonna evidenziata è l’ora ${
         event === 'sunset' ? 'del tramonto' : 'dell’alba'
