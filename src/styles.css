@@ -1,0 +1,270 @@
+:root {
+  --bg: #1a1332;
+  --card: rgba(255, 255, 255, 0.06);
+  --card-border: rgba(255, 255, 255, 0.12);
+  --text: #f6f1ff;
+  --muted: #b8a9d9;
+  --accent: #ff8a5c;
+  --good: #6ee7a8;
+  --bad: #ff7a8a;
+  --neutral: #ffd479;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  color: var(--text);
+  background: var(--bg);
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* Cielo di sfondo in gradiente da tramonto */
+.sky {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(180deg, #2a1a4a 0%, #6b2d5c 45%, #d9663f 78%, #ffb26b 100%);
+  opacity: 0.55;
+}
+
+.app {
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 2.5rem 1.25rem 4rem;
+}
+
+.hero {
+  text-align: center;
+}
+
+.hero h1 {
+  font-size: 2.6rem;
+  margin: 0;
+}
+
+.tagline {
+  color: var(--muted);
+  max-width: 34rem;
+  margin: 0.5rem auto 1.75rem;
+}
+
+.search {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.search input {
+  flex: 1 1 260px;
+  padding: 0.8rem 1rem;
+  border-radius: 12px;
+  border: 1px solid var(--card-border);
+  background: rgba(0, 0, 0, 0.25);
+  color: var(--text);
+  font-size: 1rem;
+}
+
+.search input::placeholder {
+  color: var(--muted);
+}
+
+.search button {
+  padding: 0.8rem 1.2rem;
+  border-radius: 12px;
+  border: none;
+  background: var(--accent);
+  color: #2a1330;
+  font-weight: 700;
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+.search button.ghost {
+  background: transparent;
+  border: 1px solid var(--card-border);
+  color: var(--text);
+  font-weight: 500;
+}
+
+.search button:hover {
+  filter: brightness(1.08);
+}
+
+.status {
+  min-height: 1.2rem;
+  margin-top: 0.9rem;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.status[data-kind='error'] {
+  color: var(--bad);
+}
+
+.results {
+  margin-top: 2rem;
+  display: grid;
+  gap: 1.5rem;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: 20px;
+  padding: 1.5rem;
+  backdrop-filter: blur(10px);
+}
+
+.card__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.card__head h2 {
+  margin: 0;
+  font-size: 1.4rem;
+}
+
+.muted {
+  color: var(--muted);
+  margin: 0.25rem 0 0;
+  text-transform: capitalize;
+}
+
+/* Indicatore circolare del punteggio */
+.gauge {
+  --score: 0;
+  width: 108px;
+  height: 108px;
+  border-radius: 50%;
+  display: grid;
+  place-content: center;
+  text-align: center;
+  background: conic-gradient(
+    var(--accent) calc(var(--score) * 1%),
+    rgba(255, 255, 255, 0.1) 0
+  );
+  position: relative;
+  flex-shrink: 0;
+}
+
+.gauge::before {
+  content: '';
+  position: absolute;
+  inset: 9px;
+  border-radius: 50%;
+  background: #241640;
+}
+
+.gauge__value {
+  position: relative;
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.gauge__label {
+  position: relative;
+  font-size: 0.72rem;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.75rem;
+  margin: 1.5rem 0;
+}
+
+.stat {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 12px;
+  padding: 0.7rem 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.stat span {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.stat strong {
+  font-size: 1.05rem;
+}
+
+.card h3 {
+  margin: 0 0 0.75rem;
+  font-size: 1.1rem;
+}
+
+.notes {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.note {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  padding: 0.7rem 0.9rem;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.18);
+  border-left: 3px solid var(--neutral);
+}
+
+.note--good {
+  border-left-color: var(--good);
+}
+
+.note--bad {
+  border-left-color: var(--bad);
+}
+
+.note__icon {
+  font-size: 1.3rem;
+  line-height: 1.4;
+}
+
+.note strong {
+  display: block;
+}
+
+.note p {
+  margin: 0.2rem 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.foot {
+  margin-top: 3rem;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.foot a {
+  color: var(--accent);
+}
+
+@media (max-width: 480px) {
+  .card__head {
+    justify-content: center;
+    text-align: center;
+  }
+}

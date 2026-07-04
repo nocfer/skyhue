@@ -1,0 +1,105 @@
+// Test dell'algoritmo del Sunset Score. Esegui con: node --test
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import {
+  computeSunsetScore,
+  scoreLabel,
+  explainScore,
+  clamp,
+  bellReward,
+} from '../src/score.js';
+
+test('clamp limita ai bordi', () => {
+  assert.equal(clamp(5, 0, 10), 5);
+  assert.equal(clamp(-1, 0, 10), 0);
+  assert.equal(clamp(99, 0, 10), 10);
+});
+
+test('bellReward è massima al valore ideale', () => {
+  assert.equal(bellReward(50, 50, 30), 1);
+  assert.ok(bellReward(50, 50, 30) > bellReward(90, 50, 30));
+  assert.ok(bellReward(10, 50, 30) > 0);
+});
+
+test('cielo terso e limpido dà un punteggio decente ma non eccezionale', () => {
+  const { score } = computeSunsetScore({
+    cloudCover: 0,
+    cloudCoverLow: 0,
+    cloudCoverMid: 0,
+    cloudCoverHigh: 0,
+    visibility: 24000,
+    humidity: 40,
+  });
+  assert.ok(score >= 45 && score <= 65, `atteso ~55, ottenuto ${score}`);
+});
+
+test('cirri parziali con orizzonte libero danno un ottimo punteggio', () => {
+  const { score } = computeSunsetScore({
+    cloudCover: 45,
+    cloudCoverLow: 5,
+    cloudCoverMid: 40,
+    cloudCoverHigh: 50,
+    visibility: 22000,
+    humidity: 45,
+  });
+  assert.ok(score >= 75, `atteso alto, ottenuto ${score}`);
+});
+
+test('nuvole basse fitte affossano il punteggio', () => {
+  const { score } = computeSunsetScore({
+    cloudCover: 95,
+    cloudCoverLow: 95,
+    cloudCoverMid: 60,
+    cloudCoverHigh: 30,
+    visibility: 8000,
+    humidity: 90,
+  });
+  assert.ok(score < 25, `atteso basso, ottenuto ${score}`);
+});
+
+test('cielo completamente coperto penalizza fortemente', () => {
+  const { score } = computeSunsetScore({
+    cloudCover: 100,
+    cloudCoverLow: 20,
+    cloudCoverMid: 80,
+    cloudCoverHigh: 90,
+    visibility: 15000,
+    humidity: 70,
+  });
+  assert.ok(score < 30, `atteso basso per overcast, ottenuto ${score}`);
+});
+
+test('il punteggio resta sempre in [0,100]', () => {
+  for (const v of [0, 50, 100]) {
+    const { score } = computeSunsetScore({
+      cloudCover: v,
+      cloudCoverLow: v,
+      cloudCoverMid: v,
+      cloudCoverHigh: v,
+      visibility: v * 300,
+      humidity: v,
+    });
+    assert.ok(score >= 0 && score <= 100);
+  }
+});
+
+test('scoreLabel copre la scala', () => {
+  assert.equal(scoreLabel(90), 'Eccezionale');
+  assert.equal(scoreLabel(60), 'Buono');
+  assert.equal(scoreLabel(10), 'Scarso');
+});
+
+test('explainScore segnala le nuvole basse come negative', () => {
+  const { factors } = computeSunsetScore({
+    cloudCover: 80,
+    cloudCoverLow: 70,
+    cloudCoverMid: 30,
+    cloudCoverHigh: 40,
+    visibility: 12000,
+    humidity: 80,
+  });
+  const notes = explainScore(factors);
+  const low = notes.find((n) => n.title.includes('Nuvole basse'));
+  assert.ok(low, 'attesa una nota sulle nuvole basse');
+  assert.equal(low.sentiment, 'bad');
+});

@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SkyHue · Sunset Score</title>
+    <meta
+      name="description"
+      content="Calcola il Sunset Score della tua località combinando meteo in tempo reale e dati astronomici."
+    />
+    <link rel="stylesheet" href="./src/styles.css" />
+  </head>
+  <body>
+    <div class="sky"></div>
+    <main class="app">
+      <header class="hero">
+        <h1>🌅 SkyHue</h1>
+        <p class="tagline">
+          Quanto sarà bello il prossimo tramonto? Un punteggio da meteo reale e dati astronomici.
+        </p>
+
+        <form id="search-form" class="search">
+          <input
+            id="search-input"
+            type="text"
+            placeholder="Cerca una città (es. Napoli, Lisbona…)"
+            autocomplete="off"
+            aria-label="Cerca una città"
+          />
+          <button type="submit">Calcola</button>
+          <button type="button" id="geo-btn" class="ghost" title="Usa la mia posizione">
+            📍 Posizione
+          </button>
+        </form>
+        <p id="status" class="status" role="status" aria-live="polite"></p>
+      </header>
+
+      <section id="results" class="results"></section>
+
+      <footer class="foot">
+        <p>
+          Dati meteo &amp; astronomici da
+          <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a>.
+          Posizione solare calcolata con l'algoritmo NOAA.
+        </p>
+      </footer>
+    </main>
+
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>
