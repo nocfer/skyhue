@@ -1,5 +1,5 @@
 // sw.js — service worker: shell offline + cache dell'ultima risposta API.
-const CACHE = 'skyhue-v1';
+const CACHE = 'skyhue-v2';
 
 // File del guscio applicativo da pre-cachare (percorsi relativi allo scope).
 const SHELL = [
@@ -36,6 +36,11 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(request.url);
   const isApi = url.hostname.endsWith('open-meteo.com');
+  const sameOrigin = url.origin === self.location.origin;
+
+  // Risorse di terze parti (es. mattonelle della mappa): lasciale alla rete,
+  // senza intercettarle né metterle in cache.
+  if (!isApi && !sameOrigin) return;
 
   if (isApi) {
     // API: network-first, con fallback all'ultima risposta salvata (offline).

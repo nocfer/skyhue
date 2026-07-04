@@ -20,8 +20,9 @@ e qualità dell'aria (gratuito, CORS abilitato).
 8. **Spiegazione** — perché quel punteggio: _"nuvole basse all'orizzonte"_, _"nuvole alte favorevoli"_, _"visibilità eccellente"_, _"foschia da particolato"_, ecc.
 9. **Anteprima del cielo** — un gradiente che simula i colori attesi in base a punteggio, nuvole e aerosol.
 10. **Bussola del sole** — dove guardare all'orizzonte (azimut sorgere/tramontare).
-11. **Preferiti** — salva le tue località (localStorage) e ricaricale con un tap.
-12. **Condivisione** — link diretto alla località+evento (Web Share API o copia link).
+11. **Mappa del punto** — mini-mappa OpenStreetMap del punto analizzato, con coordinate richieste e cella di griglia meteo effettiva.
+12. **Preferiti** — salva le tue località (localStorage) e ricaricale con un tap.
+13. **Condivisione** — link diretto alla località+evento (Web Share API o copia link).
 
 ## Come funziona il punteggio
 

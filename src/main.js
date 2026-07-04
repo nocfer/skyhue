@@ -106,6 +106,21 @@ function scoreHue(score) {
   return Math.round((score / 100) * 120);
 }
 
+/** Mini-mappa OpenStreetMap (iframe) con un segnalino sul punto analizzato. */
+function mapEmbedHtml(lat, lon) {
+  const d = 0.03; // ampiezza del riquadro attorno al punto (~3 km)
+  const bbox = [lon - d, lat - d, lon + d, lat + d].map((n) => n.toFixed(4)).join(',');
+  const src = `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${lat.toFixed(
+    5
+  )},${lon.toFixed(5)}`;
+  const full = `https://www.openstreetmap.org/?mlat=${lat.toFixed(5)}&mlon=${lon.toFixed(
+    5
+  )}#map=13/${lat.toFixed(4)}/${lon.toFixed(4)}`;
+  return `
+    <iframe class="map" title="Punto analizzato sulla mappa" loading="lazy" src="${src}"></iframe>
+    <a class="map__link" href="${full}" target="_blank" rel="noopener">Apri mappa più grande ↗</a>`;
+}
+
 /** Bussola SVG con il sole posizionato sull'azimut (0°=N, 90°=E, …). */
 function compassSvg(azimuth) {
   const cx = 70;
@@ -170,6 +185,15 @@ function renderDetail({ eventDate, cond, score, factors, notes, sun, phase, time
   card.className = 'card';
 
   const skyCss = skyGradientCss(skyGradient(factors, score));
+
+  // Coordinate richieste e cella di griglia effettivamente usata da Open-Meteo.
+  const grid = state.forecast;
+  const gridNote =
+    grid && Number.isFinite(grid.latitude)
+      ? `Punto richiesto ${place.latitude.toFixed(3)}, ${place.longitude.toFixed(
+          3
+        )} · cella meteo ${grid.latitude.toFixed(3)}, ${grid.longitude.toFixed(3)}`
+      : '';
 
   const timelineHtml = timeline
     .map(
@@ -241,6 +265,12 @@ function renderDetail({ eventDate, cond, score, factors, notes, sun, phase, time
           : ''
       }
       <div class="stat"><span>🌙 Luna</span><strong>${moonPhaseName(phase)}</strong></div>
+    </section>
+
+    <section>
+      <h3>Punto analizzato</h3>
+      <div class="map-wrap">${mapEmbedHtml(place.latitude, place.longitude)}</div>
+      ${gridNote ? `<p class="muted map__note">${gridNote}</p>` : ''}
     </section>
 
     <section class="lookat">
