@@ -85,6 +85,7 @@ async function analyze(place) {
     ]);
     const { dayIndex } = nextSunset(forecast, new Date());
     state.place = place;
+    window.skyhueLastPlace = { latitude: place.latitude, longitude: place.longitude };
     state.forecast = forecast;
     state.air = air;
     state.dayIndex = dayIndex;
@@ -731,6 +732,9 @@ function initFromUrl() {
     analyze({ latitude: lat, longitude: lon, label });
   }
 }
+
+// Un punto scelto sulla mappa chiede l'analisi completa: la eseguiamo qui.
+window.addEventListener('skyhue:analyze', (e) => analyze(e.detail));
 
 // Avvio: mostra i preferiti salvati e apre l'eventuale link condiviso.
 renderFavorites();

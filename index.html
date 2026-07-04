@@ -16,8 +16,11 @@
   </head>
   <body>
     <div class="sky"></div>
-    <main class="app">
+    <main class="app" id="app-view">
       <header class="hero">
+        <nav class="topnav">
+          <a href="#map" class="navlink">🗺️ Scegli sulla mappa</a>
+        </nav>
         <h1>🌅 SkyHue</h1>
         <p class="tagline">
           Quanto sarà bello il prossimo tramonto? Un punteggio da meteo reale e dati astronomici.
@@ -58,7 +61,17 @@
       </footer>
     </main>
 
+    <section id="map-view" class="mapview" hidden>
+      <header class="mapview__bar">
+        <button id="map-back" class="ghost">← Indietro</button>
+        <span class="mapview__hint">Tocca un punto della mappa per valutarlo</span>
+      </header>
+      <div id="leaflet" class="mapview__canvas"></div>
+      <div id="map-panel" class="mapview__panel" hidden></div>
+    </section>
+
     <script type="module" src="./src/main.js"></script>
+    <script type="module" src="./src/map.js"></script>
     <script>
       // Registra il service worker (offline / installazione) e aggiorna la vista
       // in automatico quando viene pubblicata una nuova versione.

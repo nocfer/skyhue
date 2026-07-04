@@ -24,6 +24,7 @@ e qualità dell'aria (gratuito, CORS abilitato).
 12. **Preferiti** — salva le tue località (localStorage) e ricaricale con un tap.
 13. **Condivisione** — link diretto alla località+evento (Web Share API o copia link).
 14. **Dove andare a guardarlo** — punti panoramici vicini da OpenStreetMap (viewpoint, fari, promontori, spiagge) **valutati qualitativamente**: si campiona la quota del terreno lungo il raggio verso il sole (Elevation API di Open-Meteo) per stimare se l'orizzonte è libero o ostruito e se c'è mare aperto; i punti sono ordinati per qualità dell'affaccio (raggio ~25 km, con stima dei minuti in auto). Per le mete finaliste viene calcolato anche il **Sunset Score direttamente nel punto**. Su richiesta, una **stima da coordinate** (griglia + quote) propone anche punti *non mappati* su OSM, valutandone l'affaccio.
+15. **Schermata mappa** (`#map`) — mappa interattiva (Leaflet, caricato on-demand): **tocca un punto qualsiasi** e ottieni Sunset Score, direzione del sole e affaccio in quel punto, poi apri il dettaglio completo.
 
 ## Come funziona il punteggio
 

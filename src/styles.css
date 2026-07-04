@@ -39,8 +39,109 @@ body {
   padding: 2.5rem 1.25rem 4rem;
 }
 
+.topnav {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 0.5rem;
+}
+
+.navlink {
+  color: var(--text);
+  text-decoration: none;
+  font-size: 0.9rem;
+  padding: 0.4rem 0.8rem;
+  border: 1px solid var(--card-border);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.navlink:hover {
+  border-color: var(--accent);
+}
+
 .hero {
   text-align: center;
+}
+
+/* Schermata mappa dedicata */
+.mapview {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+
+.mapview__bar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0.9rem;
+  background: #241640;
+  border-bottom: 1px solid var(--card-border);
+}
+
+.mapview__hint {
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.mapview__canvas {
+  flex: 1;
+  min-height: 0;
+}
+
+.mapview__panel {
+  padding: 1rem 1.1rem;
+  background: #241640;
+  border-top: 1px solid var(--card-border);
+  max-height: 45vh;
+  overflow-y: auto;
+}
+
+.mp__head {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.mp__score {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  display: grid;
+  place-content: center;
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #241640;
+  background: hsl(var(--hue, 40) 85% 62%);
+  flex-shrink: 0;
+}
+
+.mp__verdict {
+  margin: 0.8rem 0;
+  padding-left: 0.6rem;
+  border-left: 3px solid var(--neutral);
+}
+
+.mp__verdict.spot--good {
+  border-left-color: var(--good);
+}
+
+.mp__verdict.spot--bad {
+  border-left-color: var(--bad);
+}
+
+.mp__open {
+  width: 100%;
+  padding: 0.7rem;
+  border: none;
+  border-radius: 12px;
+  background: var(--accent);
+  color: #2a1330;
+  font-weight: 700;
+  cursor: pointer;
 }
 
 .hero h1 {
