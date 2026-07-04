@@ -1,7 +1,14 @@
 // Test della matematica pura dei punti panoramici. Esegui con: node --test
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { distanceKm, bearing, kindInfo } from '../src/spots.js';
+import {
+  distanceKm,
+  bearing,
+  kindInfo,
+  destinationPoint,
+  evaluateHorizon,
+  spotVerdict,
+} from '../src/spots.js';
 
 test('distanceKm ~0 per lo stesso punto', () => {
   assert.ok(distanceKm(38.0, 12.0, 38.0, 12.0) < 1e-6);
@@ -29,4 +36,47 @@ test('kindInfo ha etichetta e icona', () => {
   assert.ok(info.icon);
   // tipo sconosciuto → fallback
   assert.ok(kindInfo('boh').label);
+});
+
+test('destinationPoint verso est sposta la longitudine, non la latitudine', () => {
+  const p = destinationPoint(40, 12, 90, 10);
+  assert.ok(p.lon > 12, 'longitudine dovrebbe aumentare verso est');
+  assert.ok(Math.abs(p.lat - 40) < 0.05, 'latitudine quasi invariata');
+});
+
+test('destinationPoint verso nord aumenta la latitudine', () => {
+  const p = destinationPoint(40, 12, 0, 11.1);
+  assert.ok(p.lat > 40.09 && p.lat < 40.11, `lat inattesa: ${p.lat}`);
+});
+
+test('evaluateHorizon: mare aperto → non ostruito, molta acqua', () => {
+  const h = evaluateHorizon(5, [
+    { distKm: 0.4, elev: 0 },
+    { distKm: 1, elev: 0 },
+    { distKm: 3, elev: 0 },
+  ]);
+  assert.equal(h.obstructed, false);
+  assert.equal(h.seaFraction, 1);
+});
+
+test('evaluateHorizon: collina davanti a un punto basso → ostruito', () => {
+  const h = evaluateHorizon(2, [
+    { distKm: 0.4, elev: 60 }, // ~8.5° di elevazione: blocca il sole
+    { distKm: 1, elev: 40 },
+  ]);
+  assert.equal(h.obstructed, true);
+});
+
+test('spotVerdict: ostruito penalizza e segnala', () => {
+  const openSea = spotVerdict('viewpoint', { obstructed: false, seaFraction: 1, maxAngle: 0 });
+  const blocked = spotVerdict('viewpoint', { obstructed: true, seaFraction: 0, maxAngle: 8 });
+  assert.ok(blocked.score < openSea.score);
+  assert.equal(blocked.sentiment, 'bad');
+  assert.equal(openSea.sentiment, 'good');
+});
+
+test('spotVerdict: senza dati di quota resta neutro', () => {
+  const v = spotVerdict('beach', null);
+  assert.equal(v.sentiment, 'neutral');
+  assert.ok(v.score > 0);
 });

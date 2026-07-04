@@ -14,7 +14,17 @@ import { computeSunsetScore, scoreLabel, explainScore } from './score.js';
 import { sunPosition, azimuthToCardinal, moonPhase, moonPhaseName } from './astronomy.js';
 import { getFavorites, isFavorite, toggleFavorite, removeFavorite } from './store.js';
 import { skyGradient, skyGradientCss } from './sky.js';
-import { fetchSunsetSpots, distanceKm, bearing, kindInfo } from './spots.js';
+import {
+  fetchSunsetSpots,
+  distanceKm,
+  bearing,
+  kindInfo,
+  destinationPoint,
+  SAMPLE_DISTANCES,
+  evaluateHorizon,
+  spotVerdict,
+  fetchElevations,
+} from './spots.js';
 
 const els = {
   form: document.getElementById('search-form'),
@@ -32,9 +42,15 @@ const state = {
   air: null, // dati qualità dell'aria (può restare null se il fetch fallisce)
   dayIndex: 0,
   event: 'sunset', // 'sunset' | 'sunrise'
-  spots: null, // punti panoramici vicini: null=caricamento, []=nessuno, Array=trovati
+  spots: null, // punti panoramici valutati: null=caricamento, []=nessuno, Array=trovati
   spotsError: false,
+  rawSpots: null, // cache dei punti grezzi da OSM (indipendenti dall'evento)
+  rawSpotsFor: null, // riferimento alla località per cui rawSpots è valida
 };
+
+// Quanti punti valutare (per limitare la chiamata batch sulle quote) e mostrare.
+const SPOTS_EVALUATE = 8;
+const SPOTS_SHOW = 6;
 
 const EVENT_LABELS = {
   sunset: { noun: 'Tramonto', prep: 'Tramonto di' },
@@ -72,19 +88,90 @@ async function analyze(place) {
   }
 }
 
-/** Carica in background i punti panoramici vicini e aggiorna la vista. */
+/** Carica in background i punti panoramici (OSM) e ne valuta l'affaccio. */
 async function loadSpots(place) {
   try {
-    const spots = await fetchSunsetSpots(place.latitude, place.longitude);
+    const raw = await fetchSunsetSpots(place.latitude, place.longitude);
     if (state.place !== place) return; // l'utente ha cambiato località nel frattempo
-    state.spots = spots;
-    render();
+    state.rawSpots = raw;
+    state.rawSpotsFor = place;
+    await evaluateSpots();
   } catch (err) {
     console.warn('Punti panoramici non disponibili:', err);
     if (state.place !== place) return;
     state.spotsError = true;
     render();
   }
+}
+
+/** Azimut del sole per l'evento e il giorno correntemente selezionati. */
+function currentAzimuth() {
+  const { forecast, place, event, dayIndex } = state;
+  const iso = dailyList(forecast)[dayIndex][event];
+  return sunPosition(new Date(iso), place.latitude, place.longitude).azimuth;
+}
+
+/**
+ * Valuta l'affaccio dei punti grezzi verso il sole (ostruzioni + mare aperto),
+ * usando le quote del terreno campionate lungo l'azimut. Riusa rawSpots, così
+ * cambiando alba/tramonto ricalcola senza re-interrogare OSM.
+ */
+async function evaluateSpots() {
+  const place = state.place;
+  const raw = state.rawSpots;
+  if (!raw) return;
+  if (raw.length === 0) {
+    state.spots = [];
+    render();
+    return;
+  }
+
+  const azimuth = currentAzimuth();
+
+  // Prendi i più vicini e campiona il terreno lungo il raggio verso il sole.
+  const nearest = raw
+    .map((s) => ({ ...s, dist: distanceKm(place.latitude, place.longitude, s.lat, s.lon) }))
+    .sort((a, b) => a.dist - b.dist)
+    .slice(0, SPOTS_EVALUATE);
+
+  const points = [];
+  for (const s of nearest) {
+    for (const d of SAMPLE_DISTANCES) {
+      points.push(d === 0 ? { lat: s.lat, lon: s.lon } : destinationPoint(s.lat, s.lon, azimuth, d));
+    }
+  }
+
+  let elevations = null;
+  try {
+    elevations = await fetchElevations(points);
+  } catch (err) {
+    console.warn('Quote non disponibili, salto la valutazione affaccio:', err);
+  }
+  if (state.place !== place) return;
+
+  const n = SAMPLE_DISTANCES.length;
+  const evaluated = nearest.map((s, i) => {
+    let horizon = null;
+    if (elevations && elevations.length >= (i + 1) * n) {
+      const elevSpot = elevations[i * n];
+      const ahead = SAMPLE_DISTANCES.slice(1).map((distKm, k) => ({
+        distKm,
+        elev: elevations[i * n + 1 + k],
+      }));
+      horizon = evaluateHorizon(elevSpot, ahead);
+    }
+    const verdict = spotVerdict(s.kind, horizon);
+    return {
+      ...s,
+      dir: azimuthToCardinal(bearing(place.latitude, place.longitude, s.lat, s.lon)),
+      verdict,
+    };
+  });
+
+  // Ordina per qualità dell'affaccio, poi per vicinanza.
+  evaluated.sort((a, b) => b.verdict.score - a.verdict.score || a.dist - b.dist);
+  state.spots = evaluated;
+  render();
 }
 
 /** Calcola punteggio + spiegazione per l'evento (alba/tramonto) di un giorno. */
@@ -154,31 +241,27 @@ function spotsSectionHtml(place, sun) {
   if (state.spotsError) {
     body = `<p class="muted">Punti panoramici non disponibili al momento.</p>`;
   } else if (state.spots === null) {
-    body = `<p class="muted">Cerco punti panoramici nei dintorni…</p>`;
+    body = `<p class="muted">Cerco i punti nei dintorni e ne valuto l’affaccio verso il tramonto…</p>`;
   } else if (state.spots.length === 0) {
     body = `<p class="muted">Nessun punto panoramico mappato nei dintorni.</p>`;
   } else {
-    const rows = state.spots
-      .map((s) => ({
-        ...s,
-        dist: distanceKm(place.latitude, place.longitude, s.lat, s.lon),
-        dir: azimuthToCardinal(bearing(place.latitude, place.longitude, s.lat, s.lon)),
-      }))
-      .sort((a, b) => a.dist - b.dist)
-      .slice(0, 6);
+    const rows = state.spots.slice(0, SPOTS_SHOW);
     body = `<ul class="spots">${rows
       .map((s) => {
         const info = kindInfo(s.kind);
         const dist = s.dist < 10 ? s.dist.toFixed(1) : Math.round(s.dist);
+        const v = s.verdict;
         const url = `https://www.openstreetmap.org/?mlat=${s.lat.toFixed(
           5
         )}&mlon=${s.lon.toFixed(5)}#map=15/${s.lat.toFixed(4)}/${s.lon.toFixed(4)}`;
-        return `<li class="spot">
+        return `<li class="spot spot--${v.sentiment}">
           <span class="spot__icon">${info.icon}</span>
           <div class="spot__body">
             <a href="${url}" target="_blank" rel="noopener">${s.name}</a>
+            <span class="spot__verdict">${v.icon} ${v.label}</span>
             <span class="spot__meta">${info.label} · ${dist} km · verso ${s.dir}</span>
           </div>
+          <span class="spot__score" title="Qualità dell’affaccio">${v.score}</span>
         </li>`;
       })
       .join('')}</ul>`;
@@ -488,6 +571,13 @@ document.querySelectorAll('.mode').forEach((btn) => {
       .querySelectorAll('.mode')
       .forEach((b) => b.classList.toggle('mode--active', b === btn));
     if (state.forecast) render();
+    // L'azimut cambia molto tra alba e tramonto: rivaluta l'affaccio dei punti.
+    if (state.rawSpots && state.rawSpotsFor === state.place) {
+      state.spots = null;
+      state.spotsError = false;
+      render();
+      evaluateSpots();
+    }
   });
 });
 

@@ -32,6 +32,103 @@ export function bearing(aLat, aLon, bLat, bLon) {
   return (Math.atan2(y, x) / DEG + 360) % 360;
 }
 
+/** Punto di destinazione a `distKm` da (lat,lon) lungo un rilevamento (gradi). */
+export function destinationPoint(lat, lon, bearingDeg, distKm) {
+  const d = distKm / EARTH_KM;
+  const th = bearingDeg * DEG;
+  const f1 = lat * DEG;
+  const l1 = lon * DEG;
+  const f2 = Math.asin(
+    Math.sin(f1) * Math.cos(d) + Math.cos(f1) * Math.sin(d) * Math.cos(th)
+  );
+  const l2 =
+    l1 +
+    Math.atan2(
+      Math.sin(th) * Math.sin(d) * Math.cos(f1),
+      Math.cos(d) - Math.sin(f1) * Math.sin(f2)
+    );
+  return { lat: f2 / DEG, lon: (((l2 / DEG + 540) % 360) - 180) };
+}
+
+// Distanze (km) di campionamento del terreno lungo il raggio verso il sole.
+// Il primo (0) è il punto stesso; gli altri servono a valutare l'orizzonte.
+export const SAMPLE_DISTANCES = [0, 0.4, 0.8, 1.5, 3, 5];
+
+/**
+ * Valuta l'orizzonte verso il sole a partire dal profilo di quote campionato.
+ * @param {number} elevSpot quota del punto (m)
+ * @param {Array<{distKm:number, elev:number}>} ahead campioni davanti (distKm>0)
+ * @returns {{maxAngle:number, seaFraction:number, obstructed:boolean}}
+ */
+export function evaluateHorizon(elevSpot, ahead) {
+  let maxAngle = -90;
+  let seaCount = 0;
+  for (const s of ahead) {
+    const angle = Math.atan2(s.elev - elevSpot, s.distKm * 1000) / DEG;
+    if (angle > maxAngle) maxAngle = angle;
+    if (s.elev <= 1) seaCount++; // ~livello del mare
+  }
+  const seaFraction = ahead.length ? seaCount / ahead.length : 0;
+  // Il sole al tramonto è ~0° sull'orizzonte: un rilievo oltre ~2° lo blocca.
+  const obstructed = maxAngle > 2;
+  return { maxAngle, seaFraction, obstructed };
+}
+
+const KIND_BASE = { lighthouse: 55, cape: 52, viewpoint: 48, peak: 45, beach: 38 };
+
+/**
+ * Punteggio qualitativo (0-100) e giudizio testuale di un punto, dato il tipo
+ * e la valutazione dell'orizzonte verso il sole.
+ * @returns {{score:number, sentiment:string, icon:string, label:string}}
+ */
+export function spotVerdict(kind, horizon) {
+  let score = KIND_BASE[kind] ?? 45;
+  if (!horizon) {
+    return { score, sentiment: 'neutral', icon: '❓', label: 'Affaccio non valutato' };
+  }
+  const { obstructed, seaFraction, maxAngle } = horizon;
+  if (obstructed) {
+    score = Math.max(0, score - 35);
+    return {
+      score,
+      sentiment: 'bad',
+      icon: '⛰️',
+      label: 'Orizzonte ostruito verso il tramonto',
+    };
+  }
+  score += Math.round(20 * seaFraction);
+  score += Math.max(0, Math.round((2 - maxAngle) * 5)); // più l'orizzonte è basso, meglio è
+  score = Math.max(0, Math.min(100, score));
+  if (seaFraction >= 0.5) {
+    return { score, sentiment: 'good', icon: '🌊', label: 'Affaccio libero sul mare' };
+  }
+  if (kind === 'beach' && seaFraction < 0.3) {
+    return {
+      score,
+      sentiment: 'neutral',
+      icon: '🌅',
+      label: 'Orizzonte libero ma senza mare aperto',
+    };
+  }
+  return { score, sentiment: 'good', icon: '🌅', label: 'Orizzonte libero verso il tramonto' };
+}
+
+/**
+ * Scarica le quote (m) per una lista di punti, in un'unica chiamata batch.
+ * @param {Array<{lat:number, lon:number}>} points
+ * @returns {Promise<number[]>} quote allineate ai punti
+ */
+export async function fetchElevations(points) {
+  if (!points.length) return [];
+  const lats = points.map((p) => p.lat.toFixed(5)).join(',');
+  const lons = points.map((p) => p.lon.toFixed(5)).join(',');
+  const url = `https://api.open-meteo.com/v1/elevation?latitude=${lats}&longitude=${lons}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Elevation ${res.status}`);
+  const data = await res.json();
+  return data.elevation ?? [];
+}
+
 // Tipi di punto che consideriamo, con etichetta e icona.
 const KINDS = {
   viewpoint: { label: 'Punto panoramico', icon: '👁️' },

@@ -382,6 +382,16 @@ body {
   padding: 0.6rem 0.8rem;
   border-radius: 12px;
   background: rgba(0, 0, 0, 0.18);
+  border-left: 3px solid var(--neutral);
+}
+
+.spot--good {
+  border-left-color: var(--good);
+}
+
+.spot--bad {
+  border-left-color: var(--bad);
+  opacity: 0.75;
 }
 
 .spot__icon {
@@ -391,6 +401,7 @@ body {
 .spot__body {
   display: flex;
   flex-direction: column;
+  flex: 1;
 }
 
 .spot__body a {
@@ -403,9 +414,21 @@ body {
   color: var(--accent);
 }
 
+.spot__verdict {
+  font-size: 0.85rem;
+  margin-top: 0.1rem;
+}
+
 .spot__meta {
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   color: var(--muted);
+}
+
+.spot__score {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--accent);
+  flex-shrink: 0;
 }
 
 /* Mini-mappa del punto analizzato */
