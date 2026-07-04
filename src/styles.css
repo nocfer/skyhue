@@ -54,14 +54,22 @@ body {
   position: fixed;
   inset: 0;
   z-index: -1;
-  background: radial-gradient(
-      125% 90% at 50% 120%,
-      rgba(255, 138, 82, 0.2) 0%,
-      rgba(178, 58, 91, 0.16) 28%,
-      rgba(120, 45, 92, 0.06) 50%,
-      rgba(14, 11, 17, 0) 68%
+  background:
+    /* nucleo caldo focalizzato: l'alone del sole appena sceso sotto l'orizzonte */
+    radial-gradient(
+      90% 60% at 50% 116%,
+      rgba(255, 170, 110, 0.62) 0%,
+      rgba(255, 120, 80, 0.34) 26%,
+      rgba(14, 11, 17, 0) 55%
     ),
-    linear-gradient(180deg, #0c0910 0%, #100b15 55%, #150d17 100%);
+    /* diffusione rosa più ampia attorno al nucleo */
+      radial-gradient(
+        140% 115% at 50% 120%,
+        rgba(200, 58, 96, 0.34) 20%,
+        rgba(120, 45, 92, 0.14) 55%,
+        rgba(14, 11, 17, 0) 82%
+      ),
+    /* base quasi-nera calda */ linear-gradient(180deg, #0b0810 0%, #110b15 48%, #180d18 100%);
 }
 
 .app {
