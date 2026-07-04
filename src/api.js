@@ -51,16 +51,10 @@ export async function fetchForecast(latitude, longitude) {
   return res.json();
 }
 
-/**
- * Estrae le condizioni all'ora più vicina a un dato istante ISO dalle serie
- * orarie Open-Meteo.
- * @param {Object} forecast risposta di fetchForecast
- * @param {string} targetIso istante ISO (es. sunset del giorno)
- */
-export function conditionsAtTime(forecast, targetIso) {
+/** Indice dell'ora più vicina a un istante ISO nelle serie orarie. */
+export function hourlyIndexOf(forecast, targetIso) {
   const times = forecast.hourly.time;
   const target = new Date(targetIso).getTime();
-
   let bestIdx = 0;
   let bestDiff = Infinity;
   for (let i = 0; i < times.length; i++) {
@@ -70,19 +64,49 @@ export function conditionsAtTime(forecast, targetIso) {
       bestIdx = i;
     }
   }
+  return bestIdx;
+}
 
+/** Condizioni meteo a un dato indice orario. */
+export function conditionsAtIndex(forecast, idx) {
   const h = forecast.hourly;
   return {
-    index: bestIdx,
-    time: times[bestIdx],
-    cloudCover: h.cloud_cover[bestIdx],
-    cloudCoverLow: h.cloud_cover_low[bestIdx],
-    cloudCoverMid: h.cloud_cover_mid[bestIdx],
-    cloudCoverHigh: h.cloud_cover_high[bestIdx],
-    visibility: h.visibility[bestIdx],
-    humidity: h.relative_humidity_2m[bestIdx],
-    temperature: h.temperature_2m[bestIdx],
+    index: idx,
+    time: h.time[idx],
+    cloudCover: h.cloud_cover[idx],
+    cloudCoverLow: h.cloud_cover_low[idx],
+    cloudCoverMid: h.cloud_cover_mid[idx],
+    cloudCoverHigh: h.cloud_cover_high[idx],
+    visibility: h.visibility[idx],
+    humidity: h.relative_humidity_2m[idx],
+    temperature: h.temperature_2m[idx],
   };
+}
+
+/**
+ * Estrae le condizioni all'ora più vicina a un dato istante ISO.
+ * @param {Object} forecast risposta di fetchForecast
+ * @param {string} targetIso istante ISO (es. sunset del giorno)
+ */
+export function conditionsAtTime(forecast, targetIso) {
+  return conditionsAtIndex(forecast, hourlyIndexOf(forecast, targetIso));
+}
+
+/**
+ * Serie di condizioni orarie in una finestra intorno a un istante (es. le ore
+ * prima e dopo il tramonto), per costruire una timeline.
+ * @returns {Array<ReturnType<typeof conditionsAtIndex>>}
+ */
+export function conditionsWindow(forecast, targetIso, hoursBefore = 2, hoursAfter = 2) {
+  const center = hourlyIndexOf(forecast, targetIso);
+  const last = forecast.hourly.time.length - 1;
+  const from = Math.max(0, center - hoursBefore);
+  const to = Math.min(last, center + hoursAfter);
+  const out = [];
+  for (let i = from; i <= to; i++) {
+    out.push({ ...conditionsAtIndex(forecast, i), isCenter: i === center });
+  }
+  return out;
 }
 
 /**

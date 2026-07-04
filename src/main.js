@@ -3,6 +3,7 @@ import {
   geocode,
   fetchForecast,
   conditionsAtTime,
+  conditionsWindow,
   nextSunset,
   dailyList,
   coordsLabel,
@@ -58,7 +59,15 @@ function evaluateDay(dayIndex) {
   const sunsetDate = new Date(day.sunset);
   const sun = sunPosition(sunsetDate, place.latitude, place.longitude);
   const phase = moonPhase(sunsetDate);
-  return { day, sunsetDate, cond, score, notes, sun, phase };
+
+  // Timeline: evoluzione delle condizioni del cielo nelle ore attorno al tramonto.
+  const timeline = conditionsWindow(forecast, day.sunset, 2, 2).map((c) => ({
+    time: new Date(c.time),
+    score: computeSunsetScore(c).score,
+    isCenter: c.isCenter,
+  }));
+
+  return { day, sunsetDate, cond, score, notes, sun, phase, timeline };
 }
 
 function fmtTime(date) {
@@ -115,10 +124,23 @@ function render() {
   renderDetail(evaluateDay(state.dayIndex));
 }
 
-function renderDetail({ sunsetDate, cond, score, notes, sun, phase }) {
+function renderDetail({ sunsetDate, cond, score, notes, sun, phase, timeline }) {
   const { place } = state;
   const card = document.createElement('article');
   card.className = 'card';
+
+  const timelineHtml = timeline
+    .map(
+      (t) => `
+      <div class="tl__col${t.isCenter ? ' tl__col--center' : ''}">
+        <span class="tl__val">${t.score}</span>
+        <div class="tl__bar" style="height:${Math.max(4, t.score)}%;--hue:${scoreHue(
+        t.score
+      )}"></div>
+        <span class="tl__time">${fmtTime(t.time)}</span>
+      </div>`
+    )
+    .join('');
 
   const notesHtml = notes
     .map(
@@ -160,6 +182,12 @@ function renderDetail({ sunsetDate, cond, score, notes, sun, phase }) {
         cond.cloudCoverLow
       )}/${Math.round(cond.cloudCoverMid)}/${Math.round(cond.cloudCoverHigh)}%</strong></div>
       <div class="stat"><span>🌙 Luna</span><strong>${moonPhaseName(phase)}</strong></div>
+    </section>
+
+    <section>
+      <h3>Andamento del cielo attorno al tramonto</h3>
+      <div class="timeline">${timelineHtml}</div>
+      <p class="muted tl__hint">Punteggio ora per ora — la colonna evidenziata è l’ora del tramonto.</p>
     </section>
 
     <section>

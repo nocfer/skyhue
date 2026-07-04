@@ -261,6 +261,53 @@ body {
   font-size: 1.1rem;
 }
 
+/* Timeline oraria del punteggio */
+.timeline {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+  height: 130px;
+  padding: 0.5rem 0.25rem 0;
+}
+
+.tl__col {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  height: 100%;
+  gap: 0.25rem;
+}
+
+.tl__bar {
+  width: 60%;
+  max-width: 34px;
+  border-radius: 6px 6px 0 0;
+  background: hsl(var(--hue, 40) 85% 58%);
+  transition: height 0.2s;
+}
+
+.tl__col--center .tl__bar {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.tl__val {
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.tl__time {
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.tl__hint {
+  margin-top: 0.6rem;
+  font-size: 0.82rem;
+}
+
 .notes {
   list-style: none;
   padding: 0;
