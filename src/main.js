@@ -106,6 +106,27 @@ function scoreHue(score) {
   return Math.round((score / 100) * 120);
 }
 
+/** Bussola SVG con il sole posizionato sull'azimut (0°=N, 90°=E, …). */
+function compassSvg(azimuth) {
+  const cx = 70;
+  const cy = 70;
+  const r = 54;
+  const rad = (azimuth * Math.PI) / 180;
+  const sx = (cx + r * Math.sin(rad)).toFixed(1);
+  const sy = (cy - r * Math.cos(rad)).toFixed(1);
+  return `
+    <svg viewBox="0 0 140 140" class="compass" role="img" aria-label="Direzione del sole">
+      <circle cx="70" cy="70" r="54" class="compass__ring" />
+      <line x1="70" y1="70" x2="${sx}" y2="${sy}" class="compass__ray" />
+      <circle cx="${sx}" cy="${sy}" r="9" class="compass__sun" />
+      <circle cx="70" cy="70" r="3" class="compass__center" />
+      <text x="70" y="22" class="compass__lbl">N</text>
+      <text x="122" y="75" class="compass__lbl">E</text>
+      <text x="70" y="132" class="compass__lbl">S</text>
+      <text x="18" y="75" class="compass__lbl">O</text>
+    </svg>`;
+}
+
 /** Ridisegna l'intera vista: striscia dei giorni + dettaglio del giorno scelto. */
 function render() {
   const { forecast } = state;
@@ -220,6 +241,17 @@ function renderDetail({ eventDate, cond, score, factors, notes, sun, phase, time
           : ''
       }
       <div class="stat"><span>🌙 Luna</span><strong>${moonPhaseName(phase)}</strong></div>
+    </section>
+
+    <section class="lookat">
+      <div>
+        <h3>Dove guardare</h3>
+        <p class="muted">
+          Il sole ${event === 'sunset' ? 'tramonterà' : 'sorgerà'} a
+          <strong>${azimuthToCardinal(sun.azimuth)}</strong> (${Math.round(sun.azimuth)}°).
+        </p>
+      </div>
+      ${compassSvg(sun.azimuth)}
     </section>
 
     <section>
