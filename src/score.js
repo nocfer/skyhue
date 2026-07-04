@@ -145,21 +145,21 @@ export function explainScore(f) {
   if (f.high >= 20 && f.high <= 75) {
     notes.push({
       sentiment: 'good',
-      icon: '☁️',
+      icon: 'cloud',
       title: 'Nuvole alte favorevoli',
       detail: `Cirri al ${Math.round(f.high)}%: catturano e diffondono la luce radente all’orizzonte.`,
     });
   } else if (f.high > 75) {
     notes.push({
       sentiment: 'neutral',
-      icon: '☁️',
+      icon: 'cloud',
       title: 'Molte nuvole alte',
       detail: `Copertura alta al ${Math.round(f.high)}%: cielo forse troppo velato.`,
     });
   } else {
     notes.push({
       sentiment: 'neutral',
-      icon: '🌤️',
+      icon: 'cloud-sun',
       title: 'Poche nuvole alte',
       detail: 'Mancano i cirri che accendono il cielo: tramonto più sobrio.',
     });
@@ -169,7 +169,7 @@ export function explainScore(f) {
   if (f.mid >= 20 && f.mid <= 65) {
     notes.push({
       sentiment: 'good',
-      icon: '⛅',
+      icon: 'cloud-sun',
       title: 'Nuvole medie ben distribuite',
       detail: `Strato medio al ${Math.round(f.mid)}%: aggiunge profondità e sfumature.`,
     });
@@ -179,21 +179,21 @@ export function explainScore(f) {
   if (f.low >= 40) {
     notes.push({
       sentiment: 'bad',
-      icon: '🌫️',
+      icon: 'haze',
       title: 'Nuvole basse all’orizzonte',
       detail: `Copertura bassa al ${Math.round(f.low)}%: rischia di bloccare il sole sull’orizzonte.`,
     });
   } else if (f.low >= 15) {
     notes.push({
       sentiment: 'neutral',
-      icon: '🌫️',
+      icon: 'haze',
       title: 'Qualche nuvola bassa',
       detail: `Nuvole basse al ${Math.round(f.low)}%: orizzonte parzialmente disturbato.`,
     });
   } else {
     notes.push({
       sentiment: 'good',
-      icon: '🌅',
+      icon: 'sunset',
       title: 'Orizzonte libero',
       detail: 'Poche nuvole basse: il sole raggiungerà l’orizzonte senza ostacoli.',
     });
@@ -203,7 +203,7 @@ export function explainScore(f) {
   if (f.overcast > 0.5) {
     notes.push({
       sentiment: 'bad',
-      icon: '☁️',
+      icon: 'cloud',
       title: 'Cielo coperto',
       detail: `Copertura totale al ${Math.round(f.total)}%: poca luce diretta.`,
     });
@@ -213,14 +213,14 @@ export function explainScore(f) {
   if (f.visFactor >= 0.85) {
     notes.push({
       sentiment: 'good',
-      icon: '🔭',
+      icon: 'eye',
       title: 'Visibilità eccellente',
       detail: `Atmosfera limpida (${(f.visibility / 1000).toFixed(0)} km): colori nitidi e saturi.`,
     });
   } else if (f.visFactor < 0.4) {
     notes.push({
       sentiment: 'bad',
-      icon: '🌁',
+      icon: 'cloud-fog',
       title: 'Visibilità ridotta',
       detail: `Solo ${(f.visibility / 1000).toFixed(0)} km di visibilità: foschia o particolato nell’aria.`,
     });
@@ -231,7 +231,7 @@ export function explainScore(f) {
     if (f.aerosolHaze >= 0.5) {
       notes.push({
         sentiment: 'bad',
-        icon: '🌫️',
+        icon: 'haze',
         title: 'Foschia da particolato',
         detail: `Aerosol elevato${
           f.pm25 != null ? ` (PM2.5 ${Math.round(f.pm25)} µg/m³)` : ''
@@ -240,7 +240,7 @@ export function explainScore(f) {
     } else if (f.aerosolEnhance >= 0.6) {
       notes.push({
         sentiment: 'good',
-        icon: '🔥',
+        icon: 'flame',
         title: 'Aerosol favorevoli',
         detail: 'Un pulviscolo moderato nell’atmosfera tende ad accendere i rossi e gli arancioni.',
       });
@@ -251,14 +251,14 @@ export function explainScore(f) {
   if (f.humidityPenalty >= 0.6) {
     notes.push({
       sentiment: 'bad',
-      icon: '💧',
+      icon: 'droplet',
       title: 'Umidità elevata',
       detail: `Umidità al ${Math.round(f.humidity)}%: colori più smorzati.`,
     });
   } else if (f.humidityPenalty <= 0.1) {
     notes.push({
       sentiment: 'good',
-      icon: '💨',
+      icon: 'wind',
       title: 'Aria secca',
       detail: `Umidità al ${Math.round(f.humidity)}%: favorisce colori intensi.`,
     });

@@ -166,6 +166,38 @@ body {
   color: transparent;
 }
 
+/* --- Icone SVG a linea ---------------------------------------------------- */
+.ico {
+  flex-shrink: 0;
+  vertical-align: -0.18em;
+}
+
+/* Titolo con icona "tramonto" in tinta calda, centrato con la parola. */
+.hero h1 {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+}
+
+.hero__ico {
+  width: 0.82em;
+  height: 0.82em;
+  color: var(--accent);
+}
+
+/* Chrome interattivo: icona + testo allineati e distanziati in modo uniforme. */
+.navlink,
+.search button,
+.mode,
+.scan-btn,
+.mp__open {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+}
+
 .tagline {
   color: var(--muted);
   max-width: 34rem;
@@ -313,14 +345,26 @@ body {
   border: none;
   background: transparent;
   color: var(--accent);
-  font-size: 1.25rem;
   cursor: pointer;
-  padding: 0 0.2rem;
+  padding: 0 0.25rem;
+  line-height: 0;
   vertical-align: middle;
 }
 
-.share-btn {
-  font-size: 1.05rem;
+.fav-toggle .ico,
+.share-btn .ico {
+  vertical-align: middle;
+  transition: transform 0.12s ease;
+}
+
+.fav-toggle:hover .ico,
+.share-btn:hover .ico {
+  transform: scale(1.12);
+}
+
+/* Preferito attivo: stella piena in oro caldo. */
+.fav-toggle--on {
+  color: var(--neutral);
 }
 
 .results {
@@ -501,6 +545,13 @@ body {
 .stat span {
   font-size: 0.8rem;
   color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.stat .ico {
+  color: var(--accent);
 }
 
 .stat strong {
@@ -559,7 +610,17 @@ body {
 }
 
 .spot__icon {
-  font-size: 1.25rem;
+  display: flex;
+  align-items: center;
+  color: var(--neutral);
+}
+
+.spot--good .spot__icon {
+  color: var(--good);
+}
+
+.spot--bad .spot__icon {
+  color: var(--bad);
 }
 
 .spot__body {
@@ -770,8 +831,18 @@ body {
 }
 
 .note__icon {
-  font-size: 1.3rem;
-  line-height: 1.4;
+  display: flex;
+  align-items: center;
+  padding-top: 0.1rem;
+  color: var(--neutral);
+}
+
+.note--good .note__icon {
+  color: var(--good);
+}
+
+.note--bad .note__icon {
+  color: var(--bad);
 }
 
 .note strong {

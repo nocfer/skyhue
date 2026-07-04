@@ -104,7 +104,7 @@ const KIND_BASE = {
 export function spotVerdict(kind, horizon) {
   let score = KIND_BASE[kind] ?? 45;
   if (!horizon) {
-    return { score, sentiment: 'neutral', icon: '❓', label: 'Affaccio non valutato' };
+    return { score, sentiment: 'neutral', icon: 'help', label: 'Affaccio non valutato' };
   }
   const { obstructed, seaFraction, maxAngle } = horizon;
   if (obstructed) {
@@ -112,7 +112,7 @@ export function spotVerdict(kind, horizon) {
     return {
       score,
       sentiment: 'bad',
-      icon: '⛰️',
+      icon: 'mountain',
       label: 'Orizzonte ostruito verso il tramonto',
     };
   }
@@ -120,17 +120,17 @@ export function spotVerdict(kind, horizon) {
   score += Math.max(0, Math.round((2 - maxAngle) * 5)); // più l'orizzonte è basso, meglio è
   score = Math.max(0, Math.min(100, score));
   if (seaFraction >= 0.5) {
-    return { score, sentiment: 'good', icon: '🌊', label: 'Affaccio libero sul mare' };
+    return { score, sentiment: 'good', icon: 'waves', label: 'Affaccio libero sul mare' };
   }
   if (kind === 'beach' && seaFraction < 0.3) {
     return {
       score,
       sentiment: 'neutral',
-      icon: '🌅',
+      icon: 'sunset',
       label: 'Orizzonte libero ma senza mare aperto',
     };
   }
-  return { score, sentiment: 'good', icon: '🌅', label: 'Orizzonte libero verso il tramonto' };
+  return { score, sentiment: 'good', icon: 'sunset', label: 'Orizzonte libero verso il tramonto' };
 }
 
 /**
@@ -199,13 +199,13 @@ export async function fetchElevations(points) {
 
 // Tipi di punto che consideriamo, con etichetta e icona.
 const KINDS = {
-  viewpoint: { label: 'Punto panoramico', icon: '👁️' },
-  lighthouse: { label: 'Faro', icon: '🗼' },
-  cape: { label: 'Promontorio', icon: '⛰️' },
-  cliff: { label: 'Scogliera', icon: '🪨' },
-  peak: { label: 'Cima', icon: '🏔️' },
-  beach: { label: 'Spiaggia', icon: '🏖️' },
-  estimate: { label: 'Punto stimato', icon: '🧭' },
+  viewpoint: { label: 'Punto panoramico', icon: 'eye' },
+  lighthouse: { label: 'Faro', icon: 'lighthouse' },
+  cape: { label: 'Promontorio', icon: 'mountain' },
+  cliff: { label: 'Scogliera', icon: 'cliff' },
+  peak: { label: 'Cima', icon: 'peak' },
+  beach: { label: 'Spiaggia', icon: 'umbrella' },
+  estimate: { label: 'Punto stimato', icon: 'compass' },
 };
 
 function classify(tags = {}) {

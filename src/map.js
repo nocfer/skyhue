@@ -11,6 +11,7 @@ import {
   spotVerdict,
   fetchElevations,
 } from './spots.js';
+import { icon } from './icons.js';
 
 const LEAFLET_CSS = 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css';
 const LEAFLET_JS = 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js';
@@ -119,7 +120,7 @@ async function evaluatePoint(lat, lon) {
 }
 
 function renderPanel({ lat, lon, sunsetDate, score, sun, verdict }) {
-  const hue = Math.round((score / 100) * 120);
+  const hue = Math.round((score / 100) * 95);
   els.panel.innerHTML = `
     <div class="mp__head">
       <div class="mp__score" style="--hue:${hue}">${score}</div>
@@ -130,7 +131,9 @@ function renderPanel({ lat, lon, sunsetDate, score, sun, verdict }) {
   )} (${Math.round(sun.azimuth)}°)</p>
       </div>
     </div>
-    <p class="mp__verdict spot--${verdict.sentiment}">${verdict.icon} ${verdict.label}</p>
+    <p class="mp__verdict spot--${verdict.sentiment}">${icon(verdict.icon, { size: 18 })} ${
+    verdict.label
+  }</p>
     <button id="mp-open" class="mp__open">Apri dettaglio completo →</button>
   `;
   const open = document.getElementById('mp-open');

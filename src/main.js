@@ -14,6 +14,7 @@ import { computeSunsetScore, scoreLabel, explainScore } from './score.js';
 import { sunPosition, azimuthToCardinal, moonPhase, moonPhaseName } from './astronomy.js';
 import { getFavorites, isFavorite, toggleFavorite, removeFavorite } from './store.js';
 import { skyGradient, skyGradientCss } from './sky.js';
+import { icon } from './icons.js';
 import {
   fetchSunsetSpots,
   distanceKm,
@@ -349,14 +350,16 @@ function spotRowHtml(s) {
     s.skyScore != null
       ? `<span class="spot__sky" style="--hue:${scoreHue(
           s.skyScore
-        )}" title="Sunset Score previsto nel punto">🌇 cielo ${s.skyScore}</span>`
+        )}" title="Sunset Score previsto nel punto">${icon('sunset', {
+          size: 15,
+        })} cielo ${s.skyScore}</span>`
       : '';
   const quota = s.kind === 'estimate' && s.elev != null ? ` · ${Math.round(s.elev)} m` : '';
   return `<li class="spot spot--${v.sentiment}">
-    <span class="spot__icon">${info.icon}</span>
+    <span class="spot__icon">${icon(info.icon, { size: 22 })}</span>
     <div class="spot__body">
       <a href="${url}" target="_blank" rel="noopener">${s.name}</a>
-      <span class="spot__verdict">${v.icon} ${v.label} ${sky}</span>
+      <span class="spot__verdict">${icon(v.icon, { size: 15 })} ${v.label} ${sky}</span>
       <span class="spot__meta">${info.label} · ${dist} km · ~${s.driveMin} min · verso ${s.dir}${quota}</span>
     </div>
     <span class="spot__score" title="Qualità dell’affaccio">${v.score}</span>
@@ -376,7 +379,11 @@ function estimateBlockHtml() {
   }
   return `
     <button class="scan-btn" ${state.estimating ? 'disabled' : ''}>
-      ${state.estimating ? 'Analizzo il territorio…' : '🧭 Cerca anche punti non mappati (stima)'}
+      ${
+        state.estimating
+          ? 'Analizzo il territorio…'
+          : `${icon('compass', { size: 16 })} Cerca anche punti non mappati (stima)`
+      }
     </button>
     ${list}`;
 }
@@ -500,7 +507,7 @@ function renderDetail({ eventDate, cond, score, factors, notes, sun, phase, time
     .map(
       (n) => `
       <li class="note note--${n.sentiment}">
-        <span class="note__icon">${n.icon}</span>
+        <span class="note__icon">${icon(n.icon, { size: 22 })}</span>
         <div>
           <strong>${n.title}</strong>
           <p>${n.detail}</p>
@@ -516,8 +523,14 @@ function renderDetail({ eventDate, cond, score, factors, notes, sun, phase, time
           ${place.label}
           <button class="fav-toggle" title="Salva tra i preferiti" aria-pressed="${isFavorite(
             place
-          )}">${isFavorite(place) ? '★' : '☆'}</button>
-          <button class="share-btn" title="Condividi questa località" aria-label="Condividi">🔗</button>
+          )}" aria-label="Salva tra i preferiti">${icon('star', {
+    size: 20,
+    fill: isFavorite(place),
+  })}</button>
+          <button class="share-btn" title="Condividi questa località" aria-label="Condividi">${icon(
+            'share',
+            { size: 18 }
+          )}</button>
         </h2>
         <p class="muted">${label.prep} ${fmtDay(eventDate)} · ore ${fmtTime(eventDate)}</p>
       </div>
@@ -532,27 +545,37 @@ function renderDetail({ eventDate, cond, score, factors, notes, sun, phase, time
     </div>
 
     <section class="stats">
-      <div class="stat"><span>🧭 Direzione sole</span><strong>${azimuthToCardinal(
-        sun.azimuth
-      )} (${Math.round(sun.azimuth)}°)</strong></div>
-      <div class="stat"><span>🌡️ Temperatura</span><strong>${Math.round(
-        cond.temperature
-      )}°C</strong></div>
-      <div class="stat"><span>🔭 Visibilità</span><strong>${(cond.visibility / 1000).toFixed(
-        0
-      )} km</strong></div>
-      <div class="stat"><span>💧 Umidità</span><strong>${Math.round(cond.humidity)}%</strong></div>
-      <div class="stat"><span>☁️ Nuvole basse/medie/alte</span><strong>${Math.round(
-        cond.cloudCoverLow
-      )}/${Math.round(cond.cloudCoverMid)}/${Math.round(cond.cloudCoverHigh)}%</strong></div>
+      <div class="stat"><span>${icon('compass', {
+        size: 16,
+      })} Direzione sole</span><strong>${azimuthToCardinal(sun.azimuth)} (${Math.round(
+    sun.azimuth
+  )}°)</strong></div>
+      <div class="stat"><span>${icon('thermometer', {
+        size: 16,
+      })} Temperatura</span><strong>${Math.round(cond.temperature)}°C</strong></div>
+      <div class="stat"><span>${icon('eye', { size: 16 })} Visibilità</span><strong>${(
+    cond.visibility / 1000
+  ).toFixed(0)} km</strong></div>
+      <div class="stat"><span>${icon('droplet', {
+        size: 16,
+      })} Umidità</span><strong>${Math.round(cond.humidity)}%</strong></div>
+      <div class="stat"><span>${icon('cloud', {
+        size: 16,
+      })} Nuvole basse/medie/alte</span><strong>${Math.round(cond.cloudCoverLow)}/${Math.round(
+    cond.cloudCoverMid
+  )}/${Math.round(cond.cloudCoverHigh)}%</strong></div>
       ${
         cond.aerosol != null
-          ? `<div class="stat"><span>🌫️ Aerosol · PM2.5</span><strong>${cond.aerosol.toFixed(
-              2
-            )} · ${cond.pm25 != null ? Math.round(cond.pm25) + ' µg/m³' : 'n/d'}</strong></div>`
+          ? `<div class="stat"><span>${icon('haze', {
+              size: 16,
+            })} Aerosol · PM2.5</span><strong>${cond.aerosol.toFixed(2)} · ${
+              cond.pm25 != null ? Math.round(cond.pm25) + ' µg/m³' : 'n/d'
+            }</strong></div>`
           : ''
       }
-      <div class="stat"><span>🌙 Luna</span><strong>${moonPhaseName(phase)}</strong></div>
+      <div class="stat"><span>${icon('moon', { size: 16 })} Luna</span><strong>${moonPhaseName(
+    phase
+  )}</strong></div>
     </section>
 
     <section>
@@ -591,10 +614,12 @@ function renderDetail({ eventDate, cond, score, factors, notes, sun, phase, time
   const favBtn = card.querySelector('.fav-toggle');
   favBtn.addEventListener('click', () => {
     const saved = toggleFavorite(place);
-    favBtn.textContent = saved ? '★' : '☆';
+    favBtn.innerHTML = icon('star', { size: 20, fill: saved });
+    favBtn.classList.toggle('fav-toggle--on', saved);
     favBtn.setAttribute('aria-pressed', String(saved));
     renderFavorites();
   });
+  favBtn.classList.toggle('fav-toggle--on', isFavorite(place));
 
   card.querySelector('.share-btn').addEventListener('click', () => shareCurrent(score));
 
