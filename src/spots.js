@@ -32,6 +32,18 @@ export function bearing(aLat, aLon, bLat, bLon) {
   return (Math.atan2(y, x) / DEG + 360) % 360;
 }
 
+/** Differenza angolare minima (0-180°) tra due rilevamenti. */
+export function angleDiff(a, b) {
+  const d = Math.abs(((a - b + 540) % 360) - 180);
+  return d;
+}
+
+/** Stima grossolana dei minuti in auto da una distanza in linea d'aria. */
+export function driveMinutes(distKm) {
+  // fattore strada ~1.3 sulla distanza in linea d'aria, ~50 km/h di media
+  return Math.max(1, Math.round((distKm * 1.3) / 50 * 60));
+}
+
 /** Punto di destinazione a `distKm` da (lat,lon) lungo un rilevamento (gradi). */
 export function destinationPoint(lat, lon, bearingDeg, distKm) {
   const d = distKm / EARTH_KM;
@@ -155,7 +167,7 @@ export function kindInfo(kind) {
  * Scarica i punti panoramici entro `radiusKm` da una posizione.
  * @returns {Promise<Array<{id,lat,lon,name,kind}>>}
  */
-export async function fetchSunsetSpots(lat, lon, radiusKm = 12) {
+export async function fetchSunsetSpots(lat, lon, radiusKm = 25) {
   const r = Math.round(radiusKm * 1000);
   // `nwr` + `out center` includono anche punti mappati come aree (spiagge,
   // promontori), non solo come nodi.

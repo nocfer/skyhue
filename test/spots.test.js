@@ -8,6 +8,8 @@ import {
   destinationPoint,
   evaluateHorizon,
   spotVerdict,
+  angleDiff,
+  driveMinutes,
 } from '../src/spots.js';
 
 test('distanceKm ~0 per lo stesso punto', () => {
@@ -79,4 +81,17 @@ test('spotVerdict: senza dati di quota resta neutro', () => {
   const v = spotVerdict('beach', null);
   assert.equal(v.sentiment, 'neutral');
   assert.ok(v.score > 0);
+});
+
+test('angleDiff gestisce il wrap-around', () => {
+  assert.equal(angleDiff(10, 350), 20);
+  assert.equal(angleDiff(0, 180), 180);
+  assert.equal(angleDiff(90, 90), 0);
+});
+
+test('driveMinutes cresce con la distanza ed è sempre ≥1', () => {
+  assert.ok(driveMinutes(0) >= 1);
+  assert.ok(driveMinutes(25) > driveMinutes(5));
+  // ~25 km dovrebbero stare nell'ordine dei 30-45 min in auto
+  assert.ok(driveMinutes(25) >= 25 && driveMinutes(25) <= 60);
 });

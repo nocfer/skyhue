@@ -24,6 +24,8 @@ import {
   evaluateHorizon,
   spotVerdict,
   fetchElevations,
+  angleDiff,
+  driveMinutes,
 } from './spots.js';
 
 const els = {
@@ -49,8 +51,11 @@ const state = {
 };
 
 // Quanti punti valutare (per limitare la chiamata batch sulle quote) e mostrare.
-const SPOTS_EVALUATE = 8;
+// Con raggio ampio (~25 km) selezioniamo i candidati privilegiando la direzione
+// del tramonto, così le performance restano sotto controllo.
+const SPOTS_EVALUATE = 14;
 const SPOTS_SHOW = 6;
+const NEAR_KM = 6; // entro questo raggio teniamo tutti i punti, a prescindere dalla direzione
 
 const EVENT_LABELS = {
   sunset: { noun: 'Tramonto', prep: 'Tramonto di' },
@@ -128,10 +133,17 @@ async function evaluateSpots() {
 
   const azimuth = currentAzimuth();
 
-  // Prendi i più vicini e campiona il terreno lungo il raggio verso il sole.
+  // Pre-selezione ottimizzata per direzione: entro NEAR_KM teniamo tutto; oltre,
+  // paghiamo un "costo" maggiore se il punto non è verso il tramonto. Così, pur
+  // con raggio ampio, valutiamo (parte costosa: le quote) solo i più promettenti.
   const nearest = raw
-    .map((s) => ({ ...s, dist: distanceKm(place.latitude, place.longitude, s.lat, s.lon) }))
-    .sort((a, b) => a.dist - b.dist)
+    .map((s) => {
+      const dist = distanceKm(place.latitude, place.longitude, s.lat, s.lon);
+      const dirDiff = angleDiff(bearing(place.latitude, place.longitude, s.lat, s.lon), azimuth);
+      const offSunset = dist > NEAR_KM && dirDiff > 90 ? 2 : 1; // penalizza i lontani "dal lato sbagliato"
+      return { ...s, dist, dirDiff, cost: dist * offSunset };
+    })
+    .sort((a, b) => a.cost - b.cost)
     .slice(0, SPOTS_EVALUATE);
 
   const points = [];
@@ -161,15 +173,20 @@ async function evaluateSpots() {
       horizon = evaluateHorizon(elevSpot, ahead);
     }
     const verdict = spotVerdict(s.kind, horizon);
+    // Punteggio finale: qualità dell'affaccio con lieve penalità per la distanza,
+    // così un punto lontano deve essere nettamente migliore per superarne uno vicino.
+    const finalScore = verdict.score - Math.max(0, s.dist - NEAR_KM) * 0.4;
     return {
       ...s,
       dir: azimuthToCardinal(bearing(place.latitude, place.longitude, s.lat, s.lon)),
+      driveMin: driveMinutes(s.dist),
       verdict,
+      finalScore,
     };
   });
 
-  // Ordina per qualità dell'affaccio, poi per vicinanza.
-  evaluated.sort((a, b) => b.verdict.score - a.verdict.score || a.dist - b.dist);
+  // Ordina per punteggio finale (affaccio − distanza), poi per vicinanza.
+  evaluated.sort((a, b) => b.finalScore - a.finalScore || a.dist - b.dist);
   state.spots = evaluated;
   render();
 }
@@ -243,7 +260,7 @@ function spotsSectionHtml(place, sun) {
   } else if (state.spots === null) {
     body = `<p class="muted">Cerco i punti nei dintorni e ne valuto l’affaccio verso il tramonto…</p>`;
   } else if (state.spots.length === 0) {
-    body = `<p class="muted">Nessun punto panoramico mappato nei dintorni.</p>`;
+    body = `<p class="muted">Nessun punto panoramico mappato entro ~25 km.</p>`;
   } else {
     const rows = state.spots.slice(0, SPOTS_SHOW);
     body = `<ul class="spots">${rows
@@ -259,7 +276,7 @@ function spotsSectionHtml(place, sun) {
           <div class="spot__body">
             <a href="${url}" target="_blank" rel="noopener">${s.name}</a>
             <span class="spot__verdict">${v.icon} ${v.label}</span>
-            <span class="spot__meta">${info.label} · ${dist} km · verso ${s.dir}</span>
+            <span class="spot__meta">${info.label} · ${dist} km · ~${s.driveMin} min · verso ${s.dir}</span>
           </div>
           <span class="spot__score" title="Qualità dell’affaccio">${v.score}</span>
         </li>`;
