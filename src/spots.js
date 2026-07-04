@@ -86,7 +86,7 @@ export function evaluateHorizon(elevSpot, ahead) {
   return { maxAngle, seaFraction, obstructed };
 }
 
-const KIND_BASE = { lighthouse: 55, cape: 52, viewpoint: 48, peak: 45, beach: 38 };
+const KIND_BASE = { lighthouse: 55, cape: 52, cliff: 50, viewpoint: 48, peak: 45, beach: 38 };
 
 /**
  * Punteggio qualitativo (0-100) e giudizio testuale di un punto, dato il tipo
@@ -146,6 +146,7 @@ const KINDS = {
   viewpoint: { label: 'Punto panoramico', icon: '👁️' },
   lighthouse: { label: 'Faro', icon: '🗼' },
   cape: { label: 'Promontorio', icon: '⛰️' },
+  cliff: { label: 'Scogliera', icon: '🪨' },
   peak: { label: 'Cima', icon: '🏔️' },
   beach: { label: 'Spiaggia', icon: '🏖️' },
 };
@@ -154,8 +155,15 @@ function classify(tags = {}) {
   if (tags.tourism === 'viewpoint') return 'viewpoint';
   if (tags.man_made === 'lighthouse') return 'lighthouse';
   if (tags.natural === 'cape') return 'cape';
+  if (tags.natural === 'cliff') return 'cliff';
   if (tags.natural === 'peak') return 'peak';
   if (tags.natural === 'beach') return 'beach';
+  // Punti nominati (es. "Punta Ferro") spesso mappati solo come place=locality.
+  const n = (tags.name || '').toLowerCase();
+  if (/^(punta|capo|cabo)\b/.test(n)) return 'cape';
+  if (/^(faro|torre)\b/.test(n)) return 'lighthouse';
+  if (/^belvedere\b/.test(n)) return 'viewpoint';
+  if (/^(monte|pizzo|cima)\b/.test(n)) return 'peak';
   return 'viewpoint';
 }
 
@@ -176,10 +184,12 @@ export async function fetchSunsetSpots(lat, lon, radiusKm = 25) {
   nwr["tourism"="viewpoint"](around:${r},${lat},${lon});
   nwr["man_made"="lighthouse"](around:${r},${lat},${lon});
   nwr["natural"="cape"](around:${r},${lat},${lon});
+  nwr["natural"="cliff"](around:${r},${lat},${lon});
   nwr["natural"="peak"](around:${r},${lat},${lon});
   nwr["natural"="beach"](around:${r},${lat},${lon});
+  nwr["name"~"^(Punta|Capo|Cabo|Cala|Belvedere|Faro|Torre)",i]["place"](around:${r},${lat},${lon});
 );
-out center 80;`;
+out center 90;`;
 
   const data = await overpassQuery(q);
   return (data.elements ?? [])
