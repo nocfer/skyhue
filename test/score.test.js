@@ -89,6 +89,48 @@ test('scoreLabel copre la scala', () => {
   assert.equal(scoreLabel(10), 'Scarso');
 });
 
+test('l’aerosol è opzionale e non cambia il punteggio se assente', () => {
+  const base = {
+    cloudCover: 45,
+    cloudCoverLow: 5,
+    cloudCoverMid: 40,
+    cloudCoverHigh: 50,
+    visibility: 22000,
+    humidity: 45,
+  };
+  const senza = computeSunsetScore(base).score;
+  const conNeutro = computeSunsetScore({ ...base, aerosol: null, pm25: null }).score;
+  assert.equal(senza, conNeutro);
+});
+
+test('foschia da particolato elevato abbassa il punteggio', () => {
+  const base = {
+    cloudCover: 45,
+    cloudCoverLow: 5,
+    cloudCoverMid: 40,
+    cloudCoverHigh: 50,
+    visibility: 22000,
+    humidity: 45,
+  };
+  const pulito = computeSunsetScore({ ...base, aerosol: 0.1, pm25: 5 }).score;
+  const foschia = computeSunsetScore({ ...base, aerosol: 0.9, pm25: 90 }).score;
+  assert.ok(foschia < pulito, `foschia (${foschia}) dovrebbe essere < pulito (${pulito})`);
+});
+
+test('aerosol moderato dà un piccolo bonus rispetto ad aria quasi assente', () => {
+  const base = {
+    cloudCover: 40,
+    cloudCoverLow: 5,
+    cloudCoverMid: 35,
+    cloudCoverHigh: 45,
+    visibility: 22000,
+    humidity: 45,
+  };
+  const quasiZero = computeSunsetScore({ ...base, aerosol: 0.02, pm25: 3 }).score;
+  const moderato = computeSunsetScore({ ...base, aerosol: 0.2, pm25: 8 }).score;
+  assert.ok(moderato >= quasiZero, `moderato (${moderato}) >= quasiZero (${quasiZero})`);
+});
+
 test('explainScore segnala le nuvole basse come negative', () => {
   const { factors } = computeSunsetScore({
     cloudCover: 80,

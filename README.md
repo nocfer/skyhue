@@ -5,15 +5,19 @@ Un'app web che stima **quanto sarà bello il prossimo tramonto** combinando
 punteggio** con relativa **spiegazione in linguaggio naturale**.
 
 Nessuna API key, nessun build step: solo HTML + CSS + JavaScript a moduli ES.
-I dati arrivano da [Open-Meteo](https://open-meteo.com) (gratuito, CORS abilitato).
+I dati arrivano da [Open-Meteo](https://open-meteo.com) — meteo, dati astronomici
+e qualità dell'aria (gratuito, CORS abilitato).
 
 ## Cosa fa
 
 1. **Località** — cerca una città (geocoding Open-Meteo) o usa la geolocalizzazione del browser.
-2. **Meteo in tempo reale** — copertura nuvolosa bassa/media/alta, visibilità, umidità, temperatura all'ora del prossimo tramonto.
-3. **Dati astronomici** — orario del tramonto, azimut/direzione del sole (algoritmo solare NOAA), fase lunare.
-4. **Sunset Score (0–100)** — un punteggio con etichetta qualitativa.
-5. **Spiegazione** — perché quel punteggio: _"nuvole basse all'orizzonte"_, _"nuvole alte favorevoli"_, _"visibilità eccellente"_, ecc.
+2. **Meteo in tempo reale** — copertura nuvolosa bassa/media/alta, visibilità, umidità, temperatura all'ora dell'evento.
+3. **Qualità dell'aria** — aerosol optical depth e PM2.5: un pulviscolo moderato accende i rossi, la foschia li spegne.
+4. **Dati astronomici** — orario di alba/tramonto, azimut/direzione del sole (algoritmo solare NOAA), fase lunare.
+5. **Sunset & Sunrise Score (0–100)** — punteggio con etichetta qualitativa, sia per il tramonto sia per l'alba.
+6. **Previsione multi-giorno** — striscia dei prossimi 7 giorni, ognuno col suo punteggio.
+7. **Timeline oraria** — andamento del punteggio nelle ore attorno all'evento.
+8. **Spiegazione** — perché quel punteggio: _"nuvole basse all'orizzonte"_, _"nuvole alte favorevoli"_, _"visibilità eccellente"_, _"foschia da particolato"_, ecc.
 
 ## Come funziona il punteggio
 

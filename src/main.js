@@ -2,6 +2,8 @@
 import {
   geocode,
   fetchForecast,
+  fetchAirQuality,
+  airAtTime,
   conditionsAtTime,
   conditionsWindow,
   nextSunset,
@@ -23,6 +25,7 @@ const els = {
 const state = {
   place: null,
   forecast: null,
+  air: null, // dati qualità dell'aria (può restare null se il fetch fallisce)
   dayIndex: 0,
   event: 'sunset', // 'sunset' | 'sunrise'
 };
@@ -42,10 +45,15 @@ async function analyze(place) {
   setStatus(`Recupero dati per ${place.label}…`, 'info');
   els.results.innerHTML = '';
   try {
-    const forecast = await fetchForecast(place.latitude, place.longitude);
+    // Meteo e qualità dell'aria in parallelo; l'aria è opzionale e non blocca.
+    const [forecast, air] = await Promise.all([
+      fetchForecast(place.latitude, place.longitude),
+      fetchAirQuality(place.latitude, place.longitude).catch(() => null),
+    ]);
     const { dayIndex } = nextSunset(forecast, new Date());
     state.place = place;
     state.forecast = forecast;
+    state.air = air;
     state.dayIndex = dayIndex;
     render();
     setStatus('', 'info');
@@ -60,7 +68,7 @@ function evaluateDay(dayIndex) {
   const { forecast, place, event } = state;
   const day = dailyList(forecast)[dayIndex];
   const eventIso = day[event];
-  const cond = conditionsAtTime(forecast, eventIso);
+  const cond = { ...conditionsAtTime(forecast, eventIso), ...airAtTime(state.air, eventIso) };
   const { score, factors } = computeSunsetScore(cond);
   const notes = explainScore(factors);
   const eventDate = new Date(eventIso);
@@ -70,7 +78,7 @@ function evaluateDay(dayIndex) {
   // Timeline: evoluzione delle condizioni del cielo nelle ore attorno all'evento.
   const timeline = conditionsWindow(forecast, eventIso, 2, 2).map((c) => ({
     time: new Date(c.time),
-    score: computeSunsetScore(c).score,
+    score: computeSunsetScore({ ...c, ...airAtTime(state.air, c.time) }).score,
     isCenter: c.isCenter,
   }));
 
@@ -106,7 +114,7 @@ function render() {
   strip.className = 'daystrip';
   strip.innerHTML = days
     .map((d) => {
-      const cond = conditionsAtTime(forecast, d[state.event]);
+      const cond = { ...conditionsAtTime(forecast, d[state.event]), ...airAtTime(state.air, d[state.event]) };
       const { score } = computeSunsetScore(cond);
       const date = new Date(d[state.event]);
       const active = d.dayIndex === state.dayIndex ? ' daychip--active' : '';
@@ -189,6 +197,13 @@ function renderDetail({ eventDate, cond, score, notes, sun, phase, timeline }) {
       <div class="stat"><span>☁️ Nuvole basse/medie/alte</span><strong>${Math.round(
         cond.cloudCoverLow
       )}/${Math.round(cond.cloudCoverMid)}/${Math.round(cond.cloudCoverHigh)}%</strong></div>
+      ${
+        cond.aerosol != null
+          ? `<div class="stat"><span>🌫️ Aerosol · PM2.5</span><strong>${cond.aerosol.toFixed(
+              2
+            )} · ${cond.pm25 != null ? Math.round(cond.pm25) + ' µg/m³' : 'n/d'}</strong></div>`
+          : ''
+      }
       <div class="stat"><span>🌙 Luna</span><strong>${moonPhaseName(phase)}</strong></div>
     </section>
 

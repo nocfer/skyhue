@@ -3,6 +3,7 @@
 
 const GEOCODE_URL = 'https://geocoding-api.open-meteo.com/v1/search';
 const FORECAST_URL = 'https://api.open-meteo.com/v1/forecast';
+const AIR_URL = 'https://air-quality-api.open-meteo.com/v1/air-quality';
 
 /**
  * Cerca una località per nome e restituisce fino a `count` risultati.
@@ -49,6 +50,48 @@ export async function fetchForecast(latitude, longitude) {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Previsioni non disponibili (${res.status})`);
   return res.json();
+}
+
+/**
+ * Scarica i dati di qualità dell'aria (aerosol + particolato) per un punto.
+ * Endpoint separato di Open-Meteo, senza API key.
+ * @returns {Promise<Object>} risposta grezza (o lancia in caso di errore)
+ */
+export async function fetchAirQuality(latitude, longitude) {
+  const params = new URLSearchParams({
+    latitude: latitude.toString(),
+    longitude: longitude.toString(),
+    hourly: ['aerosol_optical_depth', 'pm2_5', 'pm10'].join(','),
+    timezone: 'auto',
+    forecast_days: '7',
+  });
+  const res = await fetch(`${AIR_URL}?${params.toString()}`);
+  if (!res.ok) throw new Error(`Qualità dell'aria non disponibile (${res.status})`);
+  return res.json();
+}
+
+/**
+ * Valori di aerosol/particolato all'ora più vicina a un istante ISO.
+ * @returns {{aerosol:?number, pm25:?number, pm10:?number}}
+ */
+export function airAtTime(air, targetIso) {
+  if (!air || !air.hourly) return { aerosol: null, pm25: null, pm10: null };
+  const times = air.hourly.time;
+  const target = new Date(targetIso).getTime();
+  let bestIdx = 0;
+  let bestDiff = Infinity;
+  for (let i = 0; i < times.length; i++) {
+    const diff = Math.abs(new Date(times[i]).getTime() - target);
+    if (diff < bestDiff) {
+      bestDiff = diff;
+      bestIdx = i;
+    }
+  }
+  return {
+    aerosol: air.hourly.aerosol_optical_depth?.[bestIdx] ?? null,
+    pm25: air.hourly.pm2_5?.[bestIdx] ?? null,
+    pm10: air.hourly.pm10?.[bestIdx] ?? null,
+  };
 }
 
 /** Indice dell'ora più vicina a un istante ISO nelle serie orarie. */

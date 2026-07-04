@@ -26,6 +26,8 @@ export function bellReward(x, ideal, width) {
  * @property {number} cloudCoverHigh   nuvole alte (%)
  * @property {number} visibility       visibilità (metri)
  * @property {number} humidity         umidità relativa (%)
+ * @property {number} [aerosol]        aerosol optical depth (adimensionale, opz.)
+ * @property {number} [pm25]           particolato PM2.5 (µg/m³, opz.)
  */
 
 // Pesi dei fattori compositi (documentati per rendere l'algoritmo trasparente).
@@ -66,10 +68,33 @@ export function computeSunsetScore(c) {
   // Un cielo completamente coperto lascia passare poca luce diretta.
   const overcast = clamp((total - 85) / 15, 0, 1);
 
+  // Aerosol: un pulviscolo moderato (AOD ~0.2) accende i rossi diffondendo la
+  // luce; troppo (foschia/particolato) attenua i colori. Opzionale: se assente
+  // non modifica il punteggio (retrocompatibile).
+  const aod = c.aerosol ?? null;
+  const pm25 = c.pm25 ?? null;
+  let aerosolEnhance = 0;
+  let aerosolHaze = 0;
+  let aerosolMult = 1;
+  if (aod !== null) {
+    aerosolEnhance = bellReward(aod, 0.2, 0.18); // massimo attorno a 0.2
+    aerosolHaze = clamp((aod - 0.45) / 0.55, 0, 1); // foschia oltre ~0.45
+    aerosolMult *= 1 + 0.1 * aerosolEnhance - 0.3 * aerosolHaze;
+  }
+  if (pm25 !== null) {
+    const pmHaze = clamp((pm25 - 35) / 65, 0, 1); // >35 µg/m³ inizia a velare
+    aerosolHaze = Math.max(aerosolHaze, pmHaze);
+    aerosolMult *= 1 - 0.25 * pmHaze;
+  }
+
   const raw =
     100 * (WEIGHTS.base + WEIGHTS.drama * drama + WEIGHTS.clarity * clarity);
 
-  const score = clamp(raw * (1 - 0.85 * lowBlock) * (1 - 0.9 * overcast), 0, 100);
+  const score = clamp(
+    raw * (1 - 0.85 * lowBlock) * (1 - 0.9 * overcast) * aerosolMult,
+    0,
+    100
+  );
 
   return {
     score: Math.round(score),
@@ -88,6 +113,10 @@ export function computeSunsetScore(c) {
       humidityPenalty,
       lowBlock,
       overcast,
+      aerosol: aod,
+      pm25,
+      aerosolEnhance,
+      aerosolHaze,
     },
   };
 }
@@ -195,6 +224,27 @@ export function explainScore(f) {
       title: 'Visibilità ridotta',
       detail: `Solo ${(f.visibility / 1000).toFixed(0)} km di visibilità: foschia o particolato nell’aria.`,
     });
+  }
+
+  // Aerosol / particolato
+  if (f.aerosol !== null && f.aerosol !== undefined) {
+    if (f.aerosolHaze >= 0.5) {
+      notes.push({
+        sentiment: 'bad',
+        icon: '🌫️',
+        title: 'Foschia da particolato',
+        detail: `Aerosol elevato${
+          f.pm25 != null ? ` (PM2.5 ${Math.round(f.pm25)} µg/m³)` : ''
+        }: la luce si disperde e i colori si attenuano.`,
+      });
+    } else if (f.aerosolEnhance >= 0.6) {
+      notes.push({
+        sentiment: 'good',
+        icon: '🔥',
+        title: 'Aerosol favorevoli',
+        detail: 'Un pulviscolo moderato nell’atmosfera tende ad accendere i rossi e gli arancioni.',
+      });
+    }
   }
 
   // Umidità
