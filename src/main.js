@@ -12,6 +12,7 @@ import {
 } from './api.js';
 import { computeSunsetScore, scoreLabel, explainScore } from './score.js';
 import { sunPosition, azimuthToCardinal, moonPhase, moonPhaseName } from './astronomy.js';
+import { getFavorites, isFavorite, toggleFavorite, removeFavorite } from './store.js';
 
 const els = {
   form: document.getElementById('search-form'),
@@ -19,6 +20,7 @@ const els = {
   geoBtn: document.getElementById('geo-btn'),
   results: document.getElementById('results'),
   status: document.getElementById('status'),
+  favorites: document.getElementById('favorites'),
 };
 
 // Stato corrente: località e previsione caricate, giorno ed evento selezionati.
@@ -174,7 +176,12 @@ function renderDetail({ eventDate, cond, score, notes, sun, phase, timeline }) {
   card.innerHTML = `
     <header class="card__head">
       <div>
-        <h2>${place.label}</h2>
+        <h2>
+          ${place.label}
+          <button class="fav-toggle" title="Salva tra i preferiti" aria-pressed="${isFavorite(
+            place
+          )}">${isFavorite(place) ? '★' : '☆'}</button>
+        </h2>
         <p class="muted">${label.prep} ${fmtDay(eventDate)} · ore ${fmtTime(eventDate)}</p>
       </div>
       <div class="gauge" style="--score:${score}">
@@ -221,7 +228,42 @@ function renderDetail({ eventDate, cond, score, notes, sun, phase, timeline }) {
     </section>
   `;
 
+  const favBtn = card.querySelector('.fav-toggle');
+  favBtn.addEventListener('click', () => {
+    const saved = toggleFavorite(place);
+    favBtn.textContent = saved ? '★' : '☆';
+    favBtn.setAttribute('aria-pressed', String(saved));
+    renderFavorites();
+  });
+
   els.results.appendChild(card);
+}
+
+/** Disegna la barra dei preferiti (chip cliccabili con rimozione). */
+function renderFavorites() {
+  const favs = getFavorites();
+  els.favorites.innerHTML = favs
+    .map(
+      (f) => `
+      <span class="fav-chip" data-id="${f.id}">
+        <button class="fav-chip__load" data-load="${f.id}">${f.label}</button>
+        <button class="fav-chip__del" data-del="${f.id}" title="Rimuovi" aria-label="Rimuovi">×</button>
+      </span>`
+    )
+    .join('');
+
+  els.favorites.querySelectorAll('[data-load]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const fav = getFavorites().find((f) => f.id === btn.dataset.load);
+      if (fav) analyze({ latitude: fav.latitude, longitude: fav.longitude, label: fav.label });
+    });
+  });
+  els.favorites.querySelectorAll('[data-del]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      removeFavorite(btn.dataset.del);
+      renderFavorites();
+    });
+  });
 }
 
 // --- Eventi UI -------------------------------------------------------------
@@ -274,3 +316,6 @@ document.querySelectorAll('.mode').forEach((btn) => {
     if (state.forecast) render();
   });
 });
+
+// Avvio: mostra i preferiti salvati.
+renderFavorites();

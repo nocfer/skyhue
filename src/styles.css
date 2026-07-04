@@ -135,6 +135,57 @@ body {
   color: var(--bad);
 }
 
+/* Barra dei preferiti */
+.favorites {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  justify-content: center;
+  margin-top: 1rem;
+}
+
+.fav-chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  border: 1px solid var(--card-border);
+  background: rgba(0, 0, 0, 0.22);
+  overflow: hidden;
+}
+
+.fav-chip__load {
+  border: none;
+  background: transparent;
+  color: var(--text);
+  padding: 0.35rem 0.4rem 0.35rem 0.8rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.fav-chip__del {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  padding: 0.35rem 0.6rem 0.35rem 0.3rem;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.fav-chip__del:hover {
+  color: var(--bad);
+}
+
+.fav-toggle {
+  border: none;
+  background: transparent;
+  color: var(--accent);
+  font-size: 1.25rem;
+  cursor: pointer;
+  padding: 0 0.2rem;
+  vertical-align: middle;
+}
+
 .results {
   margin-top: 2rem;
   display: grid;
