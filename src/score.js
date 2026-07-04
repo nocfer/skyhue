@@ -118,7 +118,7 @@ export function explainScore(f) {
       sentiment: 'good',
       icon: '☁️',
       title: 'Nuvole alte favorevoli',
-      detail: `Cirri al ${Math.round(f.high)}%: catturano e diffondono i colori del tramonto.`,
+      detail: `Cirri al ${Math.round(f.high)}%: catturano e diffondono la luce radente all’orizzonte.`,
     });
   } else if (f.high > 75) {
     notes.push({

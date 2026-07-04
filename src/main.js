@@ -19,11 +19,17 @@ const els = {
   status: document.getElementById('status'),
 };
 
-// Stato corrente: località e previsione caricate, giorno selezionato.
+// Stato corrente: località e previsione caricate, giorno ed evento selezionati.
 const state = {
   place: null,
   forecast: null,
   dayIndex: 0,
+  event: 'sunset', // 'sunset' | 'sunrise'
+};
+
+const EVENT_LABELS = {
+  sunset: { noun: 'Tramonto', prep: 'Tramonto di' },
+  sunrise: { noun: 'Alba', prep: 'Alba di' },
 };
 
 function setStatus(msg, kind = 'info') {
@@ -49,25 +55,26 @@ async function analyze(place) {
   }
 }
 
-/** Calcola punteggio + spiegazione per il tramonto di un dato giorno. */
+/** Calcola punteggio + spiegazione per l'evento (alba/tramonto) di un giorno. */
 function evaluateDay(dayIndex) {
-  const { forecast, place } = state;
+  const { forecast, place, event } = state;
   const day = dailyList(forecast)[dayIndex];
-  const cond = conditionsAtTime(forecast, day.sunset);
+  const eventIso = day[event];
+  const cond = conditionsAtTime(forecast, eventIso);
   const { score, factors } = computeSunsetScore(cond);
   const notes = explainScore(factors);
-  const sunsetDate = new Date(day.sunset);
-  const sun = sunPosition(sunsetDate, place.latitude, place.longitude);
-  const phase = moonPhase(sunsetDate);
+  const eventDate = new Date(eventIso);
+  const sun = sunPosition(eventDate, place.latitude, place.longitude);
+  const phase = moonPhase(eventDate);
 
-  // Timeline: evoluzione delle condizioni del cielo nelle ore attorno al tramonto.
-  const timeline = conditionsWindow(forecast, day.sunset, 2, 2).map((c) => ({
+  // Timeline: evoluzione delle condizioni del cielo nelle ore attorno all'evento.
+  const timeline = conditionsWindow(forecast, eventIso, 2, 2).map((c) => ({
     time: new Date(c.time),
     score: computeSunsetScore(c).score,
     isCenter: c.isCenter,
   }));
 
-  return { day, sunsetDate, cond, score, notes, sun, phase, timeline };
+  return { day, eventDate, cond, score, notes, sun, phase, timeline };
 }
 
 function fmtTime(date) {
@@ -99,9 +106,9 @@ function render() {
   strip.className = 'daystrip';
   strip.innerHTML = days
     .map((d) => {
-      const cond = conditionsAtTime(forecast, d.sunset);
+      const cond = conditionsAtTime(forecast, d[state.event]);
       const { score } = computeSunsetScore(cond);
-      const date = new Date(d.sunset);
+      const date = new Date(d[state.event]);
       const active = d.dayIndex === state.dayIndex ? ' daychip--active' : '';
       return `
         <button class="daychip${active}" data-day="${d.dayIndex}">
@@ -124,8 +131,9 @@ function render() {
   renderDetail(evaluateDay(state.dayIndex));
 }
 
-function renderDetail({ sunsetDate, cond, score, notes, sun, phase, timeline }) {
-  const { place } = state;
+function renderDetail({ eventDate, cond, score, notes, sun, phase, timeline }) {
+  const { place, event } = state;
+  const label = EVENT_LABELS[event];
   const card = document.createElement('article');
   card.className = 'card';
 
@@ -159,7 +167,7 @@ function renderDetail({ sunsetDate, cond, score, notes, sun, phase, timeline }) 
     <header class="card__head">
       <div>
         <h2>${place.label}</h2>
-        <p class="muted">Tramonto di ${fmtDay(sunsetDate)} · ore ${fmtTime(sunsetDate)}</p>
+        <p class="muted">${label.prep} ${fmtDay(eventDate)} · ore ${fmtTime(eventDate)}</p>
       </div>
       <div class="gauge" style="--score:${score}">
         <div class="gauge__value">${score}</div>
@@ -185,9 +193,11 @@ function renderDetail({ sunsetDate, cond, score, notes, sun, phase, timeline }) 
     </section>
 
     <section>
-      <h3>Andamento del cielo attorno al tramonto</h3>
+      <h3>Andamento del cielo attorno all’${event === 'sunset' ? 'tramonto' : 'alba'}</h3>
       <div class="timeline">${timelineHtml}</div>
-      <p class="muted tl__hint">Punteggio ora per ora — la colonna evidenziata è l’ora del tramonto.</p>
+      <p class="muted tl__hint">Punteggio ora per ora — la colonna evidenziata è l’ora ${
+        event === 'sunset' ? 'del tramonto' : 'dell’alba'
+      }.</p>
     </section>
 
     <section>
@@ -237,4 +247,15 @@ els.geoBtn.addEventListener('click', () => {
     },
     (err) => setStatus(`Posizione non disponibile: ${err.message}`, 'error')
   );
+});
+
+// Selettore alba / tramonto
+document.querySelectorAll('.mode').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    state.event = btn.dataset.event;
+    document
+      .querySelectorAll('.mode')
+      .forEach((b) => b.classList.toggle('mode--active', b === btn));
+    if (state.forecast) render();
+  });
 });
