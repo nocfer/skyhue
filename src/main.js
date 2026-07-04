@@ -14,6 +14,7 @@ import { computeSunsetScore, scoreLabel, explainScore } from './score.js';
 import { sunPosition, azimuthToCardinal, moonPhase, moonPhaseName } from './astronomy.js';
 import { getFavorites, isFavorite, toggleFavorite, removeFavorite } from './store.js';
 import { skyGradient, skyGradientCss } from './sky.js';
+import { fetchSunsetSpots, distanceKm, bearing, kindInfo } from './spots.js';
 
 const els = {
   form: document.getElementById('search-form'),
@@ -31,6 +32,8 @@ const state = {
   air: null, // dati qualità dell'aria (può restare null se il fetch fallisce)
   dayIndex: 0,
   event: 'sunset', // 'sunset' | 'sunrise'
+  spots: null, // punti panoramici vicini: null=caricamento, []=nessuno, Array=trovati
+  spotsError: false,
 };
 
 const EVENT_LABELS = {
@@ -58,11 +61,29 @@ async function analyze(place) {
     state.forecast = forecast;
     state.air = air;
     state.dayIndex = dayIndex;
+    state.spots = null;
+    state.spotsError = false;
     render();
     setStatus('', 'info');
+    loadSpots(place); // in background: non blocca la vista principale
   } catch (err) {
     console.error(err);
     setStatus(`Errore: ${err.message}`, 'error');
+  }
+}
+
+/** Carica in background i punti panoramici vicini e aggiorna la vista. */
+async function loadSpots(place) {
+  try {
+    const spots = await fetchSunsetSpots(place.latitude, place.longitude);
+    if (state.place !== place) return; // l'utente ha cambiato località nel frattempo
+    state.spots = spots;
+    render();
+  } catch (err) {
+    console.warn('Punti panoramici non disponibili:', err);
+    if (state.place !== place) return;
+    state.spotsError = true;
+    render();
   }
 }
 
@@ -119,6 +140,56 @@ function mapEmbedHtml(lat, lon) {
   return `
     <iframe class="map" title="Punto analizzato sulla mappa" loading="lazy" src="${src}"></iframe>
     <a class="map__link" href="${full}" target="_blank" rel="noopener">Apri mappa più grande ↗</a>`;
+}
+
+/** Sezione "Dove andare a guardarlo": punti panoramici vicini. */
+function spotsSectionHtml(place, sun) {
+  const dirNote = `Il sole ${
+    state.event === 'sunset' ? 'tramonta' : 'sorge'
+  } verso <strong>${azimuthToCardinal(sun.azimuth)}</strong> (${Math.round(
+    sun.azimuth
+  )}°) — scegli un punto con vista libera in quella direzione.`;
+
+  let body;
+  if (state.spotsError) {
+    body = `<p class="muted">Punti panoramici non disponibili al momento.</p>`;
+  } else if (state.spots === null) {
+    body = `<p class="muted">Cerco punti panoramici nei dintorni…</p>`;
+  } else if (state.spots.length === 0) {
+    body = `<p class="muted">Nessun punto panoramico mappato nei dintorni.</p>`;
+  } else {
+    const rows = state.spots
+      .map((s) => ({
+        ...s,
+        dist: distanceKm(place.latitude, place.longitude, s.lat, s.lon),
+        dir: azimuthToCardinal(bearing(place.latitude, place.longitude, s.lat, s.lon)),
+      }))
+      .sort((a, b) => a.dist - b.dist)
+      .slice(0, 6);
+    body = `<ul class="spots">${rows
+      .map((s) => {
+        const info = kindInfo(s.kind);
+        const dist = s.dist < 10 ? s.dist.toFixed(1) : Math.round(s.dist);
+        const url = `https://www.openstreetmap.org/?mlat=${s.lat.toFixed(
+          5
+        )}&mlon=${s.lon.toFixed(5)}#map=15/${s.lat.toFixed(4)}/${s.lon.toFixed(4)}`;
+        return `<li class="spot">
+          <span class="spot__icon">${info.icon}</span>
+          <div class="spot__body">
+            <a href="${url}" target="_blank" rel="noopener">${s.name}</a>
+            <span class="spot__meta">${info.label} · ${dist} km · verso ${s.dir}</span>
+          </div>
+        </li>`;
+      })
+      .join('')}</ul>`;
+  }
+
+  return `
+    <section>
+      <h3>Dove andare a guardarlo</h3>
+      <p class="muted spots__hint">${dirNote}</p>
+      ${body}
+    </section>`;
 }
 
 /** Bussola SVG con il sole posizionato sull'azimut (0°=N, 90°=E, …). */
@@ -283,6 +354,8 @@ function renderDetail({ eventDate, cond, score, factors, notes, sun, phase, time
       </div>
       ${compassSvg(sun.azimuth)}
     </section>
+
+    ${spotsSectionHtml(place, sun)}
 
     <section>
       <h3>Andamento del cielo attorno all’${event === 'sunset' ? 'tramonto' : 'alba'}</h3>

@@ -362,6 +362,52 @@ body {
   font-size: 1.1rem;
 }
 
+/* Punti panoramici suggeriti */
+.spots__hint {
+  margin-bottom: 0.75rem;
+}
+
+.spots {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.spot {
+  display: flex;
+  gap: 0.7rem;
+  align-items: center;
+  padding: 0.6rem 0.8rem;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.spot__icon {
+  font-size: 1.25rem;
+}
+
+.spot__body {
+  display: flex;
+  flex-direction: column;
+}
+
+.spot__body a {
+  color: var(--text);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.spot__body a:hover {
+  color: var(--accent);
+}
+
+.spot__meta {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
 /* Mini-mappa del punto analizzato */
 .map-wrap {
   border-radius: 14px;

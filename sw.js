@@ -1,5 +1,5 @@
 // sw.js — service worker: shell offline + cache dell'ultima risposta API.
-const CACHE = 'skyhue-v3';
+const CACHE = 'skyhue-v4';
 
 // File del guscio applicativo da pre-cachare (percorsi relativi allo scope).
 const SHELL = [
@@ -13,6 +13,8 @@ const SHELL = [
   './src/score.js',
   './src/astronomy.js',
   './src/store.js',
+  './src/sky.js',
+  './src/spots.js',
 ];
 
 self.addEventListener('install', (event) => {

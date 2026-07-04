@@ -23,6 +23,7 @@ e qualità dell'aria (gratuito, CORS abilitato).
 11. **Mappa del punto** — mini-mappa OpenStreetMap del punto analizzato, con coordinate richieste e cella di griglia meteo effettiva.
 12. **Preferiti** — salva le tue località (localStorage) e ricaricale con un tap.
 13. **Condivisione** — link diretto alla località+evento (Web Share API o copia link).
+14. **Dove andare a guardarlo** — punti panoramici vicini da OpenStreetMap (viewpoint, fari, promontori) con distanza e direzione, più il promemoria di dove tramonta il sole.
 
 ## Come funziona il punteggio
 
@@ -76,10 +77,12 @@ src/api.js            Open-Meteo: geocoding, previsioni, qualità dell'aria
 src/astronomy.js      posizione solare (NOAA), fase lunare
 src/score.js          algoritmo Sunset Score + spiegazione  ← cuore testabile
 src/sky.js            palette del cielo previsto (gradiente)
+src/spots.js          punti panoramici vicini (OpenStreetMap/Overpass)
 src/store.js          preferiti in localStorage
 src/main.js           orchestrazione e rendering
 test/score.test.js    test dell'algoritmo
 test/sky.test.js      test della palette
+test/spots.test.js    test di distanza/rilevamento
 ```
 
 ## PWA & offline
