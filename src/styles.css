@@ -737,6 +737,13 @@ body {
   display: block;
 }
 
+/* Slot in cui viene montata la mini-mappa Leaflet: riserva lo spazio così non
+   c'è salto di layout nell'istante prima del montaggio. */
+.map-slot {
+  min-height: 240px;
+  background: hsl(var(--hue, 30) 30% 50% / 0.08);
+}
+
 .map__link {
   display: inline-block;
   margin-top: 0.5rem;

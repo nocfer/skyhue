@@ -15,6 +15,7 @@ import { sunPosition, azimuthToCardinal, moonPhase, moonPhaseName } from './astr
 import { getFavorites, isFavorite, toggleFavorite, removeFavorite } from './store.js';
 import { skyGradient, skyGradientCss } from './sky.js';
 import { icon } from './icons.js';
+import { mountMiniMap } from './map.js';
 import {
   fetchSunsetSpots,
   distanceKm,
@@ -338,18 +339,17 @@ function scoreHue(score) {
   return Math.round(10 + (score / 100) * 36);
 }
 
-/** Mini-mappa OpenStreetMap (iframe) con un segnalino sul punto analizzato. */
+/**
+ * Mini-mappa Leaflet del punto analizzato: contenitore vuoto (Leaflet vi viene
+ * montato da `mountMiniMap` dopo l'inserimento nel DOM) + link a OSM. Mostra
+ * marker colorato per punteggio e raggio verso il sole.
+ */
 function mapEmbedHtml(lat, lon) {
-  const d = 0.03; // ampiezza del riquadro attorno al punto (~3 km)
-  const bbox = [lon - d, lat - d, lon + d, lat + d].map((n) => n.toFixed(4)).join(',');
-  const src = `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${lat.toFixed(
-    5
-  )},${lon.toFixed(5)}`;
   const full = `https://www.openstreetmap.org/?mlat=${lat.toFixed(5)}&mlon=${lon.toFixed(
     5
   )}#map=13/${lat.toFixed(4)}/${lon.toFixed(4)}`;
   return `
-    <iframe class="map" title="Punto analizzato sulla mappa" loading="lazy" src="${src}"></iframe>
+    <div class="map-wrap"><div class="map-slot" id="detail-map"></div></div>
     <a class="map__link" href="${full}" target="_blank" rel="noopener">Apri mappa più grande ↗</a>`;
 }
 
@@ -595,7 +595,7 @@ function renderDetail({ eventDate, cond, score, factors, notes, sun, phase, time
 
     <section>
       <h3>Punto analizzato</h3>
-      <div class="map-wrap">${mapEmbedHtml(place.latitude, place.longitude)}</div>
+      ${mapEmbedHtml(place.latitude, place.longitude)}
       ${gridNote ? `<p class="muted map__note">${gridNote}</p>` : ''}
     </section>
 
@@ -642,6 +642,17 @@ function renderDetail({ eventDate, cond, score, factors, notes, sun, phase, time
   if (scanBtn) scanBtn.addEventListener('click', scanCoordinates);
 
   els.results.appendChild(card);
+
+  // Monta la mini-mappa Leaflet nel contenitore appena inserito nel DOM
+  // (marker colorato per punteggio + raggio verso il sole). Non blocca il
+  // render: se Leaflet non si carica (offline) il resto del dettaglio resta.
+  mountMiniMap(card.querySelector('#detail-map'), {
+    lat: place.latitude,
+    lon: place.longitude,
+    azimuth: sun.azimuth,
+    score,
+    event,
+  }).catch((err) => console.warn('Mini-mappa non disponibile:', err));
 }
 
 /** Costruisce un link condivisibile allo stato corrente (località + evento). */

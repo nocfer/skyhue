@@ -30,7 +30,7 @@ let leafletLoading = null;
 let evalToken = 0; // per ignorare valutazioni superate da un nuovo tap
 
 /** Carica Leaflet (CSS+JS) una sola volta, restituendo il global L. */
-function loadLeaflet() {
+export function loadLeaflet() {
   if (window.L) return Promise.resolve(window.L);
   if (leafletLoading) return leafletLoading;
   leafletLoading = new Promise((resolve, reject) => {
@@ -49,6 +49,85 @@ function loadLeaflet() {
 
 function fmtTime(date) {
   return date.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+}
+
+/** Colore in tinta col punteggio (stessa rampa calda del resto dell'app). */
+function scoreColor(score) {
+  return `hsl(${Math.round(10 + (score / 100) * 36)}, 80%, 58%)`;
+}
+
+// Mini-mappa del dettaglio: una sola istanza Leaflet, riusata finché il punto
+// non cambia (render() ricostruisce la card più volte mentre arrivano i dati).
+let mini = { map: null, container: null, key: null };
+
+/**
+ * Monta (o riusa) una mini-mappa Leaflet dentro `mount`: tile OSM, marker
+ * colorato per punteggio e un raggio tratteggiato verso l'azimut del sole, così
+ * si vede a colpo d'occhio dove guarderà il sole all'orizzonte.
+ * @param {HTMLElement} mount contenitore (già dimensionato) in cui montare
+ * @param {{lat:number, lon:number, azimuth:number, score:number, event:string}} o
+ */
+export async function mountMiniMap(mount, { lat, lon, azimuth, score, event }) {
+  if (!mount) return;
+  const L = await loadLeaflet(); // memoizzato: il primo await è l'unico costo di rete
+  const key = `${lat.toFixed(4)}|${lon.toFixed(4)}|${Math.round(azimuth)}|${score}|${event}`;
+
+  // Stesso punto di un render precedente: sposta il container esistente nel
+  // nuovo nodo (le render sono sequenziali → l'ultima, quella viva, vince).
+  if (mini.container && mini.key === key) {
+    mount.appendChild(mini.container);
+    mini.map.invalidateSize();
+    return;
+  }
+
+  // Punto diverso (o primo montaggio): ricostruisci.
+  if (mini.map) mini.map.remove();
+  const container = document.createElement('div');
+  container.className = 'map';
+  mount.appendChild(container);
+  const map = L.map(container, {
+    zoomControl: false,
+    dragging: false, // preview statica: non intrappola lo scroll della pagina
+    scrollWheelZoom: false,
+    doubleClickZoom: false,
+    keyboard: false,
+  }).setView([lat, lon], 12);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '© OpenStreetMap',
+  }).addTo(map);
+
+  const color = scoreColor(score);
+  const end = destinationPoint(lat, lon, azimuth, 12); // ~12 km verso il sole
+  L.polyline([[lat, lon], [end.lat, end.lon]], {
+    color,
+    weight: 3,
+    opacity: 0.9,
+    dashArray: '6 7',
+  }).addTo(map);
+  L.circleMarker([lat, lon], {
+    radius: 8,
+    color,
+    weight: 3,
+    fillColor: color,
+    fillOpacity: 0.55,
+  })
+    .addTo(map)
+    .bindPopup(
+      `Sunset Score <strong>${score}</strong> · ${
+        event === 'sunset' ? 'tramonto' : 'alba'
+      } verso ${azimuthToCardinal(azimuth)} (${Math.round(azimuth)}°)`
+    );
+  // Inquadra sia il punto sia la fine del raggio (dove guardare).
+  map.fitBounds(
+    [
+      [lat, lon],
+      [end.lat, end.lon],
+    ],
+    { padding: [28, 28], maxZoom: 12 }
+  );
+
+  mini = { map, container, key };
 }
 
 /** Centro iniziale: ultima località analizzata, altrimenti centro Italia. */
