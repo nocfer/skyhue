@@ -3,6 +3,7 @@
 // Mostriamo i luoghi già mappati come "panoramici" (o fari/promontori) e la
 // distanza/direzione; la scelta finale, in base all'azimut del tramonto, è
 // lasciata alla persona.
+import { azimuthToCardinal } from './astronomy.js';
 
 // Endpoint Overpass (con riserve: se il primo è occupato si prova il successivo).
 const OVERPASS_ENDPOINTS = [
@@ -272,6 +273,75 @@ out center 90;`;
       };
     })
     .filter(Boolean);
+}
+
+/**
+ * Pipeline completa "punti suggeriti attorno a un punto": scarica i punti OSM,
+ * pre-seleziona per vicinanza/direzione al sole, ne valuta l'affaccio campionando
+ * le quote lungo il raggio, e restituisce i migliori ordinati per qualità.
+ * Autonoma (origine = lat/lon passati), così è riusabile dalla schermata mappa.
+ * @returns {Promise<Array<{lat,lon,name,kind,dist,dir,driveMin,elev,verdict,finalScore}>>}
+ */
+export async function nearbySpots(
+  lat,
+  lon,
+  azimuth,
+  { radiusKm = 25, evaluate = 14, show = 6, nearKm = 6 } = {}
+) {
+  const raw = await fetchSunsetSpots(lat, lon, radiusKm);
+  if (!raw.length) return [];
+
+  // Pre-selezione per costo: vicinanza, con penalità ai lontani "dal lato sbagliato".
+  const nearest = raw
+    .map((s) => {
+      const dist = distanceKm(lat, lon, s.lat, s.lon);
+      const dirDiff = angleDiff(bearing(lat, lon, s.lat, s.lon), azimuth);
+      const offSunset = dist > nearKm && dirDiff > 90 ? 2 : 1;
+      return { ...s, dist, cost: dist * offSunset };
+    })
+    .sort((a, b) => a.cost - b.cost)
+    .slice(0, evaluate);
+
+  // Campiona il terreno lungo il raggio verso il sole (una sola chiamata batch).
+  const points = [];
+  for (const s of nearest) {
+    for (const d of SAMPLE_DISTANCES) {
+      points.push(d === 0 ? { lat: s.lat, lon: s.lon } : destinationPoint(s.lat, s.lon, azimuth, d));
+    }
+  }
+  let elevations = null;
+  try {
+    elevations = await fetchElevations(points);
+  } catch (err) {
+    console.warn('Quote non disponibili per i punti vicini:', err);
+  }
+
+  const n = SAMPLE_DISTANCES.length;
+  const evaluated = nearest.map((s, i) => {
+    let horizon = null;
+    let elev = null;
+    if (elevations && elevations.length >= (i + 1) * n) {
+      elev = elevations[i * n];
+      const ahead = SAMPLE_DISTANCES.slice(1).map((distKm, k) => ({
+        distKm,
+        elev: elevations[i * n + 1 + k],
+      }));
+      horizon = evaluateHorizon(elev, ahead);
+    }
+    const verdict = spotVerdict(s.kind, horizon);
+    const finalScore = verdict.score - Math.max(0, s.dist - nearKm) * 0.4;
+    return {
+      ...s,
+      elev,
+      dir: azimuthToCardinal(bearing(lat, lon, s.lat, s.lon)),
+      driveMin: driveMinutes(s.dist),
+      verdict,
+      finalScore,
+    };
+  });
+
+  evaluated.sort((a, b) => b.finalScore - a.finalScore || a.dist - b.dist);
+  return evaluated.slice(0, show);
 }
 
 /** Esegue una query Overpass provando gli endpoint in sequenza (form-urlencoded). */

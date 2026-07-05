@@ -11,6 +11,7 @@ import {
   spotVerdict,
   fetchElevations,
   horizonDistanceKm,
+  nearbySpots,
 } from './spots.js';
 import { icon } from './icons.js';
 
@@ -38,6 +39,7 @@ let map = null;
 let marker = null;
 let visCircle = null; // cerchio di visibilità sul punto toccato
 let contextLayer = null; // overlay del punto analizzato + punti suggeriti
+let tapLayer = null; // overlay completi del punto toccato (sole, raggio, visibilità, punti)
 let legendControl = null; // legenda dei simboli (montata una sola volta)
 let leafletLoading = null;
 let evalToken = 0; // per ignorare valutazioni superate da un nuovo tap
@@ -291,6 +293,10 @@ function renderContext() {
     contextLayer.remove();
     contextLayer = null;
   }
+  if (tapLayer) {
+    tapLayer.remove();
+    tapLayer = null;
+  }
   if (marker) {
     map.removeLayer(marker);
     marker = null;
@@ -342,7 +348,7 @@ async function selectPoint(lat, lon) {
 async function evaluatePoint(lat, lon) {
   const token = ++evalToken;
   els.panel.hidden = false;
-  els.panel.innerHTML = `<p class="muted">Calcolo il tramonto e l’affaccio in questo punto…</p>`;
+  els.panel.innerHTML = `<p class="muted">Calcolo tramonto, affaccio e punti vicini…</p>`;
   try {
     const [forecast, air] = await Promise.all([
       fetchForecast(lat, lon),
@@ -354,38 +360,53 @@ async function evaluatePoint(lat, lon) {
     const sunsetDate = new Date(sunset);
     const sun = sunPosition(sunsetDate, lat, lon);
 
-    // Affaccio: campiona il terreno lungo il raggio verso il sole.
+    // Affaccio del punto toccato + ricerca dei punti suggeriti nei dintorni,
+    // così sulla mappa compaiono tutti gli elementi della legenda.
     let horizon = null;
+    let spots = [];
     try {
       const pts = SAMPLE_DISTANCES.map((d) =>
         d === 0 ? { lat, lon } : destinationPoint(lat, lon, sun.azimuth, d)
       );
-      const el = await fetchElevations(pts);
+      const [el, near] = await Promise.all([
+        fetchElevations(pts),
+        nearbySpots(lat, lon, sun.azimuth).catch(() => []),
+      ]);
       const ahead = SAMPLE_DISTANCES.slice(1).map((distKm, k) => ({ distKm, elev: el[k + 1] }));
       horizon = evaluateHorizon(el[0], ahead);
+      spots = near;
     } catch (err) {
-      console.warn('Quote non disponibili per l’affaccio:', err);
+      console.warn('Quote/punti non disponibili:', err);
     }
     const verdict = spotVerdict('viewpoint', horizon);
 
     if (token !== evalToken) return; // superato da un tap più recente
 
-    // Cerchio di visibilità attorno al punto (quanto lontano si vede nitido).
+    // Overlay completi del punto toccato: punto + raggio + sole + cerchio di
+    // visibilità + marker dei punti suggeriti (coerenti con la legenda).
+    if (tapLayer) {
+      tapLayer.remove();
+      tapLayer = null;
+    }
     if (visCircle) {
       map.removeLayer(visCircle);
       visCircle = null;
     }
-    if (window.L && Number.isFinite(cond.visibility) && cond.visibility > 0) {
-      visCircle = window.L.circle([lat, lon], {
-        radius: cond.visibility,
-        color: '#8fd0ff',
-        weight: 1,
-        opacity: 0.5,
-        fillColor: '#8fd0ff',
-        fillOpacity: 0.06,
-        dashArray: '4 6',
-      }).addTo(map);
+    if (marker) {
+      map.removeLayer(marker); // sostituito dal pallino colorato per punteggio
+      marker = null;
     }
+    tapLayer = window.L.featureGroup().addTo(map);
+    buildSunsetOverlays(window.L, tapLayer, {
+      lat,
+      lon,
+      azimuth: sun.azimuth,
+      score,
+      event: 'sunset',
+      visibility: cond.visibility,
+      spots,
+      onSpotClick: (s) => selectPoint(s.lat, s.lon),
+    });
 
     renderPanel({
       lat,
