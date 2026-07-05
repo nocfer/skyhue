@@ -610,6 +610,10 @@ function renderDetail({ eventDate, cond, score, factors, notes, sun, phase, time
             'share',
             { size: 18 }
           )}</button>
+          <button class="shareimg-btn" title="Condividi come immagine" aria-label="Condividi come immagine">${icon(
+            'map',
+            { size: 18 }
+          )}</button>
         </h2>
         <p class="muted">${label.prep} ${fmtDay(eventDate)} · ore ${fmtTime(eventDate)}</p>
       </div>
@@ -712,6 +716,9 @@ function renderDetail({ eventDate, cond, score, factors, notes, sun, phase, time
   favBtn.classList.toggle('fav-toggle--on', isFavorite(place));
 
   card.querySelector('.share-btn').addEventListener('click', () => shareCurrent(score));
+  card.querySelector('.shareimg-btn').addEventListener('click', () =>
+    shareImage({ place, score, factors, eventDate, event, sun })
+  );
 
   const scanBtn = card.querySelector('.scan-btn');
   if (scanBtn) scanBtn.addEventListener('click', scanCoordinates);
@@ -781,6 +788,92 @@ async function shareCurrent(score) {
     // Ultima spiaggia: mostra l'URL nella barra di stato.
     setStatus(url, 'info');
   }
+}
+
+/**
+ * Genera un'immagine (canvas) con il Sunset Score, località, orario e direzione
+ * del sole, sul gradiente atteso del cielo, e la condivide (Web Share API con
+ * file) o la scarica come fallback. Nessuna dipendenza esterna.
+ */
+async function shareImage({ place, score, factors, eventDate, event, sun }) {
+  const W = 1080;
+  const H = 1350;
+  const canvas = document.createElement('canvas');
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext('2d');
+
+  // Sfondo: gradiente del cielo atteso (stessi stop della preview).
+  const stops = skyGradient(factors, score);
+  const hsl = (s) => `hsl(${s.h} ${s.s}% ${s.l}%)`;
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, hsl(stops[0]));
+  g.addColorStop(0.55, hsl(stops[1]));
+  g.addColorStop(0.8, hsl(stops[2]));
+  g.addColorStop(1, hsl(stops[3]));
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, W, H);
+
+  const noun = EVENT_LABELS[event].noun;
+  ctx.textAlign = 'center';
+
+  ctx.fillStyle = 'rgba(255,255,255,0.92)';
+  ctx.font = '600 46px system-ui, -apple-system, sans-serif';
+  ctx.fillText('🌅 SkyHue', W / 2, 96);
+
+  ctx.fillStyle = '#fff';
+  ctx.font = '800 330px system-ui, -apple-system, sans-serif';
+  ctx.fillText(String(score), W / 2, H / 2 + 30);
+
+  ctx.font = '700 66px system-ui, -apple-system, sans-serif';
+  ctx.fillText(scoreLabel(score), W / 2, H / 2 + 150);
+
+  // Località (riduci il font se troppo larga).
+  let labelSize = 54;
+  ctx.font = `600 ${labelSize}px system-ui, -apple-system, sans-serif`;
+  while (ctx.measureText(place.label).width > W - 120 && labelSize > 28) {
+    labelSize -= 3;
+    ctx.font = `600 ${labelSize}px system-ui, -apple-system, sans-serif`;
+  }
+  ctx.fillStyle = 'rgba(255,255,255,0.96)';
+  ctx.fillText(place.label, W / 2, H - 250);
+
+  ctx.fillStyle = 'rgba(255,255,255,0.85)';
+  ctx.font = '400 40px system-ui, -apple-system, sans-serif';
+  ctx.fillText(`${noun} ore ${fmtTime(eventDate)} · ${fmtDay(eventDate)}`, W / 2, H - 185);
+  ctx.fillText(
+    `Sole verso ${azimuthToCardinal(sun.azimuth)} (${Math.round(sun.azimuth)}°)`,
+    W / 2,
+    H - 135
+  );
+
+  ctx.fillStyle = 'rgba(255,255,255,0.6)';
+  ctx.font = '400 34px system-ui, -apple-system, sans-serif';
+  ctx.fillText('nocfer.github.io/skyhue', W / 2, H - 64);
+
+  const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+  if (!blob) {
+    setStatus('Impossibile generare l’immagine.', 'error');
+    return;
+  }
+  const file = new File([blob], 'skyhue.png', { type: 'image/png' });
+  const text = `${noun} ${score}/100 a ${place.label} — SkyHue`;
+  try {
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], title: 'SkyHue', text });
+      return;
+    }
+  } catch {
+    /* condivisione annullata o non riuscita: si passa al download */
+  }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'skyhue.png';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  setStatus('Immagine salvata ✓', 'info');
 }
 
 /** Disegna la barra dei preferiti (chip cliccabili con rimozione). */

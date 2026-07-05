@@ -377,7 +377,8 @@ body {
 }
 
 .fav-toggle,
-.share-btn {
+.share-btn,
+.shareimg-btn {
   border: none;
   background: transparent;
   color: var(--accent);
@@ -388,13 +389,15 @@ body {
 }
 
 .fav-toggle .ico,
-.share-btn .ico {
+.share-btn .ico,
+.shareimg-btn .ico {
   vertical-align: middle;
   transition: transform 0.12s ease;
 }
 
 .fav-toggle:hover .ico,
-.share-btn:hover .ico {
+.share-btn:hover .ico,
+.shareimg-btn:hover .ico {
   transform: scale(1.12);
 }
 
