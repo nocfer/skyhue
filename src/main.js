@@ -1048,6 +1048,26 @@ function initFromUrl() {
 // Un punto scelto sulla mappa chiede l'analisi completa: la eseguiamo qui.
 window.addEventListener('skyhue:analyze', (e) => analyze(e.detail));
 
+// Toggle tema chiaro/scuro (il tema è già applicato in <head> prima del paint).
+function updateThemeToggle() {
+  const b = document.getElementById('theme-toggle');
+  if (b) b.textContent = document.documentElement.dataset.theme === 'light' ? '☾' : '☀';
+}
+const themeBtn = document.getElementById('theme-toggle');
+if (themeBtn) {
+  themeBtn.addEventListener('click', () => {
+    const next = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
+    document.documentElement.dataset.theme = next;
+    try {
+      localStorage.setItem('skyhue.theme', next);
+    } catch (e) {
+      /* storage non disponibile */
+    }
+    updateThemeToggle();
+  });
+  updateThemeToggle();
+}
+
 // Avvio: mostra i preferiti salvati e apre l'eventuale link condiviso.
 renderFavorites();
 initFromUrl();

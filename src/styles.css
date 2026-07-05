@@ -26,6 +26,24 @@
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 }
 
+/* Tema chiaro: stesse famiglie calde, superfici chiare su fondo avorio caldo. */
+:root[data-theme='light'] {
+  --bg: #fbf4ec;
+  --text: #2a1f26;
+  --muted: #7a6b72;
+  --card: rgba(0, 0, 0, 0.04);
+  --card-border: rgba(0, 0, 0, 0.12);
+  --panel: rgba(0, 0, 0, 0.035);
+  --panel-strong: rgba(0, 0, 0, 0.05);
+  --elevated: #ffffff;
+  --accent: #ee6d3a;
+  --gold: #d9992e;
+  --ink: #ffffff;
+  --good: #c77d18;
+  --neutral: #8a7d72;
+  --bad: #c0472a;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -1360,4 +1378,30 @@ body {
 }
 .cmp__body .muted {
   font-size: 0.8rem;
+}
+
+/* Tema chiaro: sfondo con alone caldo su avorio, coerente col tema scuro. */
+:root[data-theme='light'] .sky {
+  background:
+    radial-gradient(
+      110vw 66vh at 50% 86vh,
+      rgba(255, 178, 120, 0.55) 0%,
+      rgba(255, 140, 95, 0.26) 26%,
+      rgba(251, 244, 236, 0) 58%
+    ),
+    radial-gradient(
+      160vw 120vh at 50% 92vh,
+      rgba(255, 150, 170, 0.24) 22%,
+      rgba(255, 205, 150, 0.12) 55%,
+      rgba(251, 244, 236, 0) 82%
+    ),
+    linear-gradient(180deg, #fdf7ef 0%, #fcefe4 60%, #fbe6d6 100%);
+}
+
+/* Pulsante toggle tema (glifo sole/luna riempito da JS). */
+.theme-toggle {
+  cursor: pointer;
+  min-width: 2.2rem;
+  line-height: 1;
+  font-size: 1rem;
 }
