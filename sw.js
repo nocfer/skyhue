@@ -1,5 +1,5 @@
 // sw.js — service worker: shell offline + cache dell'ultima risposta API.
-const CACHE = 'skyhue-v17';
+const CACHE = 'skyhue-v18';
 
 // File del guscio applicativo da pre-cachare (percorsi relativi allo scope).
 const SHELL = [

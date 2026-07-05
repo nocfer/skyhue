@@ -95,3 +95,37 @@ export function moonPhaseName(phase) {
   ];
   return names[Math.round(phase * 8) % 8];
 }
+
+/**
+ * Orari del crepuscolo attorno a un evento (alba/tramonto), trovando gli istanti
+ * in cui il sole attraversa +6° (golden hour), -0,833° (evento) e -6° (blue hour
+ * / crepuscolo civile). Campiona l'elevazione al minuto in una finestra di ±2,5h
+ * e interpola i passaggi.
+ * @returns {{descending:boolean, golden:?Date, event:?Date, blue:?Date}}
+ *   descending = true se il sole sta scendendo (tramonto), false all'alba.
+ */
+export function twilightTimes(eventDate, latitude, longitude) {
+  const stepMs = 60 * 1000;
+  const windowMs = 2.5 * 3600 * 1000;
+  const base = eventDate.getTime();
+  const samples = [];
+  for (let t = base - windowMs; t <= base + windowMs; t += stepMs) {
+    samples.push({ t, el: sunPosition(new Date(t), latitude, longitude).elevation });
+  }
+  const mid = Math.floor(samples.length / 2);
+  const descending = samples[mid].el <= samples[mid - 1].el;
+
+  const crossing = (target) => {
+    for (let i = 1; i < samples.length; i++) {
+      const a = samples[i - 1].el;
+      const b = samples[i].el;
+      if (a !== b && (a - target) * (b - target) <= 0) {
+        const f = (target - a) / (b - a);
+        return new Date(samples[i - 1].t + f * stepMs);
+      }
+    }
+    return null;
+  };
+
+  return { descending, golden: crossing(6), event: crossing(-0.833), blue: crossing(-6) };
+}

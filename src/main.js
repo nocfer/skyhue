@@ -11,7 +11,13 @@ import {
   coordsLabel,
 } from './api.js';
 import { computeSunsetScore, scoreLabel, explainScore } from './score.js';
-import { sunPosition, azimuthToCardinal, moonPhase, moonPhaseName } from './astronomy.js';
+import {
+  sunPosition,
+  azimuthToCardinal,
+  moonPhase,
+  moonPhaseName,
+  twilightTimes,
+} from './astronomy.js';
 import { getFavorites, isFavorite, toggleFavorite, removeFavorite } from './store.js';
 import { skyGradient, skyGradientCss } from './sky.js';
 import { icon } from './icons.js';
@@ -462,15 +468,34 @@ function render() {
   const { forecast } = state;
   els.results.innerHTML = '';
 
-  // --- Striscia multi-giorno ---
+  // Punteggi dei prossimi giorni (riusati per striscia e banner).
   const days = dailyList(forecast);
+  const scored = days.map((d) => {
+    const cond = { ...conditionsAtTime(forecast, d[state.event]), ...airAtTime(state.air, d[state.event]) };
+    return { d, score: computeSunsetScore(cond).score, date: new Date(d[state.event]) };
+  });
+
+  // --- Avviso "tramonto top in arrivo" ---
+  const TOP_THRESHOLD = 85;
+  const best = scored.reduce((a, b) => (b.score > a.score ? b : a), scored[0]);
+  if (best && best.score >= TOP_THRESHOLD && best.d.dayIndex >= 1) {
+    const banner = document.createElement('button');
+    banner.className = 'topbanner';
+    banner.innerHTML = `${icon('flame', { size: 18 })} <span>${
+      state.event === 'sunset' ? 'Tramonto' : 'Alba'
+    } top in arrivo: <strong>${fmtWeekdayShort(best.date)} ${best.score}/100</strong> — il migliore dei prossimi giorni</span>`;
+    banner.addEventListener('click', () => {
+      state.dayIndex = best.d.dayIndex;
+      render();
+    });
+    els.results.appendChild(banner);
+  }
+
+  // --- Striscia multi-giorno ---
   const strip = document.createElement('div');
   strip.className = 'daystrip';
-  strip.innerHTML = days
-    .map((d) => {
-      const cond = { ...conditionsAtTime(forecast, d[state.event]), ...airAtTime(state.air, d[state.event]) };
-      const { score } = computeSunsetScore(cond);
-      const date = new Date(d[state.event]);
+  strip.innerHTML = scored
+    .map(({ d, score, date }) => {
       const active = d.dayIndex === state.dayIndex ? ' daychip--active' : '';
       return `
         <button class="daychip${active}" data-day="${d.dayIndex}">
@@ -522,6 +547,20 @@ function renderDetail({ eventDate, cond, score, factors, notes, sun, phase, time
       </div>`
     )
     .join('');
+
+  // Orari della luce (golden/blue hour) attorno all'evento.
+  const tw = twilightTimes(eventDate, place.latitude, place.longitude);
+  const fmtRange = (a, b) => (a && b ? `${fmtTime(a)}–${fmtTime(b)}` : '—');
+  const goldenRange = event === 'sunset' ? fmtRange(tw.golden, tw.event) : fmtRange(tw.event, tw.golden);
+  const blueRange = event === 'sunset' ? fmtRange(tw.event, tw.blue) : fmtRange(tw.blue, tw.event);
+  const lightHtml = `
+    <section class="light">
+      <h3>${icon(event === 'sunset' ? 'sunset' : 'sunrise', { size: 16 })} Luce</h3>
+      <div class="light__chips">
+        <div class="light__chip light__chip--golden"><span class="light__k">Golden hour</span><strong>${goldenRange}</strong></div>
+        <div class="light__chip light__chip--blue"><span class="light__k">Blue hour</span><strong>${blueRange}</strong></div>
+      </div>
+    </section>`;
 
   const notesHtml = notes
     .map(
@@ -623,6 +662,8 @@ function renderDetail({ eventDate, cond, score, factors, notes, sun, phase, time
       </div>
       ${compassSvg(sun.azimuth)}
     </section>
+
+    ${lightHtml}
 
     ${spotsSectionHtml(place, sun)}
 
