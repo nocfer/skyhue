@@ -16,6 +16,15 @@ import { icon } from './icons.js';
 const LEAFLET_CSS = 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css';
 const LEAFLET_JS = 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js';
 
+// Basemap scuro ed elegante (CartoDB Dark Matter): niente API key, in tinta con
+// il tema "tramonto" dell'app — molto più coerente dei tile chiari di OSM.
+const TILE_URL = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+const TILE_OPTS = {
+  subdomains: 'abcd',
+  maxZoom: 20,
+  attribution: '© OpenStreetMap © CARTO',
+};
+
 const els = {
   appView: document.getElementById('app-view'),
   mapView: document.getElementById('map-view'),
@@ -92,25 +101,45 @@ export async function mountMiniMap(mount, { lat, lon, azimuth, score, event }) {
     doubleClickZoom: false,
     keyboard: false,
   }).setView([lat, lon], 12);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution: '© OpenStreetMap',
-  }).addTo(map);
+  L.tileLayer(TILE_URL, TILE_OPTS).addTo(map);
 
   const color = scoreColor(score);
   const end = destinationPoint(lat, lon, azimuth, 12); // ~12 km verso il sole
-  L.polyline([[lat, lon], [end.lat, end.lon]], {
+  const ray = [
+    [lat, lon],
+    [end.lat, end.lon],
+  ];
+  // Raggio verso il sole: un alone caldo morbido con sopra una linea
+  // tratteggiata luminosa — evoca la luce radente più di una linea piatta.
+  L.polyline(ray, { color: '#ffce6f', weight: 9, opacity: 0.16, lineCap: 'round' }).addTo(map);
+  L.polyline(ray, {
     color,
-    weight: 3,
-    opacity: 0.9,
-    dashArray: '6 7',
+    weight: 2.5,
+    opacity: 0.95,
+    dashArray: '1 8',
+    lineCap: 'round',
   }).addTo(map);
-  L.circleMarker([lat, lon], {
-    radius: 8,
-    color,
-    weight: 3,
-    fillColor: color,
-    fillOpacity: 0.55,
+
+  // Il sole all'orizzonte, alla fine del raggio (glow via CSS).
+  L.marker([end.lat, end.lon], {
+    icon: L.divIcon({
+      className: 'sunmark',
+      html: '<span class="sunmark__glow"></span>',
+      iconSize: [26, 26],
+      iconAnchor: [13, 13],
+    }),
+    interactive: false,
+    keyboard: false,
+  }).addTo(map);
+
+  // Punto analizzato: pallino colorato per punteggio con alone.
+  L.marker([lat, lon], {
+    icon: L.divIcon({
+      className: 'skymark',
+      html: `<span class="skymark__dot" style="--c:${color}"></span>`,
+      iconSize: [22, 22],
+      iconAnchor: [11, 11],
+    }),
   })
     .addTo(map)
     .bindPopup(
@@ -145,10 +174,7 @@ async function ensureMap() {
   }
   const c = initialCenter();
   map = L.map(els.canvas).setView([c.lat, c.lon], c.zoom);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution: '© OpenStreetMap',
-  }).addTo(map);
+  L.tileLayer(TILE_URL, TILE_OPTS).addTo(map);
   map.on('click', (e) => selectPoint(e.latlng.lat, e.latlng.lng));
 }
 

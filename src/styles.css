@@ -744,6 +744,83 @@ body {
   background: hsl(var(--hue, 30) 30% 50% / 0.08);
 }
 
+/* --- Tema scuro coerente per Leaflet (mini-mappa + schermata mappa) --------- */
+.leaflet-container {
+  background: #120f16 !important; /* niente flash grigio prima dei tile */
+  font: inherit;
+}
+.leaflet-control-attribution {
+  background: hsl(280 18% 8% / 0.72) !important;
+  color: var(--muted) !important;
+  backdrop-filter: blur(4px);
+}
+.leaflet-control-attribution a {
+  color: var(--accent) !important;
+}
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  background: var(--elevated);
+  color: var(--text);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
+}
+.leaflet-popup-content {
+  font-size: 0.85rem;
+}
+.leaflet-popup-content-wrapper strong {
+  color: var(--gold);
+}
+.leaflet-popup-close-button {
+  color: var(--muted) !important;
+}
+
+/* Marker come divIcon: centriamo il contenuto nel riquadro dell'icona. */
+.skymark,
+.sunmark {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: 0;
+}
+
+/* Punto analizzato: pallino in tinta col punteggio, con alone. */
+.skymark__dot {
+  display: block;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--c);
+  border: 2px solid hsl(0 0% 100% / 0.92);
+  box-shadow: 0 0 0 4px hsl(0 0% 100% / 0.05), 0 0 14px 2px var(--c);
+}
+
+/* Il sole all'orizzonte, alla fine del raggio: nucleo caldo + bagliore. */
+.sunmark__glow {
+  display: block;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 45%, #fff6d8, var(--gold) 55%, transparent 74%);
+  box-shadow: 0 0 18px 6px hsl(43 100% 70% / 0.5);
+  animation: sunpulse 2.8s ease-in-out infinite;
+}
+@keyframes sunpulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.92;
+  }
+  50% {
+    transform: scale(1.18);
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sunmark__glow {
+    animation: none;
+  }
+}
+
 .map__link {
   display: inline-block;
   margin-top: 0.5rem;
