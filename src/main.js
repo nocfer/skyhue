@@ -342,16 +342,20 @@ function scoreHue(score) {
 
 /**
  * Mini-mappa Leaflet del punto analizzato: contenitore vuoto (Leaflet vi viene
- * montato da `mountMiniMap` dopo l'inserimento nel DOM) + link a OSM. Mostra
- * marker colorato per punteggio e raggio verso il sole.
+ * montato da `mountMiniMap` dopo l'inserimento nel DOM) + chip "Espandi" e
+ * pulsante che aprono la mappa grande in-app con tutti i punti marcati.
  */
-function mapEmbedHtml(lat, lon) {
-  const full = `https://www.openstreetmap.org/?mlat=${lat.toFixed(5)}&mlon=${lon.toFixed(
-    5
-  )}#map=13/${lat.toFixed(4)}/${lon.toFixed(4)}`;
+function mapEmbedHtml() {
   return `
-    <div class="map-wrap"><div class="map-slot" id="detail-map"></div></div>
-    <a class="map__link" href="${full}" target="_blank" rel="noopener">Apri mappa più grande ↗</a>`;
+    <div class="map-wrap">
+      <div class="map-slot" id="detail-map"></div>
+      <span class="map-slot__expand" aria-hidden="true">${icon('maximize', {
+        size: 15,
+      })} Espandi</span>
+    </div>
+    <button type="button" class="map__open" id="open-bigmap">${icon('map', {
+      size: 16,
+    })} Apri la mappa grande · tutti i punti</button>`;
 }
 
 /** Riga di un punto suggerito (usata sia per i POI sia per i punti stimati). */
@@ -605,7 +609,7 @@ function renderDetail({ eventDate, cond, score, factors, notes, sun, phase, time
 
     <section>
       <h3>Punto analizzato</h3>
-      ${mapEmbedHtml(place.latitude, place.longitude)}
+      ${mapEmbedHtml()}
       ${gridNote ? `<p class="muted map__note">${gridNote}</p>` : ''}
     </section>
 
@@ -653,10 +657,9 @@ function renderDetail({ eventDate, cond, score, factors, notes, sun, phase, time
 
   els.results.appendChild(card);
 
-  // Monta la mini-mappa Leaflet nel contenitore appena inserito nel DOM
-  // (marker colorato per punteggio + raggio verso il sole). Non blocca il
-  // render: se Leaflet non si carica (offline) il resto del dettaglio resta.
-  mountMiniMap(card.querySelector('#detail-map'), {
+  // Contesto della mappa grande: gli stessi dati della mini-mappa. Aggiornato ad
+  // ogni render (giorno/evento) così la mappa grande apre sempre la vista corrente.
+  const mapCtx = {
     lat: place.latitude,
     lon: place.longitude,
     azimuth: sun.azimuth,
@@ -664,7 +667,30 @@ function renderDetail({ eventDate, cond, score, factors, notes, sun, phase, time
     event,
     visibility: cond.visibility,
     spots: Array.isArray(state.spots) ? state.spots : [],
+  };
+  lastMapContext = mapCtx;
+
+  // Il pulsante e l'anteprima aprono la mappa grande in-app (rotta #map).
+  card.querySelector('#open-bigmap')?.addEventListener('click', openBigMap);
+
+  // Monta la mini-mappa Leaflet nel contenitore appena inserito nel DOM
+  // (marker colorato per punteggio + raggio verso il sole). Non blocca il
+  // render: se Leaflet non si carica (offline) il resto del dettaglio resta.
+  // Un click sull'area della mini-mappa (non su un marker) espande alla grande.
+  mountMiniMap(card.querySelector('#detail-map'), {
+    ...mapCtx,
+    onExpand: openBigMap,
   }).catch((err) => console.warn('Mini-mappa non disponibile:', err));
+}
+
+// Ultimo contesto mappa noto (località/evento/giorno correnti): la mappa grande
+// lo legge da window.skyhueMapContext all'apertura.
+let lastMapContext = null;
+
+/** Apre la mappa grande in-app con il contesto corrente (tutti i punti marcati). */
+function openBigMap() {
+  if (lastMapContext) window.skyhueMapContext = lastMapContext;
+  location.hash = '#map';
 }
 
 /** Costruisce un link condivisibile allo stato corrente (località + evento). */

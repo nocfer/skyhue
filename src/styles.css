@@ -226,7 +226,8 @@ body {
 .search button,
 .mode,
 .scan-btn,
-.mp__open {
+.mp__open,
+.map__open {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -725,9 +726,63 @@ body {
 
 /* Mini-mappa del punto analizzato */
 .map-wrap {
+  position: relative;
   border-radius: 14px;
   overflow: hidden;
   border: 1px solid var(--card-border);
+}
+
+/* Chip "Espandi" sovrapposto in alto a destra: solo affordance visiva
+   (decorativa) — non intercetta i click, che restano alla mappa sotto. */
+.map-slot__expand {
+  position: absolute;
+  top: 0.55rem;
+  right: 0.55rem;
+  z-index: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.32rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text);
+  background: hsl(280 18% 8% / 0.7);
+  border: 1px solid var(--card-border);
+  backdrop-filter: blur(4px);
+  pointer-events: none;
+  transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+}
+
+/* Contenitore mini-mappa cliccabile: cursore + evidenzia il chip all'hover. */
+.map-slot--clickable {
+  cursor: pointer;
+}
+.map-wrap:hover .map-slot__expand {
+  background: hsl(280 18% 10% / 0.85);
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+
+/* Pulsante "Apri la mappa grande": azione primaria in tinta calda. */
+.map__open {
+  width: 100%;
+  margin-top: 0.55rem;
+  padding: 0.62rem 0.9rem;
+  border: none;
+  border-radius: 12px;
+  background: linear-gradient(100deg, #ffb066 0%, #ff8a52 100%);
+  color: var(--ink);
+  font-weight: 700;
+  font-size: 0.92rem;
+  cursor: pointer;
+  transition: filter 0.18s ease, transform 0.12s ease;
+}
+.map__open:hover {
+  filter: brightness(1.06);
+}
+.map__open:active {
+  transform: translateY(1px);
 }
 
 .map {
@@ -771,6 +826,171 @@ body {
 }
 .leaflet-popup-close-button {
   color: var(--muted) !important;
+}
+
+/* Popup ricco dei punti suggeriti (nome, affaccio, cielo, distanza, link). */
+.mappop {
+  min-width: 8.5rem;
+  line-height: 1.35;
+}
+.mappop__name {
+  display: block;
+  color: var(--text);
+  font-size: 0.92rem;
+}
+.mappop__scores {
+  margin-top: 0.15rem;
+  color: var(--muted);
+}
+.mappop__scores strong {
+  color: var(--gold);
+}
+.mappop__verdict {
+  margin-top: 0.3rem;
+  padding-left: 0.45rem;
+  border-left: 3px solid var(--neutral);
+  color: var(--text);
+}
+.mappop__verdict.spot--good {
+  border-left-color: var(--good);
+}
+.mappop__verdict.spot--bad {
+  border-left-color: var(--bad);
+}
+.mappop__meta {
+  margin-top: 0.25rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+.mappop a {
+  display: inline-block;
+  margin-top: 0.35rem;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* Legenda dei simboli sulla mappa grande (control Leaflet, collassabile). */
+.maplegend {
+  background: hsl(280 20% 7% / 0.82);
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  padding: 0.35rem 0.6rem 0.5rem;
+  color: var(--text);
+  font-size: 0.78rem;
+  line-height: 1.5;
+  backdrop-filter: blur(6px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  max-width: 62vw;
+}
+.maplegend__title {
+  cursor: pointer;
+  font-weight: 700;
+  color: var(--gold);
+  list-style: none;
+  padding: 0.1rem 0;
+}
+.maplegend__title::-webkit-details-marker {
+  display: none;
+}
+.maplegend__title::after {
+  content: '−';
+  float: right;
+  margin-left: 0.6rem;
+  color: var(--muted);
+}
+.maplegend:not([open]) .maplegend__title::after {
+  content: '+';
+}
+.maplegend__body {
+  margin-top: 0.25rem;
+}
+.maplegend__row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  white-space: nowrap;
+}
+.maplegend__dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--c);
+  border: 2px solid hsl(0 0% 100% / 0.85);
+  box-shadow: 0 0 6px 1px var(--c);
+  flex-shrink: 0;
+}
+.maplegend__ico {
+  width: 16px;
+  height: 3px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.maplegend__ico--point {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid hsl(0 0% 100% / 0.9);
+}
+.maplegend__ico--sun {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 45%, #fff6d8, var(--gold) 60%, transparent 78%);
+}
+.maplegend__ico--ray {
+  height: 0;
+  border-top: 2.5px dashed var(--gold);
+}
+.maplegend__ico--vis {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1.5px dashed #8fd0ff;
+  background: hsl(205 100% 78% / 0.1);
+}
+
+/* Marker del tap sulla mappa grande: pulsa brevemente all'apparire.
+   transform-box/origin: lo scaling avviene attorno al centro del path SVG. */
+.tapmark {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: tappop 0.4s ease-out;
+}
+@keyframes tappop {
+  from {
+    transform: scale(0.4);
+    opacity: 0.2;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Apertura morbida della schermata mappa. */
+.mapview:not([hidden]) {
+  animation: mapfade 0.28s ease-out;
+}
+@keyframes mapfade {
+  from {
+    opacity: 0;
+    transform: scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tapmark,
+  .mapview:not([hidden]) {
+    animation: none;
+  }
+  .map__open:active {
+    transform: none;
+  }
 }
 
 /* Marker come divIcon: centriamo il contenuto nel riquadro dell'icona. */
