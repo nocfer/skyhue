@@ -51,20 +51,23 @@ body {
    che sfuma nel quasi-nero. Stessa idea del gradiente da tramonto, ma sottile
    e senza sbalzi: la pagina resta scura e premium. */
 .sky {
-  position: fixed;
+  /* absolute (non fixed): il livello è ancorato al documento e scorre con la
+     pagina. Coprendo l'intera altezza, l'alone — posizionato in unità di
+     viewport — resta in basso al primo schermo e scorre via salendo. */
+  position: absolute;
   inset: 0;
   z-index: -1;
   background:
     /* nucleo caldo focalizzato: l'alone del sole appena sceso sotto l'orizzonte */
     radial-gradient(
-      90% 60% at 50% 116%,
+      90vw 60vh at 50% 116vh,
       rgba(255, 170, 110, 0.62) 0%,
       rgba(255, 120, 80, 0.34) 26%,
       rgba(14, 11, 17, 0) 55%
     ),
     /* diffusione rosa più ampia attorno al nucleo */
       radial-gradient(
-        140% 115% at 50% 120%,
+        140vw 115vh at 50% 120vh,
         rgba(200, 58, 96, 0.34) 20%,
         rgba(120, 45, 92, 0.14) 55%,
         rgba(14, 11, 17, 0) 82%
