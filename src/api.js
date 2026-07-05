@@ -9,8 +9,8 @@ const AIR_URL = 'https://air-quality-api.open-meteo.com/v1/air-quality';
  * Cerca una località per nome e restituisce fino a `count` risultati.
  * @returns {Promise<Array<{name,country,admin1,latitude,longitude,timezone}>>}
  */
-export async function geocode(query, count = 5) {
-  const url = `${GEOCODE_URL}?name=${encodeURIComponent(query)}&count=${count}&language=it&format=json`;
+export async function geocode(query, count = 5, language = 'it') {
+  const url = `${GEOCODE_URL}?name=${encodeURIComponent(query)}&count=${count}&language=${language}&format=json`;
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Geocoding fallito (${res.status})`);
   const data = await res.json();

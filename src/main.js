@@ -22,6 +22,7 @@ import { getFavorites, isFavorite, toggleFavorite, removeFavorite } from './stor
 import { skyGradient, skyGradientCss } from './sky.js';
 import { icon } from './icons.js';
 import { mountMiniMap } from './map.js';
+import { t, cardinal, initLang, getLang, setLang, applyStaticI18n } from './i18n.js';
 import {
   fetchSunsetSpots,
   distanceKm,
@@ -73,10 +74,10 @@ const SPOTS_SHOW = 6;
 const SPOTS_SKY = 3; // per quanti finalisti calcolare il punteggio-cielo nel punto
 const NEAR_KM = 6; // entro questo raggio teniamo tutti i punti, a prescindere dalla direzione
 
-const EVENT_LABELS = {
-  sunset: { noun: 'Tramonto', prep: 'Tramonto di' },
-  sunrise: { noun: 'Alba', prep: 'Alba di' },
-};
+/** Nome localizzato dell'evento ('Tramonto'/'Sunset' ecc.). */
+function eventNoun(ev) {
+  return t('event.' + ev);
+}
 
 function setStatus(msg, kind = 'info') {
   els.status.textContent = msg || '';
@@ -85,7 +86,7 @@ function setStatus(msg, kind = 'info') {
 
 /** Scarica i dati per una località e mostra il risultato. */
 async function analyze(place) {
-  setStatus(`Recupero dati per ${place.label}…`, 'info');
+  setStatus(t('status.fetching', { label: place.label }), 'info');
   els.results.innerHTML = '';
   try {
     // Meteo e qualità dell'aria in parallelo; l'aria è opzionale e non blocca.
@@ -109,7 +110,7 @@ async function analyze(place) {
     loadSpots(place); // in background: non blocca la vista principale
   } catch (err) {
     console.error(err);
-    setStatus(`Errore: ${err.message}`, 'error');
+    setStatus(t('status.error', { msg: err.message }), 'error');
   }
 }
 
@@ -246,7 +247,7 @@ async function scanCoordinates() {
       .filter((p) => p.prescore > -Infinity)
       .sort((a, b) => b.prescore - a.prescore)
       .slice(0, SPOTS_EVALUATE)
-      .map((p) => ({ lat: p.lat, lon: p.lon, kind: 'estimate', name: 'Punto stimato' }));
+      .map((p) => ({ lat: p.lat, lon: p.lon, kind: 'estimate', name: null }));
     const evaluated = await refineCandidates(candidates, azimuth, place);
     if (state.place !== place) return;
     evaluated.sort((a, b) => b.finalScore - a.finalScore || a.dist - b.dist);
@@ -276,7 +277,7 @@ async function nameEstimatedSpots(spots, place) {
   const top = (spots || []).filter((s) => s.kind === 'estimate').slice(0, 3);
   for (const s of top) {
     try {
-      const name = await reverseGeocode(s.lat, s.lon);
+      const name = await reverseGeocode(s.lat, s.lon, getLang());
       if (name) s.name = name;
     } catch (err) {
       /* resta "Punto stimato" */
@@ -348,16 +349,20 @@ function evaluateDay(dayIndex) {
   return { day, eventDate, cond, score, factors, notes, sun, phase, timeline };
 }
 
+function locale() {
+  return getLang() === 'en' ? 'en-GB' : 'it-IT';
+}
+
 function fmtTime(date) {
-  return date.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+  return date.toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' });
 }
 
 function fmtDay(date) {
-  return date.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
+  return date.toLocaleDateString(locale(), { weekday: 'long', day: 'numeric', month: 'long' });
 }
 
 function fmtWeekdayShort(date) {
-  return date.toLocaleDateString('it-IT', { weekday: 'short' });
+  return date.toLocaleDateString(locale(), { weekday: 'short' });
 }
 
 /** Tinta del punteggio: rampa calda e monocromatica, in tinta col tramonto.
@@ -377,11 +382,11 @@ function mapEmbedHtml() {
       <div class="map-slot" id="detail-map"></div>
       <span class="map-slot__expand" aria-hidden="true">${icon('maximize', {
         size: 15,
-      })} Espandi</span>
+      })} ${t('detail.expand')}</span>
     </div>
     <button type="button" class="map__open" id="open-bigmap">${icon('map', {
       size: 16,
-    })} Apri la mappa grande · tutti i punti</button>`;
+    })} ${t('detail.openMap')}</button>`;
 }
 
 /** Riga di un punto suggerito (usata sia per i POI sia per i punti stimati). */
@@ -396,19 +401,19 @@ function spotRowHtml(s) {
     s.skyScore != null
       ? `<span class="spot__sky" style="--hue:${scoreHue(
           s.skyScore
-        )}" title="Sunset Score previsto nel punto">${icon('sunset', {
+        )}" title="Sunset Score">${icon('sunset', {
           size: 15,
-        })} cielo ${s.skyScore}</span>`
+        })} ${t('spot.sky', { n: s.skyScore })}</span>`
       : '';
   const quota = s.kind === 'estimate' && s.elev != null ? ` · ${Math.round(s.elev)} m` : '';
   return `<li class="spot spot--${v.sentiment}">
     <span class="spot__icon">${icon(info.icon, { size: 22 })}</span>
     <div class="spot__body">
-      <a href="${url}" target="_blank" rel="noopener">${s.name}</a>
-      <span class="spot__verdict">${icon(v.icon, { size: 15 })} ${v.label} ${sky}</span>
-      <span class="spot__meta">${info.label} · ${dist} km · ~${s.driveMin} min · verso ${s.dir}${quota}</span>
+      <a href="${url}" target="_blank" rel="noopener">${s.name || t(info.labelKey)}</a>
+      <span class="spot__verdict">${icon(v.icon, { size: 15 })} ${t('verdict.' + v.code)} ${sky}</span>
+      <span class="spot__meta">${t(info.labelKey)} · ${dist} km · ~${s.driveMin} min · ${cardinal(s.dir)}${quota}</span>
     </div>
-    <span class="spot__score" title="Qualità dell’affaccio">${v.score}</span>
+    <span class="spot__score" title="${t('spot.viewQuality')}">${v.score}</span>
   </li>`;
 }
 
@@ -416,19 +421,19 @@ function spotRowHtml(s) {
 function estimateBlockHtml() {
   let list = '';
   if (state.estimateError) {
-    list = `<p class="muted">Stima non riuscita, riprova.</p>`;
+    list = `<p class="muted">${t('spots.estimateError')}</p>`;
   } else if (state.estimatedSpots && state.estimatedSpots.length) {
     list = `<ul class="spots">${state.estimatedSpots.map(spotRowHtml).join('')}</ul>
-      <p class="muted spots__hint">Punti stimati dalla morfologia del terreno: anonimi e non garantiti accessibili (verifica strade/accesso sulla mappa).</p>`;
+      <p class="muted spots__hint">${t('spots.estimateHint')}</p>`;
   } else if (state.estimatedSpots && state.estimatedSpots.length === 0) {
-    list = `<p class="muted">Nessun punto promettente trovato dalla stima.</p>`;
+    list = `<p class="muted">${t('spots.estimateNone')}</p>`;
   }
   return `
     <button class="scan-btn" ${state.estimating ? 'disabled' : ''}>
       ${
         state.estimating
-          ? 'Analizzo il territorio…'
-          : `${icon('compass', { size: 16 })} Cerca anche punti non mappati (stima)`
+          ? t('spots.scanning')
+          : `${icon('compass', { size: 16 })} ${t('spots.scan')}`
       }
     </button>
     ${list}`;
@@ -436,26 +441,26 @@ function estimateBlockHtml() {
 
 /** Sezione "Dove andare a guardarlo": punti panoramici vicini. */
 function spotsSectionHtml(place, sun) {
-  const dirNote = `Il sole ${
-    state.event === 'sunset' ? 'tramonta' : 'sorge'
-  } verso <strong>${azimuthToCardinal(sun.azimuth)}</strong> (${Math.round(
-    sun.azimuth
-  )}°) — scegli un punto con vista libera in quella direzione.`;
+  const dirNote = t('spots.dirNote', {
+    verb: t(state.event === 'sunset' ? 'verb.sets' : 'verb.rises'),
+    dir: cardinal(azimuthToCardinal(sun.azimuth)),
+    deg: Math.round(sun.azimuth),
+  });
 
   let body;
   if (state.spotsError) {
-    body = `<p class="muted">Punti panoramici non disponibili al momento.</p>`;
+    body = `<p class="muted">${t('spots.error')}</p>`;
   } else if (state.spots === null) {
-    body = `<p class="muted">Cerco i punti nei dintorni e ne valuto l’affaccio verso il tramonto…</p>`;
+    body = `<p class="muted">${t('spots.loading')}</p>`;
   } else if (state.spots.length === 0) {
-    body = `<p class="muted">Nessun punto panoramico mappato entro ~25 km.</p>`;
+    body = `<p class="muted">${t('spots.none')}</p>`;
   } else {
     body = `<ul class="spots">${state.spots.slice(0, SPOTS_SHOW).map(spotRowHtml).join('')}</ul>`;
   }
 
   return `
     <section>
-      <h3>Dove andare a guardarlo</h3>
+      <h3>${t('section.spots')}</h3>
       <p class="muted spots__hint">${dirNote}</p>
       ${body}
       <div class="estimate">${estimateBlockHtml()}</div>
@@ -471,7 +476,7 @@ function compassSvg(azimuth) {
   const sx = (cx + r * Math.sin(rad)).toFixed(1);
   const sy = (cy - r * Math.cos(rad)).toFixed(1);
   return `
-    <svg viewBox="0 0 140 140" class="compass" role="img" aria-label="Direzione del sole">
+    <svg viewBox="0 0 140 140" class="compass" role="img" aria-label="${t('stat.direction')}">
       <circle cx="70" cy="70" r="54" class="compass__ring" />
       <line x1="70" y1="70" x2="${sx}" y2="${sy}" class="compass__ray" />
       <circle cx="${sx}" cy="${sy}" r="9" class="compass__sun" />
@@ -501,9 +506,11 @@ function render() {
   if (best && best.score >= TOP_THRESHOLD && best.d.dayIndex >= 1) {
     const banner = document.createElement('button');
     banner.className = 'topbanner';
-    banner.innerHTML = `${icon('flame', { size: 18 })} <span>${
-      state.event === 'sunset' ? 'Tramonto' : 'Alba'
-    } top in arrivo: <strong>${fmtWeekdayShort(best.date)} ${best.score}/100</strong> — il migliore dei prossimi giorni</span>`;
+    banner.innerHTML = `${icon('flame', { size: 18 })} <span>${t('banner.top', {
+      noun: eventNoun(state.event),
+      day: fmtWeekdayShort(best.date),
+      score: best.score,
+    })}</span>`;
     banner.addEventListener('click', () => {
       state.dayIndex = best.d.dayIndex;
       render();
@@ -540,7 +547,6 @@ function render() {
 
 function renderDetail({ eventDate, cond, score, factors, notes, sun, phase, timeline }) {
   const { place, event } = state;
-  const label = EVENT_LABELS[event];
   const card = document.createElement('article');
   card.className = 'card';
 
@@ -550,20 +556,23 @@ function renderDetail({ eventDate, cond, score, factors, notes, sun, phase, time
   const grid = state.forecast;
   const gridNote =
     grid && Number.isFinite(grid.latitude)
-      ? `Punto richiesto ${place.latitude.toFixed(3)}, ${place.longitude.toFixed(
-          3
-        )} · cella meteo ${grid.latitude.toFixed(3)}, ${grid.longitude.toFixed(3)}`
+      ? t('grid.note', {
+          reqLat: place.latitude.toFixed(3),
+          reqLon: place.longitude.toFixed(3),
+          gLat: grid.latitude.toFixed(3),
+          gLon: grid.longitude.toFixed(3),
+        })
       : '';
 
   const timelineHtml = timeline
     .map(
-      (t) => `
-      <div class="tl__col${t.isCenter ? ' tl__col--center' : ''}">
-        <span class="tl__val">${t.score}</span>
-        <div class="tl__bar" style="height:${Math.max(4, t.score)}%;--hue:${scoreHue(
-        t.score
+      (c) => `
+      <div class="tl__col${c.isCenter ? ' tl__col--center' : ''}">
+        <span class="tl__val">${c.score}</span>
+        <div class="tl__bar" style="height:${Math.max(4, c.score)}%;--hue:${scoreHue(
+        c.score
       )}"></div>
-        <span class="tl__time">${fmtTime(t.time)}</span>
+        <span class="tl__time">${fmtTime(c.time)}</span>
       </div>`
     )
     .join('');
@@ -575,24 +584,32 @@ function renderDetail({ eventDate, cond, score, factors, notes, sun, phase, time
   const blueRange = event === 'sunset' ? fmtRange(tw.event, tw.blue) : fmtRange(tw.blue, tw.event);
   const lightHtml = `
     <section class="light">
-      <h3>${icon(event === 'sunset' ? 'sunset' : 'sunrise', { size: 16 })} Luce</h3>
+      <h3>${icon(event === 'sunset' ? 'sunset' : 'sunrise', { size: 16 })} ${t('section.light')}</h3>
       <div class="light__chips">
-        <div class="light__chip light__chip--golden"><span class="light__k">Golden hour</span><strong>${goldenRange}</strong></div>
-        <div class="light__chip light__chip--blue"><span class="light__k">Blue hour</span><strong>${blueRange}</strong></div>
+        <div class="light__chip light__chip--golden"><span class="light__k">${t(
+          'light.golden'
+        )}</span><strong>${goldenRange}</strong></div>
+        <div class="light__chip light__chip--blue"><span class="light__k">${t(
+          'light.blue'
+        )}</span><strong>${blueRange}</strong></div>
       </div>
     </section>`;
 
   const notesHtml = notes
-    .map(
-      (n) => `
+    .map((n) => {
+      const p = { ...n.params };
+      if (n.code === 'hazeBad') {
+        p.pm25note = p.pm25 != null ? t('explain.hazeBad.pm25', { pm25: p.pm25 }) : '';
+      }
+      return `
       <li class="note note--${n.sentiment}">
         <span class="note__icon">${icon(n.icon, { size: 22 })}</span>
         <div>
-          <strong>${n.title}</strong>
-          <p>${n.detail}</p>
+          <strong>${t('explain.' + n.code + '.title', p)}</strong>
+          <p>${t('explain.' + n.code + '.detail', p)}</p>
         </div>
-      </li>`
-    )
+      </li>`;
+    })
     .join('');
 
   card.innerHTML = `
@@ -600,89 +617,90 @@ function renderDetail({ eventDate, cond, score, factors, notes, sun, phase, time
       <div>
         <h2>
           ${place.label}
-          <button class="fav-toggle" title="Salva tra i preferiti" aria-pressed="${isFavorite(
+          <button class="fav-toggle" title="${t('detail.favSave')}" aria-pressed="${isFavorite(
             place
-          )}" aria-label="Salva tra i preferiti">${icon('star', {
+          )}" aria-label="${t('detail.favSave')}">${icon('star', {
     size: 20,
     fill: isFavorite(place),
   })}</button>
-          <button class="share-btn" title="Condividi questa località" aria-label="Condividi">${icon(
+          <button class="share-btn" title="${t('detail.share')}" aria-label="${t('detail.shareAria')}">${icon(
             'share',
             { size: 18 }
           )}</button>
-          <button class="shareimg-btn" title="Condividi come immagine" aria-label="Condividi come immagine">${icon(
+          <button class="shareimg-btn" title="${t('detail.shareImg')}" aria-label="${t('detail.shareImg')}">${icon(
             'map',
             { size: 18 }
           )}</button>
         </h2>
-        <p class="muted">${label.prep} ${fmtDay(eventDate)} · ore ${fmtTime(eventDate)}</p>
+        <p class="muted">${t('detail.head', { noun: eventNoun(event), day: fmtDay(eventDate), time: fmtTime(eventDate) })}</p>
       </div>
       <div class="gauge" style="--score:${score};--hue:${scoreHue(score)}">
         <div class="gauge__value">${score}</div>
-        <div class="gauge__label">${scoreLabel(score)}</div>
+        <div class="gauge__label">${t('label.' + scoreLabel(score))}</div>
       </div>
     </header>
 
     <div class="skypreview" style="background:${skyCss}">
-      <span class="skypreview__label">Anteprima del cielo previsto</span>
+      <span class="skypreview__label">${t('sky.preview')}</span>
     </div>
 
     <section class="stats">
       <div class="stat"><span>${icon('compass', {
         size: 16,
-      })} Direzione sole</span><strong>${azimuthToCardinal(sun.azimuth)} (${Math.round(
+      })} ${t('stat.direction')}</span><strong>${cardinal(azimuthToCardinal(sun.azimuth))} (${Math.round(
     sun.azimuth
   )}°)</strong></div>
       <div class="stat"><span>${icon('thermometer', {
         size: 16,
-      })} Temperatura</span><strong>${Math.round(cond.temperature)}°C</strong></div>
-      <div class="stat"><span>${icon('eye', { size: 16 })} Visibilità</span><strong>${(
+      })} ${t('stat.temp')}</span><strong>${Math.round(cond.temperature)}°C</strong></div>
+      <div class="stat"><span>${icon('eye', { size: 16 })} ${t('stat.visibility')}</span><strong>${(
     cond.visibility / 1000
   ).toFixed(0)} km</strong></div>
       ${
         Number.isFinite(state.forecast?.elevation)
           ? `<div class="stat"><span>${icon('mountain', {
               size: 16,
-            })} Orizzonte (quota ${Math.round(state.forecast.elevation)} m)</span><strong>~${horizonDistanceKm(
+            })} ${t('stat.horizon', { m: Math.round(state.forecast.elevation) })}</span><strong>~${horizonDistanceKm(
               state.forecast.elevation
             ).toFixed(0)} km</strong></div>`
           : ''
       }
       <div class="stat"><span>${icon('droplet', {
         size: 16,
-      })} Umidità</span><strong>${Math.round(cond.humidity)}%</strong></div>
+      })} ${t('stat.humidity')}</span><strong>${Math.round(cond.humidity)}%</strong></div>
       <div class="stat"><span>${icon('cloud', {
         size: 16,
-      })} Nuvole basse/medie/alte</span><strong>${Math.round(cond.cloudCoverLow)}/${Math.round(
+      })} ${t('stat.clouds')}</span><strong>${Math.round(cond.cloudCoverLow)}/${Math.round(
     cond.cloudCoverMid
   )}/${Math.round(cond.cloudCoverHigh)}%</strong></div>
       ${
         cond.aerosol != null
           ? `<div class="stat"><span>${icon('haze', {
               size: 16,
-            })} Aerosol · PM2.5</span><strong>${cond.aerosol.toFixed(2)} · ${
-              cond.pm25 != null ? Math.round(cond.pm25) + ' µg/m³' : 'n/d'
+            })} ${t('stat.aerosol')}</span><strong>${cond.aerosol.toFixed(2)} · ${
+              cond.pm25 != null ? Math.round(cond.pm25) + ' µg/m³' : '—'
             }</strong></div>`
           : ''
       }
-      <div class="stat"><span>${icon('moon', { size: 16 })} Luna</span><strong>${moonPhaseName(
-    phase
+      <div class="stat"><span>${icon('moon', { size: 16 })} ${t('stat.moon')}</span><strong>${t(
+    'moon.' + moonPhaseName(phase)
   )}</strong></div>
     </section>
 
     <section>
-      <h3>Punto analizzato</h3>
+      <h3>${t('section.point')}</h3>
       ${mapEmbedHtml()}
       ${gridNote ? `<p class="muted map__note">${gridNote}</p>` : ''}
     </section>
 
     <section class="lookat">
       <div>
-        <h3>Dove guardare</h3>
-        <p class="muted">
-          Il sole ${event === 'sunset' ? 'tramonterà' : 'sorgerà'} a
-          <strong>${azimuthToCardinal(sun.azimuth)}</strong> (${Math.round(sun.azimuth)}°).
-        </p>
+        <h3>${t('section.lookAt')}</h3>
+        <p class="muted">${t('lookAt.text', {
+          verb: t(event === 'sunset' ? 'verb.willSet' : 'verb.willRise'),
+          dir: cardinal(azimuthToCardinal(sun.azimuth)),
+          deg: Math.round(sun.azimuth),
+        })}</p>
       </div>
       ${compassSvg(sun.azimuth)}
     </section>
@@ -692,15 +710,15 @@ function renderDetail({ eventDate, cond, score, factors, notes, sun, phase, time
     ${spotsSectionHtml(place, sun)}
 
     <section>
-      <h3>Andamento del cielo attorno ${event === 'sunset' ? 'al tramonto' : 'all’alba'}</h3>
+      <h3>${t('section.trend', { when: t(event === 'sunset' ? 'when.sunset' : 'when.sunrise') })}</h3>
       <div class="timeline">${timelineHtml}</div>
-      <p class="muted tl__hint">Punteggio ora per ora — la colonna evidenziata è l’ora ${
-        event === 'sunset' ? 'del tramonto' : 'dell’alba'
-      }.</p>
+      <p class="muted tl__hint">${t('trend.hint', {
+        when: t(event === 'sunset' ? 'when.sunset2' : 'when.sunrise2'),
+      })}</p>
     </section>
 
     <section>
-      <h3>Perché questo punteggio</h3>
+      <h3>${t('section.why')}</h3>
       <ul class="notes">${notesHtml}</ul>
     </section>
   `;
@@ -775,15 +793,14 @@ function buildShareUrl() {
 /** Condivide via Web Share API, con fallback alla copia negli appunti. */
 async function shareCurrent(score) {
   const url = buildShareUrl();
-  const eventNoun = EVENT_LABELS[state.event].noun.toLowerCase();
-  const text = `SkyHue: ${eventNoun} a ${state.place.label} — punteggio ${score}/100`;
+  const text = t('share.text', { noun: eventNoun(state.event), score, label: state.place.label });
   try {
     if (navigator.share) {
       await navigator.share({ title: 'SkyHue', text, url });
       return;
     }
     await navigator.clipboard.writeText(url);
-    setStatus('Link copiato negli appunti ✓', 'info');
+    setStatus(t('status.linkCopied'), 'info');
   } catch {
     // Ultima spiaggia: mostra l'URL nella barra di stato.
     setStatus(url, 'info');
@@ -814,7 +831,7 @@ async function shareImage({ place, score, factors, eventDate, event, sun }) {
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, W, H);
 
-  const noun = EVENT_LABELS[event].noun;
+  const noun = eventNoun(event);
   ctx.textAlign = 'center';
 
   ctx.fillStyle = 'rgba(255,255,255,0.92)';
@@ -826,7 +843,7 @@ async function shareImage({ place, score, factors, eventDate, event, sun }) {
   ctx.fillText(String(score), W / 2, H / 2 + 30);
 
   ctx.font = '700 66px system-ui, -apple-system, sans-serif';
-  ctx.fillText(scoreLabel(score), W / 2, H / 2 + 150);
+  ctx.fillText(t('label.' + scoreLabel(score)), W / 2, H / 2 + 150);
 
   // Località (riduci il font se troppo larga).
   let labelSize = 54;
@@ -840,9 +857,13 @@ async function shareImage({ place, score, factors, eventDate, event, sun }) {
 
   ctx.fillStyle = 'rgba(255,255,255,0.85)';
   ctx.font = '400 40px system-ui, -apple-system, sans-serif';
-  ctx.fillText(`${noun} ore ${fmtTime(eventDate)} · ${fmtDay(eventDate)}`, W / 2, H - 185);
   ctx.fillText(
-    `Sole verso ${azimuthToCardinal(sun.azimuth)} (${Math.round(sun.azimuth)}°)`,
+    t('share.imgTime', { noun, time: fmtTime(eventDate), day: fmtDay(eventDate) }),
+    W / 2,
+    H - 185
+  );
+  ctx.fillText(
+    `${t('stat.direction')}: ${cardinal(azimuthToCardinal(sun.azimuth))} (${Math.round(sun.azimuth)}°)`,
     W / 2,
     H - 135
   );
@@ -853,11 +874,11 @@ async function shareImage({ place, score, factors, eventDate, event, sun }) {
 
   const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
   if (!blob) {
-    setStatus('Impossibile generare l’immagine.', 'error');
+    setStatus(t('status.imgError'), 'error');
     return;
   }
   const file = new File([blob], 'skyhue.png', { type: 'image/png' });
-  const text = `${noun} ${score}/100 a ${place.label} — SkyHue`;
+  const text = t('share.text', { noun, score, label: place.label });
   try {
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
       await navigator.share({ files: [file], title: 'SkyHue', text });
@@ -873,7 +894,7 @@ async function shareImage({ place, score, factors, eventDate, event, sun }) {
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 5000);
-  setStatus('Immagine salvata ✓', 'info');
+  setStatus(t('status.imgSaved'), 'info');
 }
 
 /** Disegna la barra dei preferiti (chip cliccabili con rimozione). */
@@ -885,14 +906,14 @@ function renderFavorites() {
         (f) => `
       <span class="fav-chip" data-id="${f.id}">
         <button class="fav-chip__load" data-load="${f.id}">${f.label}</button>
-        <button class="fav-chip__del" data-del="${f.id}" title="Rimuovi" aria-label="Rimuovi">×</button>
+        <button class="fav-chip__del" data-del="${f.id}" title="${t('fav.remove')}" aria-label="${t('fav.remove')}">×</button>
       </span>`
       )
       .join('') +
     (favs.length >= 2
       ? `<button class="fav-compare" id="fav-compare">${icon('compass', {
           size: 15,
-        })} Confronta</button>`
+        })} ${t('fav.compare')}</button>`
       : '');
 
   els.favorites.querySelectorAll('[data-load]').forEach((btn) => {
@@ -923,9 +944,9 @@ async function compareFavorites() {
   overlay.className = 'cmp';
   overlay.innerHTML = `
     <div class="cmp__box">
-      <button class="cmp__close" aria-label="Chiudi">×</button>
-      <h3>Confronto preferiti — ${EVENT_LABELS[state.event].noun.toLowerCase()}</h3>
-      <div class="cmp__list muted">Calcolo i punteggi…</div>
+      <button class="cmp__close" aria-label="${t('cmp.close')}">×</button>
+      <h3>${t('cmp.title', { event: eventNoun(state.event).toLowerCase() })}</h3>
+      <div class="cmp__list muted">${t('cmp.calc')}</div>
     </div>`;
   document.body.appendChild(overlay);
   const close = () => overlay.remove();
@@ -962,7 +983,7 @@ async function compareFavorites() {
         <div class="cmp__body">
           <strong>${r.label}</strong>
           <span class="muted">${
-            r.time ? EVENT_LABELS[state.event].noun + ' ' + fmtTime(r.time) : 'dati non disponibili'
+            r.time ? eventNoun(state.event) + ' ' + fmtTime(r.time) : t('cmp.na')
           }</span>
         </div>
       </div>`
@@ -977,11 +998,11 @@ els.form.addEventListener('submit', async (e) => {
   e.preventDefault();
   const query = els.input.value.trim();
   if (!query) return;
-  setStatus('Ricerca località…', 'info');
+  setStatus(t('status.searching'), 'info');
   try {
-    const matches = await geocode(query);
+    const matches = await geocode(query, 5, getLang());
     if (matches.length === 0) {
-      setStatus('Nessuna località trovata. Prova con un altro nome.', 'error');
+      setStatus(t('status.noResults'), 'error');
       return;
     }
     const m = matches[0];
@@ -992,22 +1013,22 @@ els.form.addEventListener('submit', async (e) => {
       label: parts.join(', '),
     });
   } catch (err) {
-    setStatus(`Errore: ${err.message}`, 'error');
+    setStatus(t('status.error', { msg: err.message }), 'error');
   }
 });
 
 els.geoBtn.addEventListener('click', () => {
   if (!navigator.geolocation) {
-    setStatus('Geolocalizzazione non supportata dal browser.', 'error');
+    setStatus(t('status.geoUnsupported'), 'error');
     return;
   }
-  setStatus('Rilevamento posizione…', 'info');
+  setStatus(t('status.geolocating'), 'info');
   navigator.geolocation.getCurrentPosition(
     (pos) => {
       const { latitude, longitude } = pos.coords;
-      analyze({ latitude, longitude, label: `La tua posizione (${coordsLabel(latitude, longitude)})` });
+      analyze({ latitude, longitude, label: `${t('geo.here')} (${coordsLabel(latitude, longitude)})` });
     },
-    (err) => setStatus(`Posizione non disponibile: ${err.message}`, 'error')
+    (err) => setStatus(t('status.geoUnavailable', { msg: err.message }), 'error')
   );
 });
 
@@ -1068,6 +1089,30 @@ if (themeBtn) {
   updateThemeToggle();
 }
 
-// Avvio: mostra i preferiti salvati e apre l'eventuale link condiviso.
+// Toggle lingua IT/EN: aggiorna il dizionario, i testi statici e ri-renderizza.
+function updateLangToggle() {
+  const b = document.getElementById('lang-toggle');
+  if (b) b.textContent = getLang() === 'en' ? 'IT' : 'EN';
+}
+const langBtn = document.getElementById('lang-toggle');
+if (langBtn) {
+  langBtn.addEventListener('click', () => {
+    setLang(getLang() === 'en' ? 'it' : 'en');
+    document.documentElement.lang = getLang();
+    applyStaticI18n();
+    updateLangToggle();
+    renderFavorites();
+    // Ri-renderizza il risultato corrente, se presente.
+    if (state.forecast && state.place) render();
+    // Aggiorna il pannello mappa se aperto.
+    window.dispatchEvent(new CustomEvent('skyhue:langchange', { detail: getLang() }));
+  });
+}
+
+// Avvio: lingua, testi statici, preferiti salvati e link condiviso.
+initLang();
+document.documentElement.lang = getLang();
+applyStaticI18n();
+updateLangToggle();
 renderFavorites();
 initFromUrl();

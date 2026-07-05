@@ -1,0 +1,444 @@
+// i18n.js — internazionalizzazione IT/EN. Dizionario a chiavi puntate + t() con
+// interpolazione {nome}. La lingua è persistita in localStorage (skyhue.lang) e
+// di default segue quella del sistema. Le stringhe dinamiche dei moduli puri
+// (score/spots/astronomy) arrivano qui come codici e vengono risolte con t().
+
+const DICT = {
+  it: {
+    'app.tagline':
+      'Quanto sarà bello il prossimo tramonto? Un punteggio da meteo reale e dati astronomici.',
+    'search.placeholder': 'Cerca una città (es. Napoli, Lisbona…)',
+    'search.aria': 'Cerca una città',
+    'search.submit': 'Calcola',
+    'search.geo': 'Posizione',
+    'search.geoTitle': 'Usa la mia posizione',
+    'nav.map': 'Scegli sulla mappa',
+    'mode.groupAria': 'Momento della giornata',
+    'fav.groupAria': 'Località preferite',
+    'theme.aria': 'Cambia tema',
+    'lang.aria': 'Cambia lingua',
+    'mode.sunset': 'Tramonto',
+    'mode.sunrise': 'Alba',
+
+    'event.sunset': 'Tramonto',
+    'event.sunrise': 'Alba',
+    'verb.willSet': 'tramonterà',
+    'verb.willRise': 'sorgerà',
+    'verb.sets': 'tramonta',
+    'verb.rises': 'sorge',
+
+    'detail.head': '{noun} di {day} · ore {time}',
+    'detail.favSave': 'Salva tra i preferiti',
+    'detail.share': 'Condividi questa località',
+    'detail.shareAria': 'Condividi',
+    'detail.shareImg': 'Condividi come immagine',
+    'detail.expand': 'Espandi',
+    'detail.openMap': 'Apri la mappa grande · tutti i punti',
+    'stat.direction': 'Direzione sole',
+    'stat.temp': 'Temperatura',
+    'stat.visibility': 'Visibilità',
+    'stat.horizon': 'Orizzonte (quota {m} m)',
+    'stat.humidity': 'Umidità',
+    'stat.clouds': 'Nuvole basse/medie/alte',
+    'stat.aerosol': 'Aerosol · PM2.5',
+    'stat.moon': 'Luna',
+
+    'sky.preview': 'Anteprima del cielo previsto',
+    'section.point': 'Punto analizzato',
+    'grid.note': 'Punto richiesto {reqLat}, {reqLon} · cella meteo {gLat}, {gLon}',
+    'map.openLarger': 'Apri mappa più grande ↗',
+    'section.lookAt': 'Dove guardare',
+    'lookAt.text': 'Il sole {verb} a {dir} ({deg}°).',
+    'section.light': 'Luce',
+    'light.golden': 'Golden hour',
+    'light.blue': 'Blue hour',
+    'section.trend': 'Andamento del cielo attorno {when}',
+    'trend.hint': 'Punteggio ora per ora — la colonna evidenziata è l’ora {when}.',
+    'when.sunset': 'al tramonto',
+    'when.sunrise': 'all’alba',
+    'when.sunset2': 'del tramonto',
+    'when.sunrise2': 'dell’alba',
+    'section.why': 'Perché questo punteggio',
+
+    'section.spots': 'Dove andare a guardarlo',
+    'spots.dirNote':
+      'Il sole {verb} verso <strong>{dir}</strong> ({deg}°) — scegli un punto con vista libera in quella direzione.',
+    'spots.loading': 'Cerco i punti nei dintorni e ne valuto l’affaccio verso il tramonto…',
+    'spots.error': 'Punti panoramici non disponibili al momento.',
+    'spots.none': 'Nessun punto panoramico mappato entro ~25 km.',
+    'spots.scan': 'Cerca anche punti non mappati (stima)',
+    'spots.scanning': 'Analizzo il territorio…',
+    'spots.estimateHint':
+      'Punti stimati dalla morfologia del terreno: anonimi e non garantiti accessibili (verifica strade/accesso sulla mappa).',
+    'spots.estimateError': 'Stima non riuscita, riprova.',
+    'spots.estimateNone': 'Nessun punto promettente trovato dalla stima.',
+    'spot.sky': 'cielo {n}',
+    'spot.affaccio': 'affaccio {n}',
+    'spot.openOsm': 'Apri in OSM ↗',
+    'spot.viewQuality': 'Qualità dell’affaccio',
+
+    'fav.compare': 'Confronta',
+    'fav.remove': 'Rimuovi',
+    'cmp.title': 'Confronto preferiti — {event}',
+    'cmp.calc': 'Calcolo i punteggi…',
+    'cmp.na': 'dati non disponibili',
+    'cmp.close': 'Chiudi',
+
+    'banner.top': '{noun} top in arrivo: {day} {score}/100 — il migliore dei prossimi giorni',
+
+    'status.fetching': 'Recupero dati per {label}…',
+    'status.searching': 'Ricerca località…',
+    'status.noResults': 'Nessuna località trovata. Prova con un altro nome.',
+    'status.error': 'Errore: {msg}',
+    'status.geolocating': 'Rilevamento posizione…',
+    'status.geoUnsupported': 'Geolocalizzazione non supportata dal browser.',
+    'status.geoUnavailable': 'Posizione non disponibile: {msg}',
+    'status.linkCopied': 'Link copiato negli appunti ✓',
+    'status.imgSaved': 'Immagine salvata ✓',
+    'status.imgError': 'Impossibile generare l’immagine.',
+    'geo.here': 'La tua posizione',
+    'map.pointLabel': 'Punto sulla mappa ({lat}, {lon})',
+    'share.text': '{noun} {score}/100 a {label} — SkyHue',
+    'share.imgTime': '{noun} ore {time} · {day}',
+
+    'map.hint': 'Tocca un punto della mappa per valutarlo',
+    'map.back': 'Indietro',
+    'map.legend': 'Legenda',
+    'map.legend.point': 'Punto analizzato',
+    'map.legend.sun': 'Sole all’orizzonte',
+    'map.legend.ray': 'Direzione del sole',
+    'map.legend.good': 'Affaccio libero',
+    'map.legend.neutral': 'Affaccio incerto',
+    'map.legend.bad': 'Orizzonte ostruito',
+    'map.legend.visibility': 'Visibilità',
+    'mp.calc': 'Calcolo tramonto, affaccio e punti vicini…',
+    'mp.na': 'Dati non disponibili per questo punto. Riprova.',
+    'mp.meta': 'Tramonto ore {time} · sole verso {dir} ({deg}°)',
+    'mp.vis': 'visibilità ~{km} km',
+    'mp.horizon': 'orizzonte ~{km} km',
+    'mp.open': 'Apri dettaglio completo →',
+    'map.loadError': 'Impossibile caricare la mappa (serve connessione).',
+    'map.markerPopup': 'Sunset Score {score} · {event} verso {dir} ({deg}°)',
+    'mappop.view': 'affaccio',
+    'mappop.sky': 'cielo',
+    'mappop.towards': 'verso {dir}',
+
+    'label.exceptional': 'Eccezionale',
+    'label.great': 'Ottimo',
+    'label.good': 'Buono',
+    'label.fair': 'Discreto',
+    'label.mediocre': 'Mediocre',
+    'label.poor': 'Scarso',
+
+    'kind.viewpoint': 'Punto panoramico',
+    'kind.lighthouse': 'Faro',
+    'kind.cape': 'Promontorio',
+    'kind.cliff': 'Scogliera',
+    'kind.peak': 'Cima',
+    'kind.beach': 'Spiaggia',
+    'kind.estimate': 'Punto stimato',
+
+    'verdict.notEvaluated': 'Affaccio non valutato',
+    'verdict.obstructed': 'Orizzonte ostruito verso il tramonto',
+    'verdict.openSea': 'Affaccio libero sul mare',
+    'verdict.openNoSea': 'Orizzonte libero ma senza mare aperto',
+    'verdict.openLand': 'Orizzonte libero verso il tramonto',
+
+    'explain.highGood.title': 'Nuvole alte favorevoli',
+    'explain.highGood.detail':
+      'Cirri al {high}%: catturano e diffondono la luce radente all’orizzonte.',
+    'explain.highMuch.title': 'Molte nuvole alte',
+    'explain.highMuch.detail': 'Copertura alta al {high}%: cielo forse troppo velato.',
+    'explain.highFew.title': 'Poche nuvole alte',
+    'explain.highFew.detail': 'Mancano i cirri che accendono il cielo: tramonto più sobrio.',
+    'explain.midGood.title': 'Nuvole medie ben distribuite',
+    'explain.midGood.detail': 'Strato medio al {mid}%: aggiunge profondità e sfumature.',
+    'explain.lowBad.title': 'Nuvole basse all’orizzonte',
+    'explain.lowBad.detail':
+      'Copertura bassa al {low}%: rischia di bloccare il sole sull’orizzonte.',
+    'explain.lowSome.title': 'Qualche nuvola bassa',
+    'explain.lowSome.detail': 'Nuvole basse al {low}%: orizzonte parzialmente disturbato.',
+    'explain.lowClear.title': 'Orizzonte libero',
+    'explain.lowClear.detail': 'Poche nuvole basse: il sole raggiungerà l’orizzonte senza ostacoli.',
+    'explain.overcast.title': 'Cielo coperto',
+    'explain.overcast.detail': 'Copertura totale al {total}%: poca luce diretta.',
+    'explain.visGood.title': 'Visibilità eccellente',
+    'explain.visGood.detail': 'Atmosfera limpida ({visKm} km): colori nitidi e saturi.',
+    'explain.visBad.title': 'Visibilità ridotta',
+    'explain.visBad.detail': 'Solo {visKm} km di visibilità: foschia o particolato nell’aria.',
+    'explain.hazeBad.title': 'Foschia da particolato',
+    'explain.hazeBad.detail': 'Aerosol elevato{pm25note}: la luce si disperde e i colori si attenuano.',
+    'explain.hazeBad.pm25': ' (PM2.5 {pm25} µg/m³)',
+    'explain.aerosolGood.title': 'Aerosol favorevoli',
+    'explain.aerosolGood.detail':
+      'Un pulviscolo moderato nell’atmosfera tende ad accendere i rossi e gli arancioni.',
+    'explain.humidHigh.title': 'Umidità elevata',
+    'explain.humidHigh.detail': 'Umidità al {humidity}%: colori più smorzati.',
+    'explain.humidDry.title': 'Aria secca',
+    'explain.humidDry.detail': 'Umidità al {humidity}%: favorisce colori intensi.',
+
+    'moon.new': 'Luna nuova',
+    'moon.waxingCrescent': 'Luna crescente',
+    'moon.firstQuarter': 'Primo quarto',
+    'moon.waxingGibbous': 'Gibbosa crescente',
+    'moon.full': 'Luna piena',
+    'moon.waningGibbous': 'Gibbosa calante',
+    'moon.lastQuarter': 'Ultimo quarto',
+    'moon.waningCrescent': 'Luna calante',
+
+    'foot.credits':
+      'Dati meteo &amp; astronomici da <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a>. Posizione solare con algoritmo NOAA.',
+  },
+
+  en: {
+    'app.tagline':
+      'How good will the next sunset be? A score from live weather and astronomical data.',
+    'search.placeholder': 'Search a city (e.g. Naples, Lisbon…)',
+    'search.aria': 'Search a city',
+    'search.submit': 'Calculate',
+    'search.geo': 'Location',
+    'search.geoTitle': 'Use my location',
+    'nav.map': 'Pick on the map',
+    'mode.groupAria': 'Time of day',
+    'fav.groupAria': 'Favourite locations',
+    'theme.aria': 'Toggle theme',
+    'lang.aria': 'Change language',
+    'mode.sunset': 'Sunset',
+    'mode.sunrise': 'Sunrise',
+
+    'event.sunset': 'Sunset',
+    'event.sunrise': 'Sunrise',
+    'verb.willSet': 'will set',
+    'verb.willRise': 'will rise',
+    'verb.sets': 'sets',
+    'verb.rises': 'rises',
+
+    'detail.head': '{noun} on {day} · {time}',
+    'detail.favSave': 'Save to favourites',
+    'detail.share': 'Share this location',
+    'detail.shareAria': 'Share',
+    'detail.shareImg': 'Share as image',
+    'detail.expand': 'Expand',
+    'detail.openMap': 'Open full map · all spots',
+    'stat.direction': 'Sun direction',
+    'stat.temp': 'Temperature',
+    'stat.visibility': 'Visibility',
+    'stat.horizon': 'Horizon (elev. {m} m)',
+    'stat.humidity': 'Humidity',
+    'stat.clouds': 'Clouds low/mid/high',
+    'stat.aerosol': 'Aerosol · PM2.5',
+    'stat.moon': 'Moon',
+
+    'sky.preview': 'Expected sky preview',
+    'section.point': 'Analysed point',
+    'grid.note': 'Requested point {reqLat}, {reqLon} · weather cell {gLat}, {gLon}',
+    'map.openLarger': 'Open larger map ↗',
+    'section.lookAt': 'Where to look',
+    'lookAt.text': 'The sun {verb} to the {dir} ({deg}°).',
+    'section.light': 'Light',
+    'light.golden': 'Golden hour',
+    'light.blue': 'Blue hour',
+    'section.trend': 'Sky trend around {when}',
+    'trend.hint': 'Score hour by hour — the highlighted column is {when}.',
+    'when.sunset': 'sunset',
+    'when.sunrise': 'sunrise',
+    'when.sunset2': 'sunset',
+    'when.sunrise2': 'sunrise',
+    'section.why': 'Why this score',
+
+    'section.spots': 'Where to watch it',
+    'spots.dirNote':
+      'The sun {verb} towards <strong>{dir}</strong> ({deg}°) — pick a spot with a clear view that way.',
+    'spots.loading': 'Finding nearby spots and checking their view towards the sunset…',
+    'spots.error': 'Viewpoints unavailable right now.',
+    'spots.none': 'No mapped viewpoints within ~25 km.',
+    'spots.scan': 'Also search unmapped spots (estimate)',
+    'spots.scanning': 'Scanning the terrain…',
+    'spots.estimateHint':
+      'Spots estimated from terrain shape: unnamed and not guaranteed accessible (check roads/access on the map).',
+    'spots.estimateError': 'Estimate failed, try again.',
+    'spots.estimateNone': 'No promising spot found from the estimate.',
+    'spot.sky': 'sky {n}',
+    'spot.affaccio': 'view {n}',
+    'spot.openOsm': 'Open in OSM ↗',
+    'spot.viewQuality': 'View quality',
+
+    'fav.compare': 'Compare',
+    'fav.remove': 'Remove',
+    'cmp.title': 'Compare favourites — {event}',
+    'cmp.calc': 'Computing scores…',
+    'cmp.na': 'data unavailable',
+    'cmp.close': 'Close',
+
+    'banner.top': 'Great {noun} coming: {day} {score}/100 — the best of the next days',
+
+    'status.fetching': 'Fetching data for {label}…',
+    'status.searching': 'Searching location…',
+    'status.noResults': 'No location found. Try another name.',
+    'status.error': 'Error: {msg}',
+    'status.geolocating': 'Detecting location…',
+    'status.geoUnsupported': 'Geolocation not supported by the browser.',
+    'status.geoUnavailable': 'Location unavailable: {msg}',
+    'status.linkCopied': 'Link copied to clipboard ✓',
+    'status.imgSaved': 'Image saved ✓',
+    'status.imgError': 'Could not generate the image.',
+    'geo.here': 'Your location',
+    'map.pointLabel': 'Point on the map ({lat}, {lon})',
+    'share.text': '{noun} {score}/100 at {label} — SkyHue',
+    'share.imgTime': '{noun} at {time} · {day}',
+
+    'map.hint': 'Tap a point on the map to evaluate it',
+    'map.back': 'Back',
+    'map.legend': 'Legend',
+    'map.legend.point': 'Analysed point',
+    'map.legend.sun': 'Sun on the horizon',
+    'map.legend.ray': 'Sun direction',
+    'map.legend.good': 'Clear view',
+    'map.legend.neutral': 'Uncertain view',
+    'map.legend.bad': 'Obstructed horizon',
+    'map.legend.visibility': 'Visibility',
+    'mp.calc': 'Computing sunset, view and nearby spots…',
+    'mp.na': 'Data unavailable for this point. Try again.',
+    'mp.meta': 'Sunset {time} · sun towards {dir} ({deg}°)',
+    'mp.vis': 'visibility ~{km} km',
+    'mp.horizon': 'horizon ~{km} km',
+    'mp.open': 'Open full detail →',
+    'map.loadError': 'Unable to load the map (connection required).',
+    'map.markerPopup': 'Sunset Score {score} · {event} towards {dir} ({deg}°)',
+    'mappop.view': 'view',
+    'mappop.sky': 'sky',
+    'mappop.towards': 'towards {dir}',
+
+    'label.exceptional': 'Exceptional',
+    'label.great': 'Great',
+    'label.good': 'Good',
+    'label.fair': 'Fair',
+    'label.mediocre': 'Mediocre',
+    'label.poor': 'Poor',
+
+    'kind.viewpoint': 'Viewpoint',
+    'kind.lighthouse': 'Lighthouse',
+    'kind.cape': 'Headland',
+    'kind.cliff': 'Cliff',
+    'kind.peak': 'Peak',
+    'kind.beach': 'Beach',
+    'kind.estimate': 'Estimated point',
+
+    'verdict.notEvaluated': 'View not evaluated',
+    'verdict.obstructed': 'Horizon obstructed towards the sunset',
+    'verdict.openSea': 'Open view over the sea',
+    'verdict.openNoSea': 'Open horizon but no open sea',
+    'verdict.openLand': 'Open horizon towards the sunset',
+
+    'explain.highGood.title': 'Favourable high clouds',
+    'explain.highGood.detail': 'Cirrus at {high}%: they catch and spread the low grazing light.',
+    'explain.highMuch.title': 'Lots of high cloud',
+    'explain.highMuch.detail': 'High cover at {high}%: the sky may be too veiled.',
+    'explain.highFew.title': 'Few high clouds',
+    'explain.highFew.detail': 'No cirrus to light up the sky: a plainer sunset.',
+    'explain.midGood.title': 'Well-spread mid clouds',
+    'explain.midGood.detail': 'Mid layer at {mid}%: adds depth and nuance.',
+    'explain.lowBad.title': 'Low clouds on the horizon',
+    'explain.lowBad.detail': 'Low cover at {low}%: may block the sun on the horizon.',
+    'explain.lowSome.title': 'Some low cloud',
+    'explain.lowSome.detail': 'Low clouds at {low}%: horizon partly disturbed.',
+    'explain.lowClear.title': 'Clear horizon',
+    'explain.lowClear.detail': 'Few low clouds: the sun will reach the horizon unobstructed.',
+    'explain.overcast.title': 'Overcast sky',
+    'explain.overcast.detail': 'Total cover at {total}%: little direct light.',
+    'explain.visGood.title': 'Excellent visibility',
+    'explain.visGood.detail': 'Clear air ({visKm} km): crisp, saturated colours.',
+    'explain.visBad.title': 'Reduced visibility',
+    'explain.visBad.detail': 'Only {visKm} km of visibility: haze or particulate in the air.',
+    'explain.hazeBad.title': 'Particulate haze',
+    'explain.hazeBad.detail': 'High aerosol{pm25note}: light scatters and colours fade.',
+    'explain.hazeBad.pm25': ' (PM2.5 {pm25} µg/m³)',
+    'explain.aerosolGood.title': 'Favourable aerosol',
+    'explain.aerosolGood.detail': 'A moderate haze in the air tends to light up reds and oranges.',
+    'explain.humidHigh.title': 'High humidity',
+    'explain.humidHigh.detail': 'Humidity at {humidity}%: more muted colours.',
+    'explain.humidDry.title': 'Dry air',
+    'explain.humidDry.detail': 'Humidity at {humidity}%: favours intense colours.',
+
+    'moon.new': 'New moon',
+    'moon.waxingCrescent': 'Waxing crescent',
+    'moon.firstQuarter': 'First quarter',
+    'moon.waxingGibbous': 'Waxing gibbous',
+    'moon.full': 'Full moon',
+    'moon.waningGibbous': 'Waning gibbous',
+    'moon.lastQuarter': 'Last quarter',
+    'moon.waningCrescent': 'Waning crescent',
+
+    'foot.credits':
+      'Weather &amp; astronomical data from <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a>. Solar position via the NOAA algorithm.',
+  },
+};
+
+// Esposto per i test di completezza (parità delle chiavi tra le lingue).
+export const DICTIONARIES = DICT;
+
+let lang = 'it';
+
+/** Inizializza la lingua da localStorage o dalle preferenze di sistema. */
+export function initLang() {
+  try {
+    const s = localStorage.getItem('skyhue.lang');
+    if (s === 'en' || s === 'it') lang = s;
+    else lang = (navigator.language || 'it').toLowerCase().startsWith('en') ? 'en' : 'it';
+  } catch {
+    lang = 'it';
+  }
+  return lang;
+}
+
+export function getLang() {
+  return lang;
+}
+
+export function setLang(l) {
+  lang = l === 'en' ? 'en' : 'it';
+  try {
+    localStorage.setItem('skyhue.lang', lang);
+  } catch {
+    /* storage non disponibile */
+  }
+  return lang;
+}
+
+/** Traduce una chiave con interpolazione {nome}. Fallback: IT, poi la chiave. */
+export function t(key, params) {
+  const table = DICT[lang] || DICT.it;
+  let s = key in table ? table[key] : key in DICT.it ? DICT.it[key] : key;
+  if (params) {
+    for (const k in params) {
+      s = s.split('{' + k + '}').join(params[k]);
+    }
+  }
+  return s;
+}
+
+/** Traduce il codice fase lunare / etichetta / verdetto (helper comodi). */
+export const cardinalMap = { N: 'N', NE: 'NE', E: 'E', SE: 'SE', S: 'S', SO: 'SW', O: 'W', NO: 'NW' };
+
+/** Localizza una direzione cardinale (IT usa O/SO/NO; EN W/SW/NW). */
+export function cardinal(card) {
+  return lang === 'en' ? cardinalMap[card] || card : card;
+}
+
+/** Applica le traduzioni agli elementi statici marcati nel markup. */
+export function applyStaticI18n(root = document) {
+  root.querySelectorAll('[data-i18n]').forEach((el) => {
+    el.textContent = t(el.getAttribute('data-i18n'));
+  });
+  root.querySelectorAll('[data-i18n-html]').forEach((el) => {
+    el.innerHTML = t(el.getAttribute('data-i18n-html'));
+  });
+  root.querySelectorAll('[data-i18n-ph]').forEach((el) => {
+    el.setAttribute('placeholder', t(el.getAttribute('data-i18n-ph')));
+  });
+  root.querySelectorAll('[data-i18n-aria]').forEach((el) => {
+    const s = t(el.getAttribute('data-i18n-aria'));
+    el.setAttribute('aria-label', s);
+    el.setAttribute('title', s);
+  });
+}

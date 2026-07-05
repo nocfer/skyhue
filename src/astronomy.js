@@ -82,18 +82,19 @@ export function moonPhase(date) {
   return phase < 0 ? phase + 1 : phase;
 }
 
+/** Codice fase lunare (risolto in testo dalla UI via i18n). */
 export function moonPhaseName(phase) {
-  const names = [
-    'Luna nuova',
-    'Luna crescente',
-    'Primo quarto',
-    'Gibbosa crescente',
-    'Luna piena',
-    'Gibbosa calante',
-    'Ultimo quarto',
-    'Luna calante',
+  const codes = [
+    'new',
+    'waxingCrescent',
+    'firstQuarter',
+    'waxingGibbous',
+    'full',
+    'waningGibbous',
+    'lastQuarter',
+    'waningCrescent',
   ];
-  return names[Math.round(phase * 8) % 8];
+  return codes[Math.round(phase * 8) % 8];
 }
 
 /**

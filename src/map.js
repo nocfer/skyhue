@@ -12,8 +12,10 @@ import {
   fetchElevations,
   horizonDistanceKm,
   nearbySpots,
+  kindInfo,
 } from './spots.js';
 import { icon } from './icons.js';
+import { t, cardinal, getLang } from './i18n.js';
 
 const LEAFLET_CSS = 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css';
 const LEAFLET_JS = 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js';
@@ -63,7 +65,10 @@ export function loadLeaflet() {
 }
 
 function fmtTime(date) {
-  return date.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+  return date.toLocaleTimeString(getLang() === 'en' ? 'en-GB' : 'it-IT', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 }
 
 /** Colore in tinta col punteggio (stessa rampa calda del resto dell'app). */
@@ -77,21 +82,22 @@ const SENT = { good: '#6ee7a8', bad: '#ff7a8a', neutral: '#ffd479' };
 /** Popup ricco per un punto suggerito: nome, affaccio, cielo, distanza, link OSM. */
 function spotPopupHtml(s) {
   const scores = [];
-  if (s.verdict?.score != null) scores.push(`affaccio <strong>${s.verdict.score}</strong>`);
-  if (s.skyScore != null) scores.push(`cielo <strong>${s.skyScore}</strong>`);
+  if (s.verdict?.score != null) scores.push(`${t('mappop.view')} <strong>${s.verdict.score}</strong>`);
+  if (s.skyScore != null) scores.push(`${t('mappop.sky')} <strong>${s.skyScore}</strong>`);
   const meta = [];
   if (Number.isFinite(s.dist)) meta.push(`${s.dist < 10 ? s.dist.toFixed(1) : Math.round(s.dist)} km`);
-  if (s.dir) meta.push(`verso ${s.dir}`);
+  if (s.dir) meta.push(t('mappop.towards', { dir: cardinal(s.dir) }));
   if (Number.isFinite(s.driveMin)) meta.push(`~${s.driveMin} min`);
   const url = `https://www.openstreetmap.org/?mlat=${s.lat.toFixed(5)}&mlon=${s.lon.toFixed(
     5
   )}#map=15/${s.lat.toFixed(4)}/${s.lon.toFixed(4)}`;
+  const name = s.name || t(kindInfo(s.kind).labelKey);
   return `<div class="mappop">
-    <strong class="mappop__name">${s.name}</strong>
+    <strong class="mappop__name">${name}</strong>
     ${scores.length ? `<div class="mappop__scores">${scores.join(' · ')}</div>` : ''}
-    ${s.verdict?.label ? `<div class="mappop__verdict spot--${s.verdict.sentiment}">${s.verdict.label}</div>` : ''}
+    ${s.verdict?.code ? `<div class="mappop__verdict spot--${s.verdict.sentiment}">${t('verdict.' + s.verdict.code)}</div>` : ''}
     ${meta.length ? `<div class="mappop__meta">${meta.join(' · ')}</div>` : ''}
-    <a href="${url}" target="_blank" rel="noopener">Apri in OSM ↗</a>
+    <a href="${url}" target="_blank" rel="noopener">${t('spot.openOsm')}</a>
   </div>`;
 }
 
@@ -169,9 +175,12 @@ function buildSunsetOverlays(L, group, { lat, lon, azimuth, score, event, visibi
   })
     .addTo(group)
     .bindPopup(
-      `Sunset Score <strong>${score}</strong> · ${
-        event === 'sunset' ? 'tramonto' : 'alba'
-      } verso ${azimuthToCardinal(azimuth)} (${Math.round(azimuth)}°)`
+      t('map.markerPopup', {
+        score,
+        event: t('event.' + (event === 'sunrise' ? 'sunrise' : 'sunset')),
+        dir: cardinal(azimuthToCardinal(azimuth)),
+        deg: Math.round(azimuth),
+      })
     );
 }
 
@@ -258,15 +267,15 @@ function addLegend(L) {
       const el = L.DomUtil.create('details', 'maplegend');
       el.open = true;
       el.innerHTML = `
-        <summary class="maplegend__title">Legenda</summary>
+        <summary class="maplegend__title">${t('map.legend')}</summary>
         <div class="maplegend__body">
-          <div class="maplegend__row"><span class="maplegend__ico maplegend__ico--point"></span> Punto analizzato</div>
-          <div class="maplegend__row"><span class="maplegend__ico maplegend__ico--sun"></span> Sole all’orizzonte</div>
-          <div class="maplegend__row"><span class="maplegend__ico maplegend__ico--ray"></span> Direzione del sole</div>
-          <div class="maplegend__row"><span class="maplegend__dot" style="--c:${SENT.good}"></span> Affaccio libero</div>
-          <div class="maplegend__row"><span class="maplegend__dot" style="--c:${SENT.neutral}"></span> Affaccio incerto</div>
-          <div class="maplegend__row"><span class="maplegend__dot" style="--c:${SENT.bad}"></span> Orizzonte ostruito</div>
-          <div class="maplegend__row"><span class="maplegend__ico maplegend__ico--vis"></span> Visibilità</div>
+          <div class="maplegend__row"><span class="maplegend__ico maplegend__ico--point"></span> ${t('map.legend.point')}</div>
+          <div class="maplegend__row"><span class="maplegend__ico maplegend__ico--sun"></span> ${t('map.legend.sun')}</div>
+          <div class="maplegend__row"><span class="maplegend__ico maplegend__ico--ray"></span> ${t('map.legend.ray')}</div>
+          <div class="maplegend__row"><span class="maplegend__dot" style="--c:${SENT.good}"></span> ${t('map.legend.good')}</div>
+          <div class="maplegend__row"><span class="maplegend__dot" style="--c:${SENT.neutral}"></span> ${t('map.legend.neutral')}</div>
+          <div class="maplegend__row"><span class="maplegend__dot" style="--c:${SENT.bad}"></span> ${t('map.legend.bad')}</div>
+          <div class="maplegend__row"><span class="maplegend__ico maplegend__ico--vis"></span> ${t('map.legend.visibility')}</div>
         </div>`;
       // Non far passare click/scroll dalla legenda alla mappa sottostante.
       L.DomEvent.disableClickPropagation(el);
@@ -348,7 +357,7 @@ async function selectPoint(lat, lon) {
 async function evaluatePoint(lat, lon) {
   const token = ++evalToken;
   els.panel.hidden = false;
-  els.panel.innerHTML = `<p class="muted">Calcolo tramonto, affaccio e punti vicini…</p>`;
+  els.panel.innerHTML = `<p class="muted">${t('mp.calc')}</p>`;
   try {
     const [forecast, air] = await Promise.all([
       fetchForecast(lat, lon),
@@ -420,7 +429,7 @@ async function evaluatePoint(lat, lon) {
     });
   } catch (err) {
     if (token !== evalToken) return;
-    els.panel.innerHTML = `<p class="muted">Dati non disponibili per questo punto. Riprova.</p>`;
+    els.panel.innerHTML = `<p class="muted">${t('mp.na')}</p>`;
   }
 }
 
@@ -429,8 +438,8 @@ function renderPanel({ lat, lon, sunsetDate, score, sun, verdict, visibility, el
   const visKm = Number.isFinite(visibility) ? (visibility / 1000).toFixed(0) : null;
   const horizonKm = Number.isFinite(elevation) ? horizonDistanceKm(elevation).toFixed(0) : null;
   const extra = [
-    visKm != null ? `visibilità ~${visKm} km` : null,
-    horizonKm != null && elevation > 2 ? `orizzonte ~${horizonKm} km` : null,
+    visKm != null ? t('mp.vis', { km: visKm }) : null,
+    horizonKm != null && elevation > 2 ? t('mp.horizon', { km: horizonKm }) : null,
   ]
     .filter(Boolean)
     .join(' · ');
@@ -438,17 +447,19 @@ function renderPanel({ lat, lon, sunsetDate, score, sun, verdict, visibility, el
     <div class="mp__head">
       <div class="mp__score" style="--hue:${hue}">${score}</div>
       <div>
-        <strong>${scoreLabel(score)}</strong>
-        <p class="muted">Tramonto ore ${fmtTime(sunsetDate)} · sole verso ${azimuthToCardinal(
-    sun.azimuth
-  )} (${Math.round(sun.azimuth)}°)</p>
+        <strong>${t('label.' + scoreLabel(score))}</strong>
+        <p class="muted">${t('mp.meta', {
+          time: fmtTime(sunsetDate),
+          dir: cardinal(azimuthToCardinal(sun.azimuth)),
+          deg: Math.round(sun.azimuth),
+        })}</p>
       </div>
     </div>
-    <p class="mp__verdict spot--${verdict.sentiment}">${icon(verdict.icon, { size: 18 })} ${
-    verdict.label
-  }</p>
+    <p class="mp__verdict spot--${verdict.sentiment}">${icon(verdict.icon, { size: 18 })} ${t(
+    'verdict.' + verdict.code
+  )}</p>
     ${extra ? `<p class="muted mp__extra">${extra}</p>` : ''}
-    <button id="mp-open" class="mp__open">Apri dettaglio completo →</button>
+    <button id="mp-open" class="mp__open">${t('mp.open')}</button>
   `;
   const open = document.getElementById('mp-open');
   open.addEventListener('click', () => {
@@ -457,7 +468,7 @@ function renderPanel({ lat, lon, sunsetDate, score, sun, verdict, visibility, el
         detail: {
           latitude: lat,
           longitude: lon,
-          label: `Punto sulla mappa (${lat.toFixed(3)}, ${lon.toFixed(3)})`,
+          label: t('map.pointLabel', { lat: lat.toFixed(3), lon: lon.toFixed(3) }),
         },
       })
     );
@@ -481,7 +492,7 @@ function showMap() {
     })
     .catch(() => {
       els.panel.hidden = false;
-      els.panel.innerHTML = `<p class="muted">Impossibile caricare la mappa (serve connessione).</p>`;
+      els.panel.innerHTML = `<p class="muted">${t('map.loadError')}</p>`;
     });
 }
 
@@ -504,3 +515,15 @@ if (els.mapView) {
   if (els.back) els.back.addEventListener('click', () => history.back());
   applyRoute();
 }
+
+// Cambio lingua: rigenera la legenda e ridisegna il contesto (i popup e il
+// pannello si ricreano con le nuove stringhe alla prossima interazione/tap).
+window.addEventListener('skyhue:langchange', () => {
+  if (!map || !window.L) return;
+  if (legendControl) {
+    map.removeControl(legendControl);
+    legendControl = null;
+  }
+  addLegend(window.L);
+  renderContext();
+});

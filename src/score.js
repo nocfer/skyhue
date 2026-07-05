@@ -127,147 +127,85 @@ export function computeSunsetScore(c) {
   };
 }
 
-/** Etichetta qualitativa per un punteggio. */
+/**
+ * Codice qualitativo per un punteggio (risolto in testo dalla UI via i18n).
+ * @returns {'exceptional'|'great'|'good'|'fair'|'mediocre'|'poor'}
+ */
 export function scoreLabel(score) {
-  if (score >= 85) return 'Eccezionale';
-  if (score >= 70) return 'Ottimo';
-  if (score >= 55) return 'Buono';
-  if (score >= 40) return 'Discreto';
-  if (score >= 20) return 'Mediocre';
-  return 'Scarso';
+  if (score >= 85) return 'exceptional';
+  if (score >= 70) return 'great';
+  if (score >= 55) return 'good';
+  if (score >= 40) return 'fair';
+  if (score >= 20) return 'mediocre';
+  return 'poor';
 }
 
 /**
- * Genera una lista di spiegazioni leggibili dai fattori del punteggio.
- * Ogni voce ha: sentiment ('good'|'neutral'|'bad'), titolo e dettaglio.
+ * Genera le note esplicative dai fattori del punteggio, in forma NEUTRA rispetto
+ * alla lingua: ogni voce ha { code, sentiment, icon, params }. Il testo (titolo +
+ * dettaglio) viene risolto dalla UI via i18n con la chiave `explain.<code>`.
  *
  * @param {ReturnType<typeof computeSunsetScore>['factors']} f
- * @returns {Array<{sentiment:string, icon:string, title:string, detail:string}>}
+ * @returns {Array<{code:string, sentiment:string, icon:string, params:Object}>}
  */
 export function explainScore(f) {
   const notes = [];
+  const visKm = Math.round(f.visibility / 1000);
 
   // Nuvole alte
   if (f.high >= 20 && f.high <= 75) {
-    notes.push({
-      sentiment: 'good',
-      icon: 'cloud',
-      title: 'Nuvole alte favorevoli',
-      detail: `Cirri al ${Math.round(f.high)}%: catturano e diffondono la luce radente all’orizzonte.`,
-    });
+    notes.push({ code: 'highGood', sentiment: 'good', icon: 'cloud', params: { high: Math.round(f.high) } });
   } else if (f.high > 75) {
-    notes.push({
-      sentiment: 'neutral',
-      icon: 'cloud',
-      title: 'Molte nuvole alte',
-      detail: `Copertura alta al ${Math.round(f.high)}%: cielo forse troppo velato.`,
-    });
+    notes.push({ code: 'highMuch', sentiment: 'neutral', icon: 'cloud', params: { high: Math.round(f.high) } });
   } else {
-    notes.push({
-      sentiment: 'neutral',
-      icon: 'cloud-sun',
-      title: 'Poche nuvole alte',
-      detail: 'Mancano i cirri che accendono il cielo: tramonto più sobrio.',
-    });
+    notes.push({ code: 'highFew', sentiment: 'neutral', icon: 'cloud-sun', params: {} });
   }
 
   // Nuvole medie
   if (f.mid >= 20 && f.mid <= 65) {
-    notes.push({
-      sentiment: 'good',
-      icon: 'cloud-sun',
-      title: 'Nuvole medie ben distribuite',
-      detail: `Strato medio al ${Math.round(f.mid)}%: aggiunge profondità e sfumature.`,
-    });
+    notes.push({ code: 'midGood', sentiment: 'good', icon: 'cloud-sun', params: { mid: Math.round(f.mid) } });
   }
 
   // Nuvole basse (fattore critico)
   if (f.low >= 40) {
-    notes.push({
-      sentiment: 'bad',
-      icon: 'haze',
-      title: 'Nuvole basse all’orizzonte',
-      detail: `Copertura bassa al ${Math.round(f.low)}%: rischia di bloccare il sole sull’orizzonte.`,
-    });
+    notes.push({ code: 'lowBad', sentiment: 'bad', icon: 'haze', params: { low: Math.round(f.low) } });
   } else if (f.low >= 15) {
-    notes.push({
-      sentiment: 'neutral',
-      icon: 'haze',
-      title: 'Qualche nuvola bassa',
-      detail: `Nuvole basse al ${Math.round(f.low)}%: orizzonte parzialmente disturbato.`,
-    });
+    notes.push({ code: 'lowSome', sentiment: 'neutral', icon: 'haze', params: { low: Math.round(f.low) } });
   } else {
-    notes.push({
-      sentiment: 'good',
-      icon: 'sunset',
-      title: 'Orizzonte libero',
-      detail: 'Poche nuvole basse: il sole raggiungerà l’orizzonte senza ostacoli.',
-    });
+    notes.push({ code: 'lowClear', sentiment: 'good', icon: 'sunset', params: {} });
   }
 
   // Copertura totale
   if (f.overcast > 0.5) {
-    notes.push({
-      sentiment: 'bad',
-      icon: 'cloud',
-      title: 'Cielo coperto',
-      detail: `Copertura totale al ${Math.round(f.total)}%: poca luce diretta.`,
-    });
+    notes.push({ code: 'overcast', sentiment: 'bad', icon: 'cloud', params: { total: Math.round(f.total) } });
   }
 
   // Visibilità
   if (f.visFactor >= 0.85) {
-    notes.push({
-      sentiment: 'good',
-      icon: 'eye',
-      title: 'Visibilità eccellente',
-      detail: `Atmosfera limpida (${(f.visibility / 1000).toFixed(0)} km): colori nitidi e saturi.`,
-    });
+    notes.push({ code: 'visGood', sentiment: 'good', icon: 'eye', params: { visKm } });
   } else if (f.visFactor < 0.4) {
-    notes.push({
-      sentiment: 'bad',
-      icon: 'cloud-fog',
-      title: 'Visibilità ridotta',
-      detail: `Solo ${(f.visibility / 1000).toFixed(0)} km di visibilità: foschia o particolato nell’aria.`,
-    });
+    notes.push({ code: 'visBad', sentiment: 'bad', icon: 'cloud-fog', params: { visKm } });
   }
 
   // Aerosol / particolato
   if (f.aerosol !== null && f.aerosol !== undefined) {
     if (f.aerosolHaze >= 0.5) {
       notes.push({
+        code: 'hazeBad',
         sentiment: 'bad',
         icon: 'haze',
-        title: 'Foschia da particolato',
-        detail: `Aerosol elevato${
-          f.pm25 != null ? ` (PM2.5 ${Math.round(f.pm25)} µg/m³)` : ''
-        }: la luce si disperde e i colori si attenuano.`,
+        params: { pm25: f.pm25 != null ? Math.round(f.pm25) : null },
       });
     } else if (f.aerosolEnhance >= 0.6) {
-      notes.push({
-        sentiment: 'good',
-        icon: 'flame',
-        title: 'Aerosol favorevoli',
-        detail: 'Un pulviscolo moderato nell’atmosfera tende ad accendere i rossi e gli arancioni.',
-      });
+      notes.push({ code: 'aerosolGood', sentiment: 'good', icon: 'flame', params: {} });
     }
   }
 
   // Umidità
   if (f.humidityPenalty >= 0.6) {
-    notes.push({
-      sentiment: 'bad',
-      icon: 'droplet',
-      title: 'Umidità elevata',
-      detail: `Umidità al ${Math.round(f.humidity)}%: colori più smorzati.`,
-    });
+    notes.push({ code: 'humidHigh', sentiment: 'bad', icon: 'droplet', params: { humidity: Math.round(f.humidity) } });
   } else if (f.humidityPenalty <= 0.1) {
-    notes.push({
-      sentiment: 'good',
-      icon: 'wind',
-      title: 'Aria secca',
-      detail: `Umidità al ${Math.round(f.humidity)}%: favorisce colori intensi.`,
-    });
+    notes.push({ code: 'humidDry', sentiment: 'good', icon: 'wind', params: { humidity: Math.round(f.humidity) } });
   }
 
   return notes;

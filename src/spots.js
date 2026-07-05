@@ -113,33 +113,23 @@ const KIND_BASE = {
 export function spotVerdict(kind, horizon) {
   let score = KIND_BASE[kind] ?? 45;
   if (!horizon) {
-    return { score, sentiment: 'neutral', icon: 'help', label: 'Affaccio non valutato' };
+    return { score, sentiment: 'neutral', icon: 'help', code: 'notEvaluated' };
   }
   const { obstructed, seaFraction, maxAngle } = horizon;
   if (obstructed) {
     score = Math.max(0, score - 35);
-    return {
-      score,
-      sentiment: 'bad',
-      icon: 'mountain',
-      label: 'Orizzonte ostruito verso il tramonto',
-    };
+    return { score, sentiment: 'bad', icon: 'mountain', code: 'obstructed' };
   }
   score += Math.round(20 * seaFraction);
   score += Math.max(0, Math.round((2 - maxAngle) * 5)); // più l'orizzonte è basso, meglio è
   score = Math.max(0, Math.min(100, score));
   if (seaFraction >= 0.5) {
-    return { score, sentiment: 'good', icon: 'waves', label: 'Affaccio libero sul mare' };
+    return { score, sentiment: 'good', icon: 'waves', code: 'openSea' };
   }
   if (kind === 'beach' && seaFraction < 0.3) {
-    return {
-      score,
-      sentiment: 'neutral',
-      icon: 'sunset',
-      label: 'Orizzonte libero ma senza mare aperto',
-    };
+    return { score, sentiment: 'neutral', icon: 'sunset', code: 'openNoSea' };
   }
-  return { score, sentiment: 'good', icon: 'sunset', label: 'Orizzonte libero verso il tramonto' };
+  return { score, sentiment: 'good', icon: 'sunset', code: 'openLand' };
 }
 
 /**
@@ -208,13 +198,13 @@ export async function fetchElevations(points) {
 
 // Tipi di punto che consideriamo, con etichetta e icona.
 const KINDS = {
-  viewpoint: { label: 'Punto panoramico', icon: 'eye' },
-  lighthouse: { label: 'Faro', icon: 'lighthouse' },
-  cape: { label: 'Promontorio', icon: 'mountain' },
-  cliff: { label: 'Scogliera', icon: 'cliff' },
-  peak: { label: 'Cima', icon: 'peak' },
-  beach: { label: 'Spiaggia', icon: 'umbrella' },
-  estimate: { label: 'Punto stimato', icon: 'compass' },
+  viewpoint: { labelKey: 'kind.viewpoint', icon: 'eye' },
+  lighthouse: { labelKey: 'kind.lighthouse', icon: 'lighthouse' },
+  cape: { labelKey: 'kind.cape', icon: 'mountain' },
+  cliff: { labelKey: 'kind.cliff', icon: 'cliff' },
+  peak: { labelKey: 'kind.peak', icon: 'peak' },
+  beach: { labelKey: 'kind.beach', icon: 'umbrella' },
+  estimate: { labelKey: 'kind.estimate', icon: 'compass' },
 };
 
 function classify(tags = {}) {
@@ -268,7 +258,7 @@ out center 90;`;
         id: e.id,
         lat: lat2,
         lon: lon2,
-        name: e.tags?.name || kindInfo(kind).label,
+        name: e.tags?.name || null, // se manca il nome OSM, la UI usa l'etichetta del tipo
         kind,
       };
     })
@@ -349,10 +339,10 @@ export async function nearbySpots(
  * (frazione/paese/quartiere o elemento naturale), o null se non disponibile.
  * Usare con parsimonia (policy ~1 req/s): solo per pochi punti.
  */
-export async function reverseGeocode(lat, lon) {
+export async function reverseGeocode(lat, lon, lang = 'it') {
   const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat.toFixed(
     5
-  )}&lon=${lon.toFixed(5)}&zoom=14&accept-language=it`;
+  )}&lon=${lon.toFixed(5)}&zoom=14&accept-language=${lang}`;
   const res = await fetch(url, { headers: { Accept: 'application/json' } });
   if (!res.ok) throw new Error(`Nominatim ${res.status}`);
   const data = await res.json();

@@ -108,10 +108,10 @@ test('il punteggio resta sempre in [0,100]', () => {
   }
 });
 
-test('scoreLabel copre la scala', () => {
-  assert.equal(scoreLabel(90), 'Eccezionale');
-  assert.equal(scoreLabel(60), 'Buono');
-  assert.equal(scoreLabel(10), 'Scarso');
+test('scoreLabel restituisce i codici della scala', () => {
+  assert.equal(scoreLabel(90), 'exceptional');
+  assert.equal(scoreLabel(60), 'good');
+  assert.equal(scoreLabel(10), 'poor');
 });
 
 test('l’aerosol è opzionale e non cambia il punteggio se assente', () => {
@@ -166,7 +166,8 @@ test('explainScore segnala le nuvole basse come negative', () => {
     humidity: 80,
   });
   const notes = explainScore(factors);
-  const low = notes.find((n) => n.title.includes('Nuvole basse'));
+  const low = notes.find((n) => n.code === 'lowBad');
   assert.ok(low, 'attesa una nota sulle nuvole basse');
   assert.equal(low.sentiment, 'bad');
+  assert.equal(low.params.low, 70);
 });

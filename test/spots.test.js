@@ -35,12 +35,12 @@ test('bearing verso nord ≈ 0°', () => {
   assert.ok(b < 1 || b > 359, `bearing nord inatteso: ${b}`);
 });
 
-test('kindInfo ha etichetta e icona', () => {
+test('kindInfo ha chiave etichetta e icona', () => {
   const info = kindInfo('lighthouse');
-  assert.equal(info.label, 'Faro');
+  assert.equal(info.labelKey, 'kind.lighthouse');
   assert.ok(info.icon);
   // tipo sconosciuto → fallback
-  assert.ok(kindInfo('boh').label);
+  assert.ok(kindInfo('boh').labelKey);
 });
 
 test('destinationPoint verso est sposta la longitudine, non la latitudine', () => {

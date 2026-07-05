@@ -21,6 +21,16 @@
           document.documentElement.dataset.theme = t;
         } catch (e) {}
       })();
+      // Imposta <html lang> prima del paint in base alla lingua salvata / di sistema.
+      (function () {
+        try {
+          var l = localStorage.getItem('skyhue.lang');
+          if (l !== 'en' && l !== 'it') {
+            l = (navigator.language || 'it').toLowerCase().indexOf('en') === 0 ? 'en' : 'it';
+          }
+          document.documentElement.lang = l;
+        } catch (e) {}
+      })();
     </script>
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./icon.svg" type="image/svg+xml" />
@@ -34,15 +44,16 @@
         <nav class="topnav">
           <a href="#map" class="navlink">
             <svg class="ico" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.11 5.55a2 2 0 0 0 1.78 0l3.66-1.83A1 1 0 0 1 21 4.62v12.76a1 1 0 0 1-.55.9l-4.55 2.27a2 2 0 0 1-1.79 0l-4.21-2.1a2 2 0 0 0-1.79 0l-3.66 1.82A1 1 0 0 1 3 19.38V6.62a1 1 0 0 1 .55-.9l4.55-2.27a2 2 0 0 1 1.79 0z"/><path d="M15 5.76v15"/><path d="M9 3.24v15"/></svg>
-            Scegli sulla mappa
+            <span data-i18n="nav.map">Scegli sulla mappa</span>
           </a>
-          <button id="theme-toggle" class="navlink theme-toggle" type="button" title="Tema chiaro / scuro" aria-label="Cambia tema"></button>
+          <button id="lang-toggle" class="navlink theme-toggle" type="button" data-i18n-aria="lang.aria"></button>
+          <button id="theme-toggle" class="navlink theme-toggle" type="button" data-i18n-aria="theme.aria"></button>
         </nav>
         <h1>
           <svg class="ico hero__ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 10V2"/><path d="m4.93 10.93 1.41 1.41"/><path d="M2 18h2"/><path d="M20 18h2"/><path d="m19.07 10.93-1.41 1.41"/><path d="M22 22H2"/><path d="m16 6-4 4-4-4"/><path d="M16 18a4 4 0 0 0-8 0"/></svg>
           <span class="hero__word">SkyHue</span>
         </h1>
-        <p class="tagline">
+        <p class="tagline" data-i18n="app.tagline">
           Quanto sarà bello il prossimo tramonto? Un punteggio da meteo reale e dati astronomici.
         </p>
 
@@ -53,34 +64,36 @@
             placeholder="Cerca una città (es. Napoli, Lisbona…)"
             autocomplete="off"
             aria-label="Cerca una città"
+            data-i18n-ph="search.placeholder"
+            data-i18n-aria="search.aria"
           />
-          <button type="submit">Calcola</button>
-          <button type="button" id="geo-btn" class="ghost" title="Usa la mia posizione">
+          <button type="submit" data-i18n="search.submit">Calcola</button>
+          <button type="button" id="geo-btn" class="ghost" data-i18n-aria="search.geoTitle">
             <svg class="ico" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
-            Posizione
+            <span data-i18n="search.geo">Posizione</span>
           </button>
         </form>
 
-        <div class="modes" role="group" aria-label="Momento della giornata">
+        <div class="modes" role="group" aria-label="Momento della giornata" data-i18n-aria="mode.groupAria">
           <button type="button" class="mode mode--active" data-event="sunset">
             <svg class="ico" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 10V2"/><path d="m4.93 10.93 1.41 1.41"/><path d="M2 18h2"/><path d="M20 18h2"/><path d="m19.07 10.93-1.41 1.41"/><path d="M22 22H2"/><path d="m16 6-4 4-4-4"/><path d="M16 18a4 4 0 0 0-8 0"/></svg>
-            Tramonto
+            <span data-i18n="mode.sunset">Tramonto</span>
           </button>
           <button type="button" class="mode" data-event="sunrise">
             <svg class="ico" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2v8"/><path d="m4.93 10.93 1.41 1.41"/><path d="M2 18h2"/><path d="M20 18h2"/><path d="m19.07 10.93-1.41 1.41"/><path d="M22 22H2"/><path d="m8 6 4-4 4 4"/><path d="M16 18a4 4 0 0 0-8 0"/></svg>
-            Alba
+            <span data-i18n="mode.sunrise">Alba</span>
           </button>
         </div>
 
         <p id="status" class="status" role="status" aria-live="polite"></p>
 
-        <div id="favorites" class="favorites" aria-label="Località preferite"></div>
+        <div id="favorites" class="favorites" aria-label="Località preferite" data-i18n-aria="fav.groupAria"></div>
       </header>
 
       <section id="results" class="results"></section>
 
       <footer class="foot">
-        <p>
+        <p data-i18n-html="foot.credits">
           Dati meteo &amp; astronomici da
           <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a>.
           Posizione solare calcolata con l'algoritmo NOAA.
@@ -90,8 +103,8 @@
 
     <section id="map-view" class="mapview" hidden>
       <header class="mapview__bar">
-        <button id="map-back" class="ghost">← Indietro</button>
-        <span class="mapview__hint">Tocca un punto della mappa per valutarlo</span>
+        <button id="map-back" class="ghost">← <span data-i18n="map.back">Indietro</span></button>
+        <span class="mapview__hint" data-i18n="map.hint">Tocca un punto della mappa per valutarlo</span>
       </header>
       <div id="leaflet" class="mapview__canvas"></div>
       <div id="map-panel" class="mapview__panel" hidden></div>
