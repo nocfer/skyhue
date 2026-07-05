@@ -344,6 +344,33 @@ export async function nearbySpots(
   return evaluated.slice(0, show);
 }
 
+/**
+ * Reverse geocoding via Nominatim: dato lat/lon restituisce un toponimo breve
+ * (frazione/paese/quartiere o elemento naturale), o null se non disponibile.
+ * Usare con parsimonia (policy ~1 req/s): solo per pochi punti.
+ */
+export async function reverseGeocode(lat, lon) {
+  const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat.toFixed(
+    5
+  )}&lon=${lon.toFixed(5)}&zoom=14&accept-language=it`;
+  const res = await fetch(url, { headers: { Accept: 'application/json' } });
+  if (!res.ok) throw new Error(`Nominatim ${res.status}`);
+  const data = await res.json();
+  const a = data.address || {};
+  return (
+    a.hamlet ||
+    a.village ||
+    a.town ||
+    a.suburb ||
+    a.neighbourhood ||
+    a.locality ||
+    a.natural ||
+    data.name ||
+    (data.display_name ? data.display_name.split(',')[0].trim() : null) ||
+    null
+  );
+}
+
 /** Esegue una query Overpass provando gli endpoint in sequenza (form-urlencoded). */
 async function overpassQuery(q) {
   let lastErr;

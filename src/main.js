@@ -37,6 +37,7 @@ import {
   gridCandidates,
   prescoreGrid,
   horizonDistanceKm,
+  reverseGeocode,
 } from './spots.js';
 
 const els = {
@@ -253,6 +254,7 @@ async function scanCoordinates() {
     state.estimating = false;
     render();
     loadSky(state.estimatedSpots, place);
+    nameEstimatedSpots(state.estimatedSpots, place);
   } catch (err) {
     console.warn('Scansione da coordinate non riuscita:', err);
     if (state.place !== place) return;
@@ -266,6 +268,24 @@ async function scanCoordinates() {
  * Per i primi finalisti di una lista scarica il meteo nel punto e ne calcola il
  * Sunset Score, così ogni meta mostra sia l'affaccio sia la qualità del cielo.
  */
+/**
+ * Dà un nome ai primi punti stimati via reverse-geocoding (Nominatim), in modo
+ * sequenziale per rispettare il rate-limit. Aggiorna il nome e ridisegna.
+ */
+async function nameEstimatedSpots(spots, place) {
+  const top = (spots || []).filter((s) => s.kind === 'estimate').slice(0, 3);
+  for (const s of top) {
+    try {
+      const name = await reverseGeocode(s.lat, s.lon);
+      if (name) s.name = name;
+    } catch (err) {
+      /* resta "Punto stimato" */
+    }
+  }
+  if (state.place !== place) return;
+  render();
+}
+
 async function loadSky(list, place) {
   const top = (list || []).slice(0, SPOTS_SKY);
   if (!top.length) return;
@@ -766,15 +786,21 @@ async function shareCurrent(score) {
 /** Disegna la barra dei preferiti (chip cliccabili con rimozione). */
 function renderFavorites() {
   const favs = getFavorites();
-  els.favorites.innerHTML = favs
-    .map(
-      (f) => `
+  els.favorites.innerHTML =
+    favs
+      .map(
+        (f) => `
       <span class="fav-chip" data-id="${f.id}">
         <button class="fav-chip__load" data-load="${f.id}">${f.label}</button>
         <button class="fav-chip__del" data-del="${f.id}" title="Rimuovi" aria-label="Rimuovi">×</button>
       </span>`
-    )
-    .join('');
+      )
+      .join('') +
+    (favs.length >= 2
+      ? `<button class="fav-compare" id="fav-compare">${icon('compass', {
+          size: 15,
+        })} Confronta</button>`
+      : '');
 
   els.favorites.querySelectorAll('[data-load]').forEach((btn) => {
     btn.addEventListener('click', () => {
@@ -788,6 +814,68 @@ function renderFavorites() {
       renderFavorites();
     });
   });
+  const cmp = els.favorites.querySelector('#fav-compare');
+  if (cmp) cmp.addEventListener('click', compareFavorites);
+}
+
+/**
+ * Confronta i preferiti per l'evento corrente (prossimo tramonto/alba): scarica
+ * il meteo di ciascuno, calcola il Sunset Score e li mostra ordinati in un
+ * modale. Nessun aerosol per punto (meno chiamate): confronto puramente meteo.
+ */
+async function compareFavorites() {
+  const favs = getFavorites();
+  if (favs.length < 2) return;
+  const overlay = document.createElement('div');
+  overlay.className = 'cmp';
+  overlay.innerHTML = `
+    <div class="cmp__box">
+      <button class="cmp__close" aria-label="Chiudi">×</button>
+      <h3>Confronto preferiti — ${EVENT_LABELS[state.event].noun.toLowerCase()}</h3>
+      <div class="cmp__list muted">Calcolo i punteggi…</div>
+    </div>`;
+  document.body.appendChild(overlay);
+  const close = () => overlay.remove();
+  overlay.querySelector('.cmp__close').addEventListener('click', close);
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) close();
+  });
+
+  const rows = await Promise.all(
+    favs.map(async (f) => {
+      try {
+        const fc = await fetchForecast(f.latitude, f.longitude);
+        const ne = nextSunset(fc, new Date());
+        const iso = state.event === 'sunset' ? ne.sunset : ne.sunrise;
+        const cond = conditionsAtTime(fc, iso);
+        return { label: f.label, score: computeSunsetScore(cond).score, time: new Date(iso) };
+      } catch (err) {
+        return { label: f.label, score: null, time: null };
+      }
+    })
+  );
+  rows.sort((a, b) => (b.score ?? -1) - (a.score ?? -1));
+
+  const list = overlay.querySelector('.cmp__list');
+  if (list) {
+    list.classList.remove('muted');
+    list.innerHTML = rows
+      .map(
+        (r) => `
+      <div class="cmp__row">
+        <span class="cmp__score" style="--hue:${scoreHue(r.score ?? 0)}">${
+          r.score ?? '—'
+        }</span>
+        <div class="cmp__body">
+          <strong>${r.label}</strong>
+          <span class="muted">${
+            r.time ? EVENT_LABELS[state.event].noun + ' ' + fmtTime(r.time) : 'dati non disponibili'
+          }</span>
+        </div>
+      </div>`
+      )
+      .join('');
+  }
 }
 
 // --- Eventi UI -------------------------------------------------------------
