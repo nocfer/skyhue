@@ -10,6 +10,7 @@ import {
   evaluateHorizon,
   spotVerdict,
   fetchElevations,
+  horizonDistanceKm,
 } from './spots.js';
 import { icon } from './icons.js';
 
@@ -35,6 +36,7 @@ const els = {
 
 let map = null;
 let marker = null;
+let visCircle = null; // cerchio di visibilità sul punto toccato
 let leafletLoading = null;
 let evalToken = 0; // per ignorare valutazioni superate da un nuovo tap
 
@@ -76,12 +78,15 @@ let mini = { map: null, container: null, key: null };
  * @param {HTMLElement} mount contenitore (già dimensionato) in cui montare
  * @param {{lat:number, lon:number, azimuth:number, score:number, event:string}} o
  */
-export async function mountMiniMap(mount, { lat, lon, azimuth, score, event }) {
+export async function mountMiniMap(mount, { lat, lon, azimuth, score, event, visibility, spots }) {
   if (!mount) return;
   const L = await loadLeaflet(); // memoizzato: il primo await è l'unico costo di rete
-  const key = `${lat.toFixed(4)}|${lon.toFixed(4)}|${Math.round(azimuth)}|${score}|${event}`;
+  const spotSig = (spots || []).length;
+  const key = `${lat.toFixed(4)}|${lon.toFixed(4)}|${Math.round(azimuth)}|${score}|${event}|${Math.round(
+    visibility || 0
+  )}|${spotSig}`;
 
-  // Stesso punto di un render precedente: sposta il container esistente nel
+  // Stesso stato di un render precedente: sposta il container esistente nel
   // nuovo nodo (le render sono sequenziali → l'ultima, quella viva, vince).
   if (mini.container && mini.key === key) {
     mount.appendChild(mini.container);
@@ -89,7 +94,7 @@ export async function mountMiniMap(mount, { lat, lon, azimuth, score, event }) {
     return;
   }
 
-  // Punto diverso (o primo montaggio): ricostruisci.
+  // Stato diverso (o primo montaggio): ricostruisci.
   if (mini.map) mini.map.remove();
   const container = document.createElement('div');
   container.className = 'map';
@@ -102,6 +107,7 @@ export async function mountMiniMap(mount, { lat, lon, azimuth, score, event }) {
     keyboard: false,
   }).setView([lat, lon], 12);
   L.tileLayer(TILE_URL, TILE_OPTS).addTo(map);
+  const overlays = L.featureGroup().addTo(map);
 
   const color = scoreColor(score);
   const end = destinationPoint(lat, lon, azimuth, 12); // ~12 km verso il sole
@@ -109,16 +115,40 @@ export async function mountMiniMap(mount, { lat, lon, azimuth, score, event }) {
     [lat, lon],
     [end.lat, end.lon],
   ];
-  // Raggio verso il sole: un alone caldo morbido con sopra una linea
-  // tratteggiata luminosa — evoca la luce radente più di una linea piatta.
-  L.polyline(ray, { color: '#ffce6f', weight: 9, opacity: 0.16, lineCap: 'round' }).addTo(map);
-  L.polyline(ray, {
-    color,
-    weight: 2.5,
-    opacity: 0.95,
-    dashArray: '1 8',
-    lineCap: 'round',
-  }).addTo(map);
+  // Raggio verso il sole: alone caldo morbido + linea tratteggiata luminosa.
+  L.polyline(ray, { color: '#ffce6f', weight: 9, opacity: 0.16, lineCap: 'round' }).addTo(overlays);
+  L.polyline(ray, { color, weight: 2.5, opacity: 0.95, dashArray: '1 8', lineCap: 'round' }).addTo(
+    overlays
+  );
+
+  // Cerchio di visibilità: fin dove l'atmosfera lascia vedere nitido.
+  if (Number.isFinite(visibility) && visibility > 0) {
+    L.circle([lat, lon], {
+      radius: visibility,
+      color: '#8fd0ff',
+      weight: 1,
+      opacity: 0.5,
+      fillColor: '#8fd0ff',
+      fillOpacity: 0.06,
+      dashArray: '4 6',
+    }).addTo(overlays);
+  }
+
+  // Marker dei punti suggeriti, colorati per qualità dell'affaccio.
+  const SENT = { good: '#6ee7a8', bad: '#ff7a8a', neutral: '#ffd479' };
+  (spots || []).forEach((s) => {
+    const c = SENT[s.verdict?.sentiment] || '#ffd479';
+    L.marker([s.lat, s.lon], {
+      icon: L.divIcon({
+        className: 'spotmark',
+        html: `<span class="spotmark__dot" style="--c:${c}"></span>`,
+        iconSize: [16, 16],
+        iconAnchor: [8, 8],
+      }),
+    })
+      .addTo(overlays)
+      .bindPopup(`${s.name} · affaccio ${s.verdict?.score ?? '?'}`);
+  });
 
   // Il sole all'orizzonte, alla fine del raggio (glow via CSS).
   L.marker([end.lat, end.lon], {
@@ -130,7 +160,7 @@ export async function mountMiniMap(mount, { lat, lon, azimuth, score, event }) {
     }),
     interactive: false,
     keyboard: false,
-  }).addTo(map);
+  }).addTo(overlays);
 
   // Punto analizzato: pallino colorato per punteggio con alone.
   L.marker([lat, lon], {
@@ -141,20 +171,15 @@ export async function mountMiniMap(mount, { lat, lon, azimuth, score, event }) {
       iconAnchor: [11, 11],
     }),
   })
-    .addTo(map)
+    .addTo(overlays)
     .bindPopup(
       `Sunset Score <strong>${score}</strong> · ${
         event === 'sunset' ? 'tramonto' : 'alba'
       } verso ${azimuthToCardinal(azimuth)} (${Math.round(azimuth)}°)`
     );
-  // Inquadra sia il punto sia la fine del raggio (dove guardare).
-  map.fitBounds(
-    [
-      [lat, lon],
-      [end.lat, end.lon],
-    ],
-    { padding: [28, 28], maxZoom: 12 }
-  );
+
+  // Inquadra tutto (punto, raggio, cerchio di visibilità, punti suggeriti).
+  map.fitBounds(overlays.getBounds(), { padding: [28, 28], maxZoom: 12 });
 
   mini = { map, container, key };
 }
@@ -217,15 +242,50 @@ async function evaluatePoint(lat, lon) {
     const verdict = spotVerdict('viewpoint', horizon);
 
     if (token !== evalToken) return; // superato da un tap più recente
-    renderPanel({ lat, lon, sunsetDate, score, sun, verdict });
+
+    // Cerchio di visibilità attorno al punto (quanto lontano si vede nitido).
+    if (visCircle) {
+      map.removeLayer(visCircle);
+      visCircle = null;
+    }
+    if (window.L && Number.isFinite(cond.visibility) && cond.visibility > 0) {
+      visCircle = window.L.circle([lat, lon], {
+        radius: cond.visibility,
+        color: '#8fd0ff',
+        weight: 1,
+        opacity: 0.5,
+        fillColor: '#8fd0ff',
+        fillOpacity: 0.06,
+        dashArray: '4 6',
+      }).addTo(map);
+    }
+
+    renderPanel({
+      lat,
+      lon,
+      sunsetDate,
+      score,
+      sun,
+      verdict,
+      visibility: cond.visibility,
+      elevation: forecast.elevation,
+    });
   } catch (err) {
     if (token !== evalToken) return;
     els.panel.innerHTML = `<p class="muted">Dati non disponibili per questo punto. Riprova.</p>`;
   }
 }
 
-function renderPanel({ lat, lon, sunsetDate, score, sun, verdict }) {
+function renderPanel({ lat, lon, sunsetDate, score, sun, verdict, visibility, elevation }) {
   const hue = Math.round(10 + (score / 100) * 36);
+  const visKm = Number.isFinite(visibility) ? (visibility / 1000).toFixed(0) : null;
+  const horizonKm = Number.isFinite(elevation) ? horizonDistanceKm(elevation).toFixed(0) : null;
+  const extra = [
+    visKm != null ? `visibilità ~${visKm} km` : null,
+    horizonKm != null && elevation > 2 ? `orizzonte ~${horizonKm} km` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
   els.panel.innerHTML = `
     <div class="mp__head">
       <div class="mp__score" style="--hue:${hue}">${score}</div>
@@ -239,6 +299,7 @@ function renderPanel({ lat, lon, sunsetDate, score, sun, verdict }) {
     <p class="mp__verdict spot--${verdict.sentiment}">${icon(verdict.icon, { size: 18 })} ${
     verdict.label
   }</p>
+    ${extra ? `<p class="muted mp__extra">${extra}</p>` : ''}
     <button id="mp-open" class="mp__open">Apri dettaglio completo →</button>
   `;
   const open = document.getElementById('mp-open');

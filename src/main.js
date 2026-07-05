@@ -30,6 +30,7 @@ import {
   driveMinutes,
   gridCandidates,
   prescoreGrid,
+  horizonDistanceKm,
 } from './spots.js';
 
 const els = {
@@ -571,6 +572,15 @@ function renderDetail({ eventDate, cond, score, factors, notes, sun, phase, time
       <div class="stat"><span>${icon('eye', { size: 16 })} Visibilità</span><strong>${(
     cond.visibility / 1000
   ).toFixed(0)} km</strong></div>
+      ${
+        Number.isFinite(state.forecast?.elevation)
+          ? `<div class="stat"><span>${icon('mountain', {
+              size: 16,
+            })} Orizzonte (quota ${Math.round(state.forecast.elevation)} m)</span><strong>~${horizonDistanceKm(
+              state.forecast.elevation
+            ).toFixed(0)} km</strong></div>`
+          : ''
+      }
       <div class="stat"><span>${icon('droplet', {
         size: 16,
       })} Umidità</span><strong>${Math.round(cond.humidity)}%</strong></div>
@@ -652,6 +662,8 @@ function renderDetail({ eventDate, cond, score, factors, notes, sun, phase, time
     azimuth: sun.azimuth,
     score,
     event,
+    visibility: cond.visibility,
+    spots: Array.isArray(state.spots) ? state.spots : [],
   }).catch((err) => console.warn('Mini-mappa non disponibile:', err));
 }
 

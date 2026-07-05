@@ -12,6 +12,7 @@ import {
   driveMinutes,
   gridCandidates,
   prescoreGrid,
+  horizonDistanceKm,
 } from '../src/spots.js';
 
 test('distanceKm ~0 per lo stesso punto', () => {
@@ -83,6 +84,14 @@ test('spotVerdict: senza dati di quota resta neutro', () => {
   const v = spotVerdict('beach', null);
   assert.equal(v.sentiment, 'neutral');
   assert.ok(v.score > 0);
+});
+
+test('horizonDistanceKm cresce con la quota (0 a livello mare)', () => {
+  assert.equal(horizonDistanceKm(0), 0);
+  // da ~100 m l'orizzonte è ~35 km; da 400 m ~71 km
+  assert.ok(Math.abs(horizonDistanceKm(100) - 35.7) < 1);
+  assert.ok(horizonDistanceKm(400) > horizonDistanceKm(100));
+  assert.equal(horizonDistanceKm(-5), 0); // quote negative → 0
 });
 
 test('angleDiff gestisce il wrap-around', () => {

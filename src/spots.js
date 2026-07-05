@@ -44,6 +44,14 @@ export function driveMinutes(distKm) {
   return Math.max(1, Math.round((distKm * 1.3) / 50 * 60));
 }
 
+/**
+ * Distanza dell'orizzonte geometrico (km) da una quota in metri: quanto lontano
+ * si spinge lo sguardo verso il mare da quell'altezza (≈ 3,57·√h).
+ */
+export function horizonDistanceKm(elevM) {
+  return 3.57 * Math.sqrt(Math.max(0, elevM || 0));
+}
+
 /** Punto di destinazione a `distKm` da (lat,lon) lungo un rilevamento (gradi). */
 export function destinationPoint(lat, lon, bearingDeg, distKm) {
   const d = distKm / EARTH_KM;
