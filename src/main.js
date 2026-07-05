@@ -279,6 +279,22 @@ async function loadSky(list, place) {
   top.forEach((s, i) => {
     s.skyScore = scores[i];
   });
+
+  // Integra i colori previsti nel ranking: un punto con affaccio ottimo ma
+  // cielo mediocre non deve restare in cima solo per la vista. Per i finalisti
+  // di cui conosciamo il cielo usiamo un punteggio combinato (affaccio pesa più
+  // del cielo, che sull'area è quasi uniforme, meno la penalità distanza);
+  // gli altri mantengono il finalScore, su scala comparabile.
+  top.forEach((s) => {
+    if (s.skyScore == null) return;
+    const distPenalty = Math.max(0, s.dist - NEAR_KM) * 0.4;
+    s.overallScore = 0.6 * s.verdict.score + 0.4 * s.skyScore - distPenalty;
+  });
+  list.sort(
+    (a, b) =>
+      (b.overallScore ?? b.finalScore) - (a.overallScore ?? a.finalScore) ||
+      a.dist - b.dist
+  );
   render();
 }
 

@@ -23,7 +23,7 @@ e qualità dell'aria (gratuito, CORS abilitato).
 11. **Mappa del punto** — mini-mappa OpenStreetMap del punto analizzato, con coordinate richieste e cella di griglia meteo effettiva.
 12. **Preferiti** — salva le tue località (localStorage) e ricaricale con un tap.
 13. **Condivisione** — link diretto alla località+evento (Web Share API o copia link).
-14. **Dove andare a guardarlo** — punti panoramici vicini da OpenStreetMap (viewpoint, fari, promontori, spiagge) **valutati qualitativamente**: si campiona la quota del terreno lungo il raggio verso il sole (Elevation API di Open-Meteo) per stimare se l'orizzonte è libero o ostruito e se c'è mare aperto; i punti sono ordinati per qualità dell'affaccio (raggio ~25 km, con stima dei minuti in auto). Per le mete finaliste viene calcolato anche il **Sunset Score direttamente nel punto**. Su richiesta, una **stima da coordinate** (griglia + quote) propone anche punti *non mappati* su OSM, valutandone l'affaccio.
+14. **Dove andare a guardarlo** — punti panoramici vicini da OpenStreetMap (viewpoint, fari, promontori, spiagge) **valutati qualitativamente**: si campiona la quota del terreno lungo il raggio verso il sole (Elevation API di Open-Meteo) per stimare se l'orizzonte è libero o ostruito e se c'è mare aperto (raggio ~25 km, con stima dei minuti in auto). Ogni meta mostra **due punteggi distinti**: l'**affaccio** (il numero grande — quanto è buona la *vista*: orizzonte libero, mare aperto, tipo di luogo; indipendente dal meteo) e il **cielo** (chip 🌅 — il *Sunset Score* calcolato col meteo di quel punto specifico). Per le mete finaliste i due punteggi vengono **combinati** nel ranking (l'affaccio pesa di più; il cielo, quasi uniforme sull'area, affina l'ordine). Su richiesta, una **stima da coordinate** (griglia + quote) propone anche punti *non mappati* su OSM, valutandone l'affaccio.
 15. **Schermata mappa** (`#map`) — mappa interattiva (Leaflet, caricato on-demand): **tocca un punto qualsiasi** e ottieni Sunset Score, direzione del sole e affaccio in quel punto, poi apri il dettaglio completo.
 
 ## Come funziona il punteggio
@@ -32,14 +32,17 @@ Il tramonto migliore richiede **nuvole alte/medie parziali** (i cirri catturano
 il colore), **orizzonte libero da nuvole basse** (che bloccherebbero il sole) e
 **atmosfera limpida**. L'algoritmo (`src/score.js`):
 
+- parte da una **base garantita** (0,35): anche un cielo terso "vale" qualcosa;
 - premia con una curva a campana le **nuvole alte (~50%)** e **medie (~45%)** → _drama_;
 - valuta la **trasparenza** da visibilità e umidità → _clarity_;
 - applica una **penalità moltiplicativa** per le **nuvole basse** (bloccano l'orizzonte);
-- penalizza il **cielo completamente coperto** (poca luce diretta).
+- penalizza l'**overcast del deck opaco** (nuvole basse+medie che coprono il cielo):
+  i **cirri alti**, anche fitti, restano traslucidi e **non** contano come overcast;
+- modula col **pulviscolo** (`aerosol`): moderato accende i rossi, eccessivo li spegne.
 
 ```
-raw   = 100 · (0,35·base + 0,45·drama + 0,20·clarity)
-score = raw · (1 − 0,85·nuvole_basse) · (1 − 0,9·overcast)
+raw   = 100 · (0,35 + 0,45·drama + 0,20·clarity)          // 0,35 = base garantita
+score = raw · (1 − 0,85·nuvole_basse) · (1 − 0,9·overcast) · aerosol
 ```
 
 Un cielo terso vale ~55 (bello ma piatto); cirri parziali con orizzonte libero

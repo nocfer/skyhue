@@ -65,8 +65,13 @@ export function computeSunsetScore(c) {
 
   // Le nuvole basse bloccano il sole sull'orizzonte: penalità moltiplicativa.
   const lowBlock = clamp(low / 70, 0, 1); // ~70% di nuvole basse = orizzonte chiuso
-  // Un cielo completamente coperto lascia passare poca luce diretta.
-  const overcast = clamp((total - 85) / 15, 0, 1);
+  // "Overcast": il cielo lascia passare poca luce diretta. Conta solo il deck
+  // OPACO (nuvole basse + medie): i cirri alti, anche fitti, restano traslucidi
+  // e lasciano filtrare la luce radente — usarli per l'overcast penalizzerebbe
+  // proprio lo scenario migliore (cielo pieno di cirri accesi). Stimiamo la
+  // copertura combinata basse/medie come unione con overlap indipendente.
+  const opaqueDeck = clamp(low + mid - (low * mid) / 100, 0, 100);
+  const overcast = clamp((opaqueDeck - 70) / 30, 0, 1);
 
   // Aerosol: un pulviscolo moderato (AOD ~0.2) accende i rossi diffondendo la
   // luce; troppo (foschia/particolato) attenua i colori. Opzionale: se assente
@@ -112,6 +117,7 @@ export function computeSunsetScore(c) {
       visFactor,
       humidityPenalty,
       lowBlock,
+      opaqueDeck,
       overcast,
       aerosol: aod,
       pm25,

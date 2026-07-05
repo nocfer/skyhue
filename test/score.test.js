@@ -69,6 +69,31 @@ test('cielo completamente coperto penalizza fortemente', () => {
   assert.ok(score < 30, `atteso basso per overcast, ottenuto ${score}`);
 });
 
+test('i cirri alti, anche fitti, non contano come overcast', () => {
+  // Cielo pieno di cirri alti (90%) ma senza deck basso/medio: è lo scenario
+  // migliore, NON deve subire la penalità "cielo coperto".
+  const { factors, score } = computeSunsetScore({
+    cloudCover: 90,
+    cloudCoverLow: 0,
+    cloudCoverMid: 0,
+    cloudCoverHigh: 90,
+    visibility: 22000,
+    humidity: 45,
+  });
+  assert.equal(factors.overcast, 0, `overcast atteso 0, ottenuto ${factors.overcast}`);
+  // Deve battere nettamente lo stesso cielo ma con un deck medio opaco.
+  const conDeck = computeSunsetScore({
+    cloudCover: 90,
+    cloudCoverLow: 10,
+    cloudCoverMid: 90,
+    cloudCoverHigh: 90,
+    visibility: 22000,
+    humidity: 45,
+  });
+  assert.ok(conDeck.factors.overcast > 0.5, 'un deck medio fitto deve attivare overcast');
+  assert.ok(score > conDeck.score, `cirri (${score}) devono battere deck (${conDeck.score})`);
+});
+
 test('il punteggio resta sempre in [0,100]', () => {
   for (const v of [0, 50, 100]) {
     const { score } = computeSunsetScore({
