@@ -261,6 +261,9 @@ async function ensureMap() {
   if (map) return;
   const c = initialCenter();
   map = L.map(els.canvas, { zoomControl: true }).setView([c.lat, c.lon], c.zoom);
+  // Attribuzione minima: niente prefisso "Leaflet", solo il credito OSM/CARTO
+  // (obbligatorio dalle condizioni d'uso di OpenStreetMap e CARTO).
+  map.attributionControl.setPrefix(false);
   bigTile = L.tileLayer(tileUrl(), TILE_OPTS).addTo(map);
   map.on('click', (e) => selectPoint(e.latlng.lat, e.latlng.lng));
   addLegend(L);

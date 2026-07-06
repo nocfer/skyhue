@@ -12,6 +12,9 @@
   --panel-strong: rgba(255, 255, 255, 0.06);
   --elevated: #17131d;
 
+  /* Sfondo "vetro" dei control sopra la mappa (legenda, attribuzione). */
+  --map-glass: hsl(280 18% 9% / 0.82);
+
   /* Famiglia calda e coerente (tinte analoghe: coral → ambra → oro). */
   --accent: #ff8a52; /* azione primaria */
   --gold: #ffce6f; /* decorativo: sole, stella, dettagli */
@@ -42,6 +45,7 @@
   --good: #c77d18;
   --neutral: #8a7d72;
   --bad: #c0472a;
+  --map-glass: hsl(38 50% 98% / 0.85);
 }
 
 * {
@@ -826,7 +830,7 @@ body {
   font: inherit;
 }
 .leaflet-control-attribution {
-  background: hsl(280 18% 8% / 0.72) !important;
+  background: var(--map-glass) !important;
   color: var(--muted) !important;
   backdrop-filter: blur(4px);
 }
@@ -892,7 +896,7 @@ body {
 
 /* Legenda dei simboli sulla mappa grande (control Leaflet, collassabile). */
 .maplegend {
-  background: hsl(280 20% 7% / 0.82);
+  background: var(--map-glass);
   border: 1px solid var(--card-border);
   border-radius: 12px;
   padding: 0.35rem 0.6rem 0.5rem;
