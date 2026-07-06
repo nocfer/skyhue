@@ -269,10 +269,59 @@ body {
 }
 
 .search {
+  position: relative;
   display: flex;
   gap: 0.5rem;
   flex-wrap: wrap;
   justify-content: center;
+}
+
+/* Autocompletamento: elenco dei suggerimenti sotto la barra di ricerca. */
+.suggest {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 30;
+  margin: 0;
+  padding: 0.3rem;
+  list-style: none;
+  text-align: left;
+  background: var(--elevated);
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.32);
+  max-height: 19rem;
+  overflow-y: auto;
+}
+
+.suggest[hidden] {
+  display: none;
+}
+
+.suggest__item {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 8px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.suggest__item:hover,
+.suggest__item--active {
+  background: var(--panel-strong);
+}
+
+.suggest__name {
+  font-weight: 600;
+}
+
+.suggest__meta {
+  color: var(--muted);
+  font-size: 0.88rem;
 }
 
 .search input {

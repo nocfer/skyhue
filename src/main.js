@@ -44,6 +44,7 @@ import {
 const els = {
   form: document.getElementById('search-form'),
   input: document.getElementById('search-input'),
+  suggest: document.getElementById('search-suggest'),
   geoBtn: document.getElementById('geo-btn'),
   results: document.getElementById('results'),
   status: document.getElementById('status'),
@@ -994,10 +995,20 @@ async function compareFavorites() {
 
 // --- Eventi UI -------------------------------------------------------------
 
+/** Etichetta leggibile ("Città, Regione, Paese") da un match del geocoder. */
+function matchLabel(m) {
+  return [m.name, m.admin1, m.country].filter(Boolean).join(', ');
+}
+
+function matchToPlace(m) {
+  return { latitude: m.latitude, longitude: m.longitude, label: matchLabel(m) };
+}
+
 els.form.addEventListener('submit', async (e) => {
   e.preventDefault();
   const query = els.input.value.trim();
   if (!query) return;
+  closeSuggest();
   setStatus(t('status.searching'), 'info');
   try {
     const matches = await geocode(query, 5, getLang());
@@ -1005,16 +1016,135 @@ els.form.addEventListener('submit', async (e) => {
       setStatus(t('status.noResults'), 'error');
       return;
     }
-    const m = matches[0];
-    const parts = [m.name, m.admin1, m.country].filter(Boolean);
-    await analyze({
-      latitude: m.latitude,
-      longitude: m.longitude,
-      label: parts.join(', '),
-    });
+    await analyze(matchToPlace(matches[0]));
   } catch (err) {
     setStatus(t('status.error', { msg: err.message }), 'error');
   }
+});
+
+// --- Autocompletamento della barra di ricerca -----------------------------
+// Man mano che si digita, interroghiamo il geocoder (con debounce) e mostriamo
+// i risultati in un elenco navigabile con mouse e tastiera. Il submit continua
+// a funzionare (primo risultato) anche senza toccare i suggerimenti.
+
+const suggest = { matches: [], active: -1, seq: 0, open: false };
+let suggestTimer = null;
+
+/** Escape minimale: i nomi arrivano da un'API esterna e finiscono in innerHTML. */
+function escapeHtml(s) {
+  return String(s).replace(
+    /[&<>"']/g,
+    (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])
+  );
+}
+
+function updateSuggestAria() {
+  els.suggest.setAttribute('aria-label', t('search.suggestAria'));
+}
+
+function closeSuggest() {
+  suggest.open = false;
+  suggest.matches = [];
+  suggest.active = -1;
+  els.suggest.hidden = true;
+  els.suggest.innerHTML = '';
+  els.input.setAttribute('aria-expanded', 'false');
+  els.input.removeAttribute('aria-activedescendant');
+}
+
+function showSuggest(matches) {
+  if (!matches.length) {
+    closeSuggest();
+    return;
+  }
+  suggest.matches = matches;
+  suggest.active = -1;
+  els.suggest.innerHTML = matches
+    .map((m, i) => {
+      const meta = [m.admin1, m.country].filter(Boolean).join(', ');
+      return `<li class="suggest__item" role="option" id="suggest-opt-${i}" data-i="${i}" aria-selected="false">
+        <span class="suggest__name">${escapeHtml(m.name)}</span>
+        ${meta ? `<span class="suggest__meta">${escapeHtml(meta)}</span>` : ''}
+      </li>`;
+    })
+    .join('');
+  els.suggest.hidden = false;
+  suggest.open = true;
+  els.input.setAttribute('aria-expanded', 'true');
+  els.input.removeAttribute('aria-activedescendant');
+}
+
+function moveActive(delta) {
+  const n = suggest.matches.length;
+  if (!n) return;
+  suggest.active = (suggest.active + delta + n) % n;
+  const items = els.suggest.querySelectorAll('.suggest__item');
+  items.forEach((li, i) => {
+    const on = i === suggest.active;
+    li.classList.toggle('suggest__item--active', on);
+    li.setAttribute('aria-selected', String(on));
+  });
+  els.input.setAttribute('aria-activedescendant', `suggest-opt-${suggest.active}`);
+  items[suggest.active]?.scrollIntoView({ block: 'nearest' });
+}
+
+function chooseSuggest(i) {
+  const m = suggest.matches[i];
+  if (!m) return;
+  const place = matchToPlace(m);
+  els.input.value = place.label;
+  closeSuggest();
+  analyze(place);
+}
+
+async function querySuggest(query) {
+  const seq = ++suggest.seq;
+  try {
+    const matches = await geocode(query, 6, getLang());
+    if (seq !== suggest.seq) return; // è arrivata una richiesta più recente
+    showSuggest(matches);
+  } catch {
+    if (seq === suggest.seq) closeSuggest();
+  }
+}
+
+els.input.addEventListener('input', () => {
+  const q = els.input.value.trim();
+  clearTimeout(suggestTimer);
+  if (q.length < 2) {
+    suggest.seq++; // invalida eventuali richieste in volo
+    closeSuggest();
+    return;
+  }
+  suggestTimer = setTimeout(() => querySuggest(q), 220);
+});
+
+els.input.addEventListener('keydown', (e) => {
+  if (!suggest.open) return;
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    moveActive(1);
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    moveActive(-1);
+  } else if (e.key === 'Enter' && suggest.active >= 0) {
+    e.preventDefault(); // scegli il suggerimento invece di inviare il form
+    chooseSuggest(suggest.active);
+  } else if (e.key === 'Escape') {
+    closeSuggest();
+  }
+});
+
+// mousedown (non click) così la scelta parte prima che l'input perda il focus.
+els.suggest.addEventListener('mousedown', (e) => {
+  const li = e.target.closest('.suggest__item');
+  if (!li) return;
+  e.preventDefault();
+  chooseSuggest(Number(li.dataset.i));
+});
+
+els.input.addEventListener('blur', () => {
+  setTimeout(closeSuggest, 120);
 });
 
 els.geoBtn.addEventListener('click', () => {
@@ -1103,6 +1233,7 @@ if (langBtn) {
     document.documentElement.lang = getLang();
     applyStaticI18n();
     updateLangToggle();
+    updateSuggestAria();
     renderFavorites();
     // Ri-renderizza il risultato corrente, se presente.
     if (state.forecast && state.place) render();
@@ -1116,5 +1247,6 @@ initLang();
 document.documentElement.lang = getLang();
 applyStaticI18n();
 updateLangToggle();
+updateSuggestAria();
 renderFavorites();
 initFromUrl();
