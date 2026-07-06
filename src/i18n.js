@@ -103,6 +103,7 @@ const DICT = {
 
     'map.hint': 'Tocca un punto della mappa per valutarlo',
     'map.back': 'Indietro',
+    'map.attribution': 'Informazioni e crediti della mappa',
     'map.legend': 'Legenda',
     'map.legend.point': 'Punto analizzato',
     'map.legend.sun': 'Sole all’orizzonte',
@@ -289,6 +290,7 @@ const DICT = {
 
     'map.hint': 'Tap a point on the map to evaluate it',
     'map.back': 'Back',
+    'map.attribution': 'Map information and credits',
     'map.legend': 'Legend',
     'map.legend.point': 'Analysed point',
     'map.legend.sun': 'Sun on the horizon',

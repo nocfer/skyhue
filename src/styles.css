@@ -837,6 +837,48 @@ body {
 .leaflet-control-attribution a {
   color: var(--accent) !important;
 }
+
+/* Attribuzione compatta: collassata a un'icona "ⓘ", espandibile al tap/hover.
+   font-size:0 nasconde testo e link; l'icona ::before ha la sua dimensione. */
+.leaflet-control-attribution.attr-collapsed {
+  font-size: 0 !important;
+  line-height: 1;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  padding: 0 !important;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 1px solid var(--card-border);
+}
+.leaflet-control-attribution.attr-collapsed::before {
+  content: 'ⓘ';
+  font-size: 14px;
+  color: var(--muted);
+}
+.leaflet-control-attribution.attr-collapsed.attr-open {
+  font-size: 0.68rem !important;
+  width: auto;
+  height: auto;
+  padding: 0 6px !important;
+  border-radius: 6px;
+}
+.leaflet-control-attribution.attr-collapsed.attr-open::before {
+  content: none;
+}
+@media (hover: hover) {
+  .leaflet-control-attribution.attr-collapsed:hover {
+    font-size: 0.68rem !important;
+    width: auto;
+    height: auto;
+    padding: 0 6px !important;
+    border-radius: 6px;
+  }
+  .leaflet-control-attribution.attr-collapsed:hover::before {
+    content: none;
+  }
+}
 .leaflet-popup-content-wrapper,
 .leaflet-popup-tip {
   background: var(--elevated);

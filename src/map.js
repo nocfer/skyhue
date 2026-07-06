@@ -231,6 +231,7 @@ export async function mountMiniMap(mount, { lat, lon, azimuth, score, event, vis
     doubleClickZoom: false,
     keyboard: false,
   }).setView([lat, lon], 12);
+  compactAttribution(L, map);
   const tile = L.tileLayer(tileUrl(), TILE_OPTS).addTo(map);
   const overlays = L.featureGroup().addTo(map);
 
@@ -256,14 +257,41 @@ function initialCenter() {
   return { lat: 41.9, lon: 12.5, zoom: 6 };
 }
 
+/**
+ * Comprime l'attribuzione a un'icona "ⓘ" espandibile al tap (o su hover da
+ * desktop). Il credito OSM/CARTO resta presente — è obbligatorio dalle
+ * condizioni d'uso — ma non ingombra la mappa. Rimuove anche il prefisso
+ * "Leaflet" di default.
+ */
+function compactAttribution(L, m) {
+  m.attributionControl.setPrefix(false);
+  const el = m.attributionControl.getContainer();
+  if (!el) return;
+  el.classList.add('attr-collapsed');
+  el.setAttribute('role', 'button');
+  el.setAttribute('tabindex', '0');
+  el.setAttribute('aria-label', t('map.attribution'));
+  // Non far propagare il tap alla mappa (eviterebbe un falso "punto scelto").
+  L.DomEvent.disableClickPropagation(el);
+  const toggle = () => el.classList.toggle('attr-open');
+  L.DomEvent.on(el, 'click', (e) => {
+    if (e.target.closest('a')) return; // lascia aprire i link del credito
+    toggle();
+  });
+  L.DomEvent.on(el, 'keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      toggle();
+    }
+  });
+}
+
 async function ensureMap() {
   const L = await loadLeaflet();
   if (map) return;
   const c = initialCenter();
   map = L.map(els.canvas, { zoomControl: true }).setView([c.lat, c.lon], c.zoom);
-  // Attribuzione minima: niente prefisso "Leaflet", solo il credito OSM/CARTO
-  // (obbligatorio dalle condizioni d'uso di OpenStreetMap e CARTO).
-  map.attributionControl.setPrefix(false);
+  compactAttribution(L, map);
   bigTile = L.tileLayer(tileUrl(), TILE_OPTS).addTo(map);
   map.on('click', (e) => selectPoint(e.latlng.lat, e.latlng.lng));
   addLegend(L);
