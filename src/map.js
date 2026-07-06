@@ -45,6 +45,7 @@ let tapLayer = null; // overlay completi del punto toccato (sole, raggio, visibi
 let legendControl = null; // legenda dei simboli (montata una sola volta)
 let leafletLoading = null;
 let evalToken = 0; // per ignorare valutazioni superate da un nuovo tap
+let evalAbort = null; // annulla le richieste di una valutazione superata da un nuovo tap
 
 /** Carica Leaflet (CSS+JS) una sola volta, restituendo il global L. */
 export function loadLeaflet() {
@@ -355,13 +356,19 @@ async function selectPoint(lat, lon) {
 
 /** Valuta un punto: Sunset Score, direzione del sole e affaccio verso il sole. */
 async function evaluatePoint(lat, lon) {
+  // Annulla la valutazione precedente ancora in corso: toccando più punti in
+  // sequenza, le richieste superate (incluse le costose query Overpass) vengono
+  // interrotte invece di accumularsi e saturare la rete.
+  if (evalAbort) evalAbort.abort();
+  evalAbort = new AbortController();
+  const { signal } = evalAbort;
   const token = ++evalToken;
   els.panel.hidden = false;
   els.panel.innerHTML = `<p class="muted">${t('mp.calc')}</p>`;
   try {
     const [forecast, air] = await Promise.all([
-      fetchForecast(lat, lon),
-      fetchAirQuality(lat, lon).catch(() => null),
+      fetchForecast(lat, lon, { signal }),
+      fetchAirQuality(lat, lon, { signal }).catch(() => null),
     ]);
     const { sunset } = nextSunset(forecast, new Date());
     const cond = { ...conditionsAtTime(forecast, sunset), ...airAtTime(air, sunset) };
@@ -378,13 +385,17 @@ async function evaluatePoint(lat, lon) {
         d === 0 ? { lat, lon } : destinationPoint(lat, lon, sun.azimuth, d)
       );
       const [el, near] = await Promise.all([
-        fetchElevations(pts),
-        nearbySpots(lat, lon, sun.azimuth).catch(() => []),
+        fetchElevations(pts, { signal }),
+        nearbySpots(lat, lon, sun.azimuth, { signal }).catch((err) => {
+          if (err?.name === 'AbortError') throw err; // valutazione superata
+          return [];
+        }),
       ]);
       const ahead = SAMPLE_DISTANCES.slice(1).map((distKm, k) => ({ distKm, elev: el[k + 1] }));
       horizon = evaluateHorizon(el[0], ahead);
       spots = near;
     } catch (err) {
+      if (err?.name === 'AbortError' || signal.aborted) return; // superata da un nuovo tap
       console.warn('Quote/punti non disponibili:', err);
     }
     const verdict = spotVerdict('viewpoint', horizon);
@@ -428,7 +439,7 @@ async function evaluatePoint(lat, lon) {
       elevation: forecast.elevation,
     });
   } catch (err) {
-    if (token !== evalToken) return;
+    if (err?.name === 'AbortError' || signal.aborted || token !== evalToken) return;
     els.panel.innerHTML = `<p class="muted">${t('mp.na')}</p>`;
   }
 }

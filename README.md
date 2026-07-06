@@ -83,11 +83,26 @@ src/score.js          algoritmo Sunset Score + spiegazione  ← cuore testabile
 src/sky.js            palette del cielo previsto (gradiente)
 src/spots.js          punti panoramici vicini (OpenStreetMap/Overpass)
 src/store.js          preferiti in localStorage
+src/cache.js          cache in memoria (TTL) delle risposte di rete
 src/main.js           orchestrazione e rendering
 test/score.test.js    test dell'algoritmo
 test/sky.test.js      test della palette
 test/spots.test.js    test di distanza/rilevamento
+test/cache.test.js    test della cache (TTL, riuso, errori)
 ```
+
+## Mappa interattiva & performance
+
+Sulla schermata mappa (`#map`) ogni tap valuta il punto (meteo, aria, quote del
+terreno e punti Overpass nel raggio di 25 km). Toccando più punti in sequenza:
+
+- le richieste della valutazione **precedente vengono annullate** (`AbortController`)
+  invece di accumularsi — comprese le costose query Overpass — così la rete non
+  si satura e vince sempre l'ultimo tap;
+- le risposte sono messe in **cache in memoria** (`src/cache.js`) per coordinate
+  arrotondate: ritoccare la stessa zona è immediato e non re-interroga Overpass.
+  Le quote del terreno (immutabili) e i POI (quasi statici) hanno TTL lunghi; il
+  meteo e la qualità dell'aria ~30 min.
 
 ## PWA & offline
 

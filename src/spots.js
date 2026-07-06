@@ -4,6 +4,7 @@
 // distanza/direzione; la scelta finale, in base all'azimut del tramonto, è
 // lasciata alla persona.
 import { azimuthToCardinal } from './astronomy.js';
+import { cached, coordKey, TTL } from './cache.js';
 
 // Endpoint Overpass (con riserve: se il primo è occupato si prova il successivo).
 const OVERPASS_ENDPOINTS = [
@@ -185,15 +186,18 @@ export function prescoreGrid(points, elevations, stepKm) {
  * @param {Array<{lat:number, lon:number}>} points
  * @returns {Promise<number[]>} quote allineate ai punti
  */
-export async function fetchElevations(points) {
+export async function fetchElevations(points, { signal } = {}) {
   if (!points.length) return [];
   const lats = points.map((p) => p.lat.toFixed(5)).join(',');
   const lons = points.map((p) => p.lon.toFixed(5)).join(',');
-  const url = `https://api.open-meteo.com/v1/elevation?latitude=${lats}&longitude=${lons}`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Elevation ${res.status}`);
-  const data = await res.json();
-  return data.elevation ?? [];
+  // La quota del terreno è immutabile: la lista di punti è già una chiave stabile.
+  return cached(`elev:${lats}|${lons}`, TTL.ELEVATION, async () => {
+    const url = `https://api.open-meteo.com/v1/elevation?latitude=${lats}&longitude=${lons}`;
+    const res = await fetch(url, { signal });
+    if (!res.ok) throw new Error(`Elevation ${res.status}`);
+    const data = await res.json();
+    return data.elevation ?? [];
+  });
 }
 
 // Tipi di punto che consideriamo, con etichetta e icona.
@@ -231,11 +235,15 @@ export function kindInfo(kind) {
  * Scarica i punti panoramici entro `radiusKm` da una posizione.
  * @returns {Promise<Array<{id,lat,lon,name,kind}>>}
  */
-export async function fetchSunsetSpots(lat, lon, radiusKm = 25) {
+export async function fetchSunsetSpots(lat, lon, radiusKm = 25, { signal } = {}) {
   const r = Math.round(radiusKm * 1000);
-  // `nwr` + `out center` includono anche punti mappati come aree (spiagge,
-  // promontori), non solo come nodi.
-  const q = `[out:json][timeout:25];
+  // I POI sono quasi statici: chiave su coordinate arrotondate (~1 km) + raggio,
+  // così tap ravvicinati riusano la stessa risposta Overpass (query costosa).
+  const key = coordKey('spots', lat, lon, 2, `|${radiusKm}`);
+  return cached(key, TTL.SPOTS, async () => {
+    // `nwr` + `out center` includono anche punti mappati come aree (spiagge,
+    // promontori), non solo come nodi.
+    const q = `[out:json][timeout:25];
 (
   nwr["tourism"="viewpoint"](around:${r},${lat},${lon});
   nwr["man_made"="lighthouse"](around:${r},${lat},${lon});
@@ -247,22 +255,23 @@ export async function fetchSunsetSpots(lat, lon, radiusKm = 25) {
 );
 out center 90;`;
 
-  const data = await overpassQuery(q);
-  return (data.elements ?? [])
-    .map((e) => {
-      const lat2 = e.lat ?? e.center?.lat;
-      const lon2 = e.lon ?? e.center?.lon;
-      if (!Number.isFinite(lat2) || !Number.isFinite(lon2)) return null;
-      const kind = classify(e.tags);
-      return {
-        id: e.id,
-        lat: lat2,
-        lon: lon2,
-        name: e.tags?.name || null, // se manca il nome OSM, la UI usa l'etichetta del tipo
-        kind,
-      };
-    })
-    .filter(Boolean);
+    const data = await overpassQuery(q, signal);
+    return (data.elements ?? [])
+      .map((e) => {
+        const lat2 = e.lat ?? e.center?.lat;
+        const lon2 = e.lon ?? e.center?.lon;
+        if (!Number.isFinite(lat2) || !Number.isFinite(lon2)) return null;
+        const kind = classify(e.tags);
+        return {
+          id: e.id,
+          lat: lat2,
+          lon: lon2,
+          name: e.tags?.name || null, // se manca il nome OSM, la UI usa l'etichetta del tipo
+          kind,
+        };
+      })
+      .filter(Boolean);
+  });
 }
 
 /**
@@ -276,9 +285,9 @@ export async function nearbySpots(
   lat,
   lon,
   azimuth,
-  { radiusKm = 25, evaluate = 14, show = 6, nearKm = 6 } = {}
+  { radiusKm = 25, evaluate = 14, show = 6, nearKm = 6, signal } = {}
 ) {
-  const raw = await fetchSunsetSpots(lat, lon, radiusKm);
+  const raw = await fetchSunsetSpots(lat, lon, radiusKm, { signal });
   if (!raw.length) return [];
 
   // Pre-selezione per costo: vicinanza, con penalità ai lontani "dal lato sbagliato".
@@ -301,8 +310,9 @@ export async function nearbySpots(
   }
   let elevations = null;
   try {
-    elevations = await fetchElevations(points);
+    elevations = await fetchElevations(points, { signal });
   } catch (err) {
+    if (err?.name === 'AbortError') throw err; // valutazione superata: propaga
     console.warn('Quote non disponibili per i punti vicini:', err);
   }
 
@@ -362,7 +372,7 @@ export async function reverseGeocode(lat, lon, lang = 'it') {
 }
 
 /** Esegue una query Overpass provando gli endpoint in sequenza (form-urlencoded). */
-async function overpassQuery(q) {
+async function overpassQuery(q, signal) {
   let lastErr;
   for (const endpoint of OVERPASS_ENDPOINTS) {
     try {
@@ -370,10 +380,14 @@ async function overpassQuery(q) {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: 'data=' + encodeURIComponent(q),
+        signal,
       });
       if (!res.ok) throw new Error(`Overpass ${res.status}`);
       return await res.json();
     } catch (err) {
+      // Valutazione annullata (nuovo tap): interrompi subito, non ripiegare
+      // sull'endpoint successivo.
+      if (err?.name === 'AbortError' || signal?.aborted) throw err;
       lastErr = err;
     }
   }

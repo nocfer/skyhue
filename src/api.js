@@ -1,5 +1,6 @@
 // api.js — accesso alle API Open-Meteo (meteo + geocoding), senza API key.
 // Documentazione: https://open-meteo.com/en/docs
+import { cached, coordKey, TTL } from './cache.js';
 
 const GEOCODE_URL = 'https://geocoding-api.open-meteo.com/v1/search';
 const FORECAST_URL = 'https://api.open-meteo.com/v1/forecast';
@@ -29,27 +30,29 @@ export function coordsLabel(lat, lon) {
  * Scarica le previsioni orarie e i dati astronomici giornalieri per un punto.
  * @returns {Promise<Object>} risposta grezza Open-Meteo
  */
-export async function fetchForecast(latitude, longitude) {
-  const params = new URLSearchParams({
-    latitude: latitude.toString(),
-    longitude: longitude.toString(),
-    hourly: [
-      'cloud_cover',
-      'cloud_cover_low',
-      'cloud_cover_mid',
-      'cloud_cover_high',
-      'visibility',
-      'relative_humidity_2m',
-      'temperature_2m',
-    ].join(','),
-    daily: ['sunrise', 'sunset'].join(','),
-    timezone: 'auto',
-    forecast_days: '7',
+export async function fetchForecast(latitude, longitude, { signal } = {}) {
+  return cached(coordKey('fc', latitude, longitude), TTL.FORECAST, async () => {
+    const params = new URLSearchParams({
+      latitude: latitude.toString(),
+      longitude: longitude.toString(),
+      hourly: [
+        'cloud_cover',
+        'cloud_cover_low',
+        'cloud_cover_mid',
+        'cloud_cover_high',
+        'visibility',
+        'relative_humidity_2m',
+        'temperature_2m',
+      ].join(','),
+      daily: ['sunrise', 'sunset'].join(','),
+      timezone: 'auto',
+      forecast_days: '7',
+    });
+    const url = `${FORECAST_URL}?${params.toString()}`;
+    const res = await fetch(url, { signal });
+    if (!res.ok) throw new Error(`Previsioni non disponibili (${res.status})`);
+    return res.json();
   });
-  const url = `${FORECAST_URL}?${params.toString()}`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Previsioni non disponibili (${res.status})`);
-  return res.json();
 }
 
 /**
@@ -57,17 +60,19 @@ export async function fetchForecast(latitude, longitude) {
  * Endpoint separato di Open-Meteo, senza API key.
  * @returns {Promise<Object>} risposta grezza (o lancia in caso di errore)
  */
-export async function fetchAirQuality(latitude, longitude) {
-  const params = new URLSearchParams({
-    latitude: latitude.toString(),
-    longitude: longitude.toString(),
-    hourly: ['aerosol_optical_depth', 'pm2_5', 'pm10'].join(','),
-    timezone: 'auto',
-    forecast_days: '7',
+export async function fetchAirQuality(latitude, longitude, { signal } = {}) {
+  return cached(coordKey('air', latitude, longitude), TTL.AIR, async () => {
+    const params = new URLSearchParams({
+      latitude: latitude.toString(),
+      longitude: longitude.toString(),
+      hourly: ['aerosol_optical_depth', 'pm2_5', 'pm10'].join(','),
+      timezone: 'auto',
+      forecast_days: '7',
+    });
+    const res = await fetch(`${AIR_URL}?${params.toString()}`, { signal });
+    if (!res.ok) throw new Error(`Qualità dell'aria non disponibile (${res.status})`);
+    return res.json();
   });
-  const res = await fetch(`${AIR_URL}?${params.toString()}`);
-  if (!res.ok) throw new Error(`Qualità dell'aria non disponibile (${res.status})`);
-  return res.json();
 }
 
 /**
