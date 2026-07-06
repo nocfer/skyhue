@@ -1004,11 +1004,21 @@ function matchToPlace(m) {
   return { latitude: m.latitude, longitude: m.longitude, label: matchLabel(m) };
 }
 
+// Località scelta da un suggerimento: l'etichetta mostrata nell'input
+// ("Città, Regione, Paese") non è ri-geocodificabile, quindi al submit
+// riusiamo direttamente le sue coordinate finché l'utente non modifica il testo.
+let chosenPlace = null;
+
 els.form.addEventListener('submit', async (e) => {
   e.preventDefault();
   const query = els.input.value.trim();
   if (!query) return;
   closeSuggest();
+  // Se il testo corrisponde ancora al suggerimento scelto, usalo così com'è.
+  if (chosenPlace && chosenPlace.label === query) {
+    await analyze(chosenPlace);
+    return;
+  }
   setStatus(t('status.searching'), 'info');
   try {
     const matches = await geocode(query, 5, getLang());
@@ -1093,6 +1103,7 @@ function chooseSuggest(i) {
   if (!m) return;
   const place = matchToPlace(m);
   els.input.value = place.label;
+  chosenPlace = place; // così il submit successivo non ri-geocodifica l'etichetta
   closeSuggest();
   analyze(place);
 }
@@ -1110,6 +1121,7 @@ async function querySuggest(query) {
 
 els.input.addEventListener('input', () => {
   const q = els.input.value.trim();
+  chosenPlace = null; // l'utente sta modificando: la selezione precedente non vale più
   clearTimeout(suggestTimer);
   if (q.length < 2) {
     suggest.seq++; // invalida eventuali richieste in volo
