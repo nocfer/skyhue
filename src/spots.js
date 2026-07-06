@@ -350,25 +350,28 @@ export async function nearbySpots(
  * Usare con parsimonia (policy ~1 req/s): solo per pochi punti.
  */
 export async function reverseGeocode(lat, lon, lang = 'it') {
-  const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat.toFixed(
-    5
-  )}&lon=${lon.toFixed(5)}&zoom=14&accept-language=${lang}`;
-  const res = await fetch(url, { headers: { Accept: 'application/json' } });
-  if (!res.ok) throw new Error(`Nominatim ${res.status}`);
-  const data = await res.json();
-  const a = data.address || {};
-  return (
-    a.hamlet ||
-    a.village ||
-    a.town ||
-    a.suburb ||
-    a.neighbourhood ||
-    a.locality ||
-    a.natural ||
-    data.name ||
-    (data.display_name ? data.display_name.split(',')[0].trim() : null) ||
-    null
-  );
+  // Toponimo statico + Nominatim ha policy ~1 req/s: cache lunga, persistente.
+  return cached(coordKey('rev', lat, lon, 5, `|${lang}`), TTL.REVERSE, async () => {
+    const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat.toFixed(
+      5
+    )}&lon=${lon.toFixed(5)}&zoom=14&accept-language=${lang}`;
+    const res = await fetch(url, { headers: { Accept: 'application/json' } });
+    if (!res.ok) throw new Error(`Nominatim ${res.status}`);
+    const data = await res.json();
+    const a = data.address || {};
+    return (
+      a.hamlet ||
+      a.village ||
+      a.town ||
+      a.suburb ||
+      a.neighbourhood ||
+      a.locality ||
+      a.natural ||
+      data.name ||
+      (data.display_name ? data.display_name.split(',')[0].trim() : null) ||
+      null
+    );
+  });
 }
 
 /** Esegue una query Overpass provando gli endpoint in sequenza (form-urlencoded). */

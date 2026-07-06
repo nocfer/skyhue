@@ -83,7 +83,7 @@ src/score.js          algoritmo Sunset Score + spiegazione  ← cuore testabile
 src/sky.js            palette del cielo previsto (gradiente)
 src/spots.js          punti panoramici vicini (OpenStreetMap/Overpass)
 src/store.js          preferiti in localStorage
-src/cache.js          cache in memoria (TTL) delle risposte di rete
+src/cache.js          cache a due livelli (memoria + IndexedDB) delle risposte di rete
 src/main.js           orchestrazione e rendering
 test/score.test.js    test dell'algoritmo
 test/sky.test.js      test della palette
@@ -99,10 +99,13 @@ terreno e punti Overpass nel raggio di 25 km). Toccando più punti in sequenza:
 - le richieste della valutazione **precedente vengono annullate** (`AbortController`)
   invece di accumularsi — comprese le costose query Overpass — così la rete non
   si satura e vince sempre l'ultimo tap;
-- le risposte sono messe in **cache in memoria** (`src/cache.js`) per coordinate
-  arrotondate: ritoccare la stessa zona è immediato e non re-interroga Overpass.
-  Le quote del terreno (immutabili) e i POI (quasi statici) hanno TTL lunghi; il
-  meteo e la qualità dell'aria ~30 min.
+- le risposte sono messe in **cache a due livelli** (`src/cache.js`) per
+  coordinate arrotondate: **memoria** (L1) per la sessione corrente e
+  **IndexedDB** (L2) per sopravvivere a reload e sessioni successive. Ritoccare
+  la stessa zona è immediato e non re-interroga Overpass. Le quote del terreno
+  (immutabili), i POI (quasi statici), il geocoding e i toponimi (Nominatim,
+  ~1 req/s) hanno TTL lunghi; il meteo e la qualità dell'aria ~30 min. Fuori dal
+  browser (test) IndexedDB non c'è e si degrada a sola memoria.
 
 ## PWA & offline
 
