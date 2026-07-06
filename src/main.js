@@ -1085,6 +1085,8 @@ if (themeBtn) {
       /* storage non disponibile */
     }
     updateThemeToggle();
+    // Notifica la mappa così può scambiare i tile chiari/scuri col tema.
+    window.dispatchEvent(new CustomEvent('skyhue:themechange', { detail: next }));
   });
   updateThemeToggle();
 }

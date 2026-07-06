@@ -20,14 +20,20 @@ import { t, cardinal, getLang } from './i18n.js';
 const LEAFLET_CSS = 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css';
 const LEAFLET_JS = 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js';
 
-// Basemap scuro ed elegante (CartoDB Dark Matter): niente API key, in tinta con
-// il tema "tramonto" dell'app — molto più coerente dei tile chiari di OSM.
-const TILE_URL = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+// Basemap CartoDB (niente API key): scuro (Dark Matter) col tema scuro, chiaro
+// (Positron) col tema chiaro, così la mappa segue il tema dell'app.
+const TILE_DARK = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+const TILE_LIGHT = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
 const TILE_OPTS = {
   subdomains: 'abcd',
   maxZoom: 20,
   attribution: '© OpenStreetMap © CARTO',
 };
+
+/** URL dei tile in base al tema corrente dell'app. */
+function tileUrl() {
+  return document.documentElement.dataset.theme === 'light' ? TILE_LIGHT : TILE_DARK;
+}
 
 const els = {
   appView: document.getElementById('app-view'),
@@ -43,6 +49,7 @@ let visCircle = null; // cerchio di visibilità sul punto toccato
 let contextLayer = null; // overlay del punto analizzato + punti suggeriti
 let tapLayer = null; // overlay completi del punto toccato (sole, raggio, visibilità, punti)
 let legendControl = null; // legenda dei simboli (montata una sola volta)
+let bigTile = null; // layer dei tile della mappa grande (per scambio tema)
 let leafletLoading = null;
 let evalToken = 0; // per ignorare valutazioni superate da un nuovo tap
 let evalAbort = null; // annulla le richieste di una valutazione superata da un nuovo tap
@@ -187,7 +194,7 @@ function buildSunsetOverlays(L, group, { lat, lon, azimuth, score, event, visibi
 
 // Mini-mappa del dettaglio: una sola istanza Leaflet, riusata finché il punto
 // non cambia (render() ricostruisce la card più volte mentre arrivano i dati).
-let mini = { map: null, container: null, key: null };
+let mini = { map: null, container: null, key: null, tile: null };
 
 /**
  * Monta (o riusa) una mini-mappa Leaflet dentro `mount`: tile OSM, marker
@@ -224,7 +231,7 @@ export async function mountMiniMap(mount, { lat, lon, azimuth, score, event, vis
     doubleClickZoom: false,
     keyboard: false,
   }).setView([lat, lon], 12);
-  L.tileLayer(TILE_URL, TILE_OPTS).addTo(map);
+  const tile = L.tileLayer(tileUrl(), TILE_OPTS).addTo(map);
   const overlays = L.featureGroup().addTo(map);
 
   buildSunsetOverlays(L, overlays, { lat, lon, azimuth, score, event, visibility, spots });
@@ -239,7 +246,7 @@ export async function mountMiniMap(mount, { lat, lon, azimuth, score, event, vis
   // Inquadra tutto (punto, raggio, cerchio di visibilità, punti suggeriti).
   map.fitBounds(overlays.getBounds(), { padding: [28, 28], maxZoom: 12 });
 
-  mini = { map, container, key };
+  mini = { map, container, key, tile };
 }
 
 /** Centro iniziale: ultima località analizzata, altrimenti centro Italia. */
@@ -254,7 +261,7 @@ async function ensureMap() {
   if (map) return;
   const c = initialCenter();
   map = L.map(els.canvas, { zoomControl: true }).setView([c.lat, c.lon], c.zoom);
-  L.tileLayer(TILE_URL, TILE_OPTS).addTo(map);
+  bigTile = L.tileLayer(tileUrl(), TILE_OPTS).addTo(map);
   map.on('click', (e) => selectPoint(e.latlng.lat, e.latlng.lng));
   addLegend(L);
 }
@@ -526,6 +533,14 @@ if (els.mapView) {
   if (els.back) els.back.addEventListener('click', () => history.back());
   applyRoute();
 }
+
+// Cambio tema: scambia i tile chiari/scuri sulla mappa grande e sulla mini-mappa
+// (gli overlay sono in tinta calda, coerenti con entrambi i temi).
+window.addEventListener('skyhue:themechange', () => {
+  const url = tileUrl();
+  if (bigTile) bigTile.setUrl(url);
+  if (mini.tile) mini.tile.setUrl(url);
+});
 
 // Cambio lingua: rigenera la legenda e ridisegna il contesto (i popup e il
 // pannello si ricreano con le nuove stringhe alla prossima interazione/tap).
