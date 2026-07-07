@@ -1596,6 +1596,7 @@ body {
 
 /* --- Bottone circolare in vetro (hero, mappa, menu) --- */
 .gcircle {
+  position: relative;
   width: 34px;
   height: 34px;
   flex-shrink: 0;
@@ -1608,6 +1609,16 @@ body {
   cursor: pointer;
   backdrop-filter: blur(6px);
   transition: filter 0.15s ease, transform 0.12s ease, background 0.15s ease;
+}
+/* Area tattile ≥44px senza alterare la dimensione visiva del bottone (a11y). */
+.gcircle::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 44px;
+  height: 44px;
+  transform: translate(-50%, -50%);
 }
 .gcircle:hover {
   background: rgba(255, 255, 255, 0.18);
@@ -1782,6 +1793,7 @@ body {
   pointer-events: none;
 }
 .search__geo {
+  position: relative;
   width: 36px;
   height: 36px;
   flex-shrink: 0;
@@ -1793,6 +1805,16 @@ body {
   color: var(--ink);
   cursor: pointer;
   transition: filter 0.15s ease, transform 0.12s ease;
+}
+/* Area tattile ≥44px senza alterare la dimensione visiva del bottone (a11y). */
+.search__geo::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 44px;
+  height: 44px;
+  transform: translate(-50%, -50%);
 }
 .search__geo:hover {
   filter: brightness(1.06);
@@ -2089,6 +2111,8 @@ body {
   font-size: 0.66rem;
   letter-spacing: 0.26em;
   color: rgba(255, 255, 255, 0.82);
+  /* Leggibilità sul gradiente anche ai punteggi bassi (cielo più chiaro). */
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.35);
 }
 .verdict__headline {
   margin: 0;
@@ -2402,6 +2426,10 @@ body {
 .arc__grid {
   stroke: rgba(255, 255, 255, 0.06);
   stroke-width: 1;
+}
+/* Riempimento dell'area: tinta accent dal token (l'opacità resta sugli stop). */
+.arc stop {
+  stop-color: var(--accent);
 }
 .arc__line {
   fill: none;

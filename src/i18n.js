@@ -77,6 +77,7 @@ const DICT = {
     'spot.affaccio': 'affaccio {n}',
     'spot.openOsm': 'Apri in OSM ↗',
     'spot.viewQuality': 'Qualità dell’affaccio',
+    'spot.skyTitle': 'Sunset Score del cielo',
 
     'fav.compare': 'Confronta',
     'fav.remove': 'Rimuovi',
@@ -346,6 +347,7 @@ const DICT = {
     'spot.affaccio': 'view {n}',
     'spot.openOsm': 'Open in OSM ↗',
     'spot.viewQuality': 'View quality',
+    'spot.skyTitle': 'Sky Sunset Score',
 
     'fav.compare': 'Compare',
     'fav.remove': 'Remove',

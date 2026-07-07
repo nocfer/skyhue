@@ -20,7 +20,7 @@ import {
 } from './astronomy.js';
 import { getFavorites, isFavorite, toggleFavorite, removeFavorite } from './store.js';
 import { skyGradient, skyGradientCss } from './sky.js';
-import { icon } from './icons.js';
+import { icon, ICONS } from './icons.js';
 import { mountMiniMap } from './map.js';
 import { t, cardinal, initLang, getLang, setLang, applyStaticI18n } from './i18n.js';
 import {
@@ -367,6 +367,10 @@ function fmtWeekdayShort(date) {
   return date.toLocaleDateString(locale(), { weekday: 'short' });
 }
 
+function fmtWeekdayLong(date) {
+  return date.toLocaleDateString(locale(), { weekday: 'long' });
+}
+
 /** Tinta del punteggio: rampa calda e monocromatica, in tinta col tramonto.
  *  Rosso-brace (basso, ~10°) → arancio → oro (alto, ~46°). Niente verde. */
 function scoreHue(score) {
@@ -403,7 +407,7 @@ function spotRowHtml(s) {
   // Pillola "cielo NN": il colore atteso nel punto (assente se affaccio ostruito).
   const skyPill =
     s.skyScore != null && v.sentiment !== 'bad'
-      ? `<span class="spot__sky" style="--hue:${scoreHue(s.skyScore)}" title="Sunset Score">${t(
+      ? `<span class="spot__sky" style="--hue:${scoreHue(s.skyScore)}" title="${t('spot.skyTitle')}">${t(
           'spot.sky',
           { n: s.skyScore }
         )}</span>`
@@ -505,10 +509,10 @@ function compassSvg(azimuth) {
       <line x1="70" y1="70" x2="${sx}" y2="${sy}" class="compass__ray" />
       <circle cx="${sx}" cy="${sy}" r="9" class="compass__sun" />
       <circle cx="70" cy="70" r="3" class="compass__center" />
-      <text x="70" y="22" class="compass__lbl">N</text>
-      <text x="122" y="75" class="compass__lbl">E</text>
-      <text x="70" y="132" class="compass__lbl">S</text>
-      <text x="18" y="75" class="compass__lbl">O</text>
+      <text x="70" y="22" class="compass__lbl">${cardinal('N')}</text>
+      <text x="122" y="75" class="compass__lbl">${cardinal('E')}</text>
+      <text x="70" y="132" class="compass__lbl">${cardinal('S')}</text>
+      <text x="18" y="75" class="compass__lbl">${cardinal('O')}</text>
     </svg>`;
 }
 
@@ -845,8 +849,8 @@ function areaChartSvg(timeline) {
     when: t(state.event === 'sunset' ? 'when.sunset' : 'when.sunrise'),
   })}">
     <defs><linearGradient id="arcfill" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#ff8a52" stop-opacity="0.5"/>
-      <stop offset="1" stop-color="#ff8a52" stop-opacity="0"/>
+      <stop offset="0" stop-opacity="0.5"/>
+      <stop offset="1" stop-opacity="0"/>
     </linearGradient></defs>
     ${grid}
     <path d="${area}" fill="url(#arcfill)"/>
@@ -973,7 +977,7 @@ function renderResults(data, scored) {
           size: 18,
         })} <span>${t('banner.top', {
           noun: eventNoun(event),
-          day: fmtWeekdayShort(best.date),
+          day: fmtWeekdayLong(best.date),
           score: best.score,
         })}</span></button>`
       : '';
@@ -1113,6 +1117,28 @@ async function shareCurrent(score) {
   }
 }
 
+/** Font per il canvas della condivisione: stesse famiglie dell'app (con
+ *  fallback di sistema), così il PNG rispecchia l'identità del brand. */
+const IMG_DISPLAY = "'Bricolage Grotesque', system-ui, sans-serif";
+const IMG_UI = "'Space Grotesk', system-ui, -apple-system, sans-serif";
+const IMG_MONO = "'JetBrains Mono', ui-monospace, monospace";
+
+/** Disegna un'icona di `icons.js` sul canvas (stroke, come nell'app): niente
+ *  emoji di sistema, resa identica ovunque. */
+function drawCanvasIcon(ctx, name, x, y, size, color) {
+  const body = ICONS[name] || ICONS.help;
+  const ds = [...body.matchAll(/d="([^"]+)"/g)].map((m) => m[1]);
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(size / 24, size / 24);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.9;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  for (const d of ds) ctx.stroke(new Path2D(d));
+  ctx.restore();
+}
+
 /**
  * Genera un'immagine (canvas) con il Sunset Score, località, orario e direzione
  * del sole, sul gradiente atteso del cielo, e la condivide (Web Share API con
@@ -1138,31 +1164,58 @@ async function shareImage({ place, score, factors, eventDate, event, sun, downlo
   ctx.fillRect(0, 0, W, H);
 
   const noun = eventNoun(event);
+
+  // Assicura i webfont prima di disegnare, così il PNG usa Bricolage/Space
+  // Grotesk come l'app (fallback ai font di sistema se il caricamento fallisce).
+  try {
+    if (document.fonts) {
+      await Promise.all([
+        document.fonts.load('800 330px "Bricolage Grotesque"'),
+        document.fonts.load('700 66px "Bricolage Grotesque"'),
+        document.fonts.load('600 46px "Bricolage Grotesque"'),
+        document.fonts.load('600 54px "Space Grotesk"'),
+        document.fonts.load('400 40px "Space Grotesk"'),
+        document.fonts.load('400 34px "JetBrains Mono"'),
+      ]);
+    }
+  } catch {
+    /* si prosegue con i font di sistema */
+  }
+
+  // Brand: icona "sunset" + wordmark SkyHue (nessuna emoji di sistema),
+  // centrati come nell'anteprima.
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillStyle = 'rgba(255,255,255,0.92)';
+  ctx.font = `600 46px ${IMG_DISPLAY}`;
+  const brand = 'SkyHue';
+  const brandIco = 42;
+  const brandGap = 16;
+  const brandW = brandIco + brandGap + ctx.measureText(brand).width;
+  const brandX = (W - brandW) / 2;
+  drawCanvasIcon(ctx, 'sunset', brandX, 62, brandIco, 'rgba(255,255,255,0.92)');
+  ctx.fillText(brand, brandX + brandIco + brandGap, 96);
   ctx.textAlign = 'center';
 
-  ctx.fillStyle = 'rgba(255,255,255,0.92)';
-  ctx.font = '600 46px system-ui, -apple-system, sans-serif';
-  ctx.fillText('🌅 SkyHue', W / 2, 96);
-
   ctx.fillStyle = '#fff';
-  ctx.font = '800 330px system-ui, -apple-system, sans-serif';
+  ctx.font = `800 330px ${IMG_DISPLAY}`;
   ctx.fillText(String(score), W / 2, H / 2 + 30);
 
-  ctx.font = '700 66px system-ui, -apple-system, sans-serif';
+  ctx.font = `700 66px ${IMG_DISPLAY}`;
   ctx.fillText(t('label.' + scoreLabel(score)), W / 2, H / 2 + 150);
 
   // Località (riduci il font se troppo larga).
   let labelSize = 54;
-  ctx.font = `600 ${labelSize}px system-ui, -apple-system, sans-serif`;
+  ctx.font = `600 ${labelSize}px ${IMG_UI}`;
   while (ctx.measureText(place.label).width > W - 120 && labelSize > 28) {
     labelSize -= 3;
-    ctx.font = `600 ${labelSize}px system-ui, -apple-system, sans-serif`;
+    ctx.font = `600 ${labelSize}px ${IMG_UI}`;
   }
   ctx.fillStyle = 'rgba(255,255,255,0.96)';
   ctx.fillText(place.label, W / 2, H - 250);
 
   ctx.fillStyle = 'rgba(255,255,255,0.85)';
-  ctx.font = '400 40px system-ui, -apple-system, sans-serif';
+  ctx.font = `400 40px ${IMG_UI}`;
   ctx.fillText(
     t('share.imgTime', { noun, time: fmtTime(eventDate), day: fmtDay(eventDate) }),
     W / 2,
@@ -1175,7 +1228,7 @@ async function shareImage({ place, score, factors, eventDate, event, sun, downlo
   );
 
   ctx.fillStyle = 'rgba(255,255,255,0.6)';
-  ctx.font = '400 34px system-ui, -apple-system, sans-serif';
+  ctx.font = `400 34px ${IMG_MONO}`;
   ctx.fillText('nocfer.github.io/skyhue', W / 2, H - 64);
 
   const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
