@@ -72,13 +72,6 @@ export function loadLeaflet() {
   return leafletLoading;
 }
 
-function fmtTime(date) {
-  return date.toLocaleTimeString(getLang() === 'en' ? 'en-GB' : 'it-IT', {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
-
 /** Colore in tinta col punteggio (stessa rampa calda del resto dell'app). */
 function scoreColor(score) {
   return `hsl(${Math.round(10 + (score / 100) * 36)}, 80%, 58%)`;
