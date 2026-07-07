@@ -86,9 +86,10 @@ function spotPopupHtml(s) {
   if (s.verdict?.score != null) scores.push(`${t('mappop.view')} <strong>${s.verdict.score}</strong>`);
   if (s.skyScore != null) scores.push(`${t('mappop.sky')} <strong>${s.skyScore}</strong>`);
   const meta = [];
-  if (Number.isFinite(s.dist)) meta.push(`${s.dist < 10 ? s.dist.toFixed(1) : Math.round(s.dist)} km`);
+  if (Number.isFinite(s.dist))
+    meta.push(`${s.dist < 10 ? s.dist.toFixed(1) : Math.round(s.dist)} ${t('unit.km')}`);
   if (s.dir) meta.push(t('mappop.towards', { dir: cardinal(s.dir) }));
-  if (Number.isFinite(s.driveMin)) meta.push(`~${s.driveMin} min`);
+  if (Number.isFinite(s.driveMin)) meta.push(`~${s.driveMin} ${t('unit.min')}`);
   const url = `https://www.openstreetmap.org/?mlat=${s.lat.toFixed(5)}&mlon=${s.lon.toFixed(
     5
   )}#map=15/${s.lat.toFixed(4)}/${s.lon.toFixed(4)}`;

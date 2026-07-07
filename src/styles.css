@@ -89,14 +89,17 @@
     #120a16 100%
   );
 
-  /* --- Spaziature / raggi / ombre ----------------------------------------- */
+  /* --- Spaziature / raggi / ombre -----------------------------------------
+     Scala dei raggi (7 token, dal design handoff "Atmosphere") — ogni
+     elemento usa il token più vicino al suo ruolo, niente valori liberi. */
   --side-pad: 22px;
-  --r-screen: 42px;
-  --r-sheet: 26px;
-  --r-card: 18px;
-  --r-med: 14px;
-  --r-pill: 999px;
-  --r-thumb: 12px; /* thumbnail sky-swatch (stesso raggio ovunque) */
+  --r-screen: 42px; /* superficie schermo telefono (solo mock/device frame) */
+  --r-sheet: 26px; /* bottom sheet: share, pannello mappa */
+  --r-feature: 20px; /* card hero/enfasi: vincitore confronto, "dove guardare" */
+  --r-card: 18px; /* default: card di contenuto e righe lista */
+  --r-control: 14px; /* bottoni, input, barra di ricerca, thumbnail, tile medie */
+  --r-tile: 11px; /* icon tile, bottoni quadrati piccoli, swatch piccole */
+  --r-pill: 999px; /* chip, pill, selettori segmentati, bottoni circolari */
   --gap-card: 0.6rem; /* gap uniforme tra card impilate in lista */
   --shadow-sheet: 0 16px 40px -12px rgba(0, 0, 0, 0.6);
 
@@ -390,7 +393,7 @@ body {
   flex-wrap: wrap;
   gap: 0.5rem;
   padding: 0.55rem 0.7rem;
-  border-radius: 8px;
+  border-radius: var(--r-tile);
   color: var(--text);
   cursor: pointer;
 }
@@ -574,58 +577,6 @@ body {
   gap: 1.5rem;
 }
 
-/* Striscia dei prossimi giorni */
-.daystrip {
-  display: flex;
-  gap: 0.5rem;
-  overflow-x: auto;
-  padding-bottom: 0.5rem;
-  -webkit-overflow-scrolling: touch;
-}
-
-.daychip {
-  flex: 0 0 auto;
-  min-width: 74px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.3rem;
-  padding: 0.7rem 0.5rem;
-  border-radius: 14px;
-  border: 1px solid var(--card-border);
-  background: var(--panel);
-  color: var(--text);
-  cursor: pointer;
-  transition: transform 0.1s, border-color 0.1s;
-}
-
-.daychip:hover {
-  transform: translateY(-2px);
-}
-
-.daychip--active {
-  border-color: var(--accent);
-  background: rgba(255, 138, 92, 0.18);
-  box-shadow: 0 4px 16px rgba(255, 138, 92, 0.22);
-}
-
-.daychip__day {
-  font-size: 0.8rem;
-  color: var(--muted);
-  text-transform: capitalize;
-}
-
-.daychip__score {
-  font-size: 1.35rem;
-  font-weight: 800;
-  color: hsl(var(--hue, 40) 80% 60%);
-}
-
-.daychip__time {
-  font-size: 0.72rem;
-  color: var(--muted);
-}
-
 .card {
   background: var(--card);
   border: 1px solid var(--card-border);
@@ -665,98 +616,6 @@ body {
 /* Solo la data nell'intestazione va con l'iniziale del giorno maiuscola. */
 .card__head .muted::first-letter {
   text-transform: capitalize;
-}
-
-/* Indicatore circolare del punteggio */
-.gauge {
-  --score: 0;
-  --hue: 30;
-  width: 112px;
-  height: 112px;
-  border-radius: 50%;
-  display: grid;
-  place-content: center;
-  text-align: center;
-  background: conic-gradient(
-    hsl(var(--hue) 80% 60%) calc(var(--score) * 1%),
-    rgba(255, 255, 255, 0.1) 0
-  );
-  position: relative;
-  flex-shrink: 0;
-  filter: drop-shadow(0 4px 16px hsl(var(--hue) 85% 55% / 0.35));
-}
-
-.gauge::before {
-  content: '';
-  position: absolute;
-  inset: 9px;
-  border-radius: 50%;
-  background: var(--elevated);
-}
-
-.gauge__value {
-  position: relative;
-  font-size: 2.1rem;
-  font-weight: 800;
-  line-height: 1;
-  color: hsl(var(--hue) 84% 68%);
-}
-
-.gauge__label {
-  position: relative;
-  font-size: 0.72rem;
-  color: var(--muted);
-  margin-top: 2px;
-}
-
-/* Anteprima del cielo previsto */
-.skypreview {
-  margin-top: 1.25rem;
-  height: 96px;
-  border-radius: 14px;
-  position: relative;
-  display: flex;
-  align-items: flex-end;
-  padding: 0.6rem 0.8rem;
-  overflow: hidden;
-}
-
-.skypreview__label {
-  font-size: 0.78rem;
-  color: rgba(255, 255, 255, 0.9);
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
-}
-
-.stats {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-  gap: 0.6rem;
-}
-
-.stat {
-  background: var(--panel);
-  border: 1px solid var(--card-border);
-  border-radius: 14px;
-  padding: 0.75rem 0.9rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.stat span {
-  font-size: 0.8rem;
-  color: var(--muted);
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-}
-
-.stat .ico {
-  color: var(--accent);
-}
-
-.stat strong {
-  font-size: 1.05rem;
 }
 
 .card h3 {
@@ -871,7 +730,7 @@ body {
 .scan-btn {
   width: 100%;
   padding: 0.6rem 0.9rem;
-  border-radius: 12px;
+  border-radius: var(--r-control);
   border: 1px dashed var(--card-border);
   background: var(--panel);
   color: var(--text);
@@ -892,7 +751,7 @@ body {
 /* Mini-mappa del punto analizzato */
 .map-wrap {
   position: relative;
-  border-radius: 14px;
+  border-radius: var(--r-card);
   overflow: hidden;
   border: 1px solid var(--card-border);
 }
@@ -908,7 +767,7 @@ body {
   align-items: center;
   gap: 0.3rem;
   padding: 0.32rem 0.55rem;
-  border-radius: 999px;
+  border-radius: var(--r-pill);
   font-size: 0.78rem;
   font-weight: 600;
   color: var(--text);
@@ -935,7 +794,7 @@ body {
   margin-top: 0.55rem;
   padding: 0.85rem;
   border: 0;
-  border-radius: var(--r-med);
+  border-radius: var(--r-control);
   background: var(--accent);
   color: var(--ink);
   font: inherit;
@@ -960,7 +819,7 @@ body {
 /* Slot in cui viene montata la mini-mappa Leaflet: riserva lo spazio così non
    c'è salto di layout nell'istante prima del montaggio. */
 .map-slot {
-  min-height: 240px;
+  min-height: 190px;
   background: hsl(var(--hue, 30) 30% 50% / 0.08);
 }
 
@@ -1315,52 +1174,6 @@ body {
   dominant-baseline: middle;
 }
 
-/* Timeline oraria del punteggio */
-.timeline {
-  display: flex;
-  align-items: flex-end;
-  gap: 0.5rem;
-  height: 130px;
-  padding: 0.5rem 0.25rem 0;
-}
-
-.tl__col {
-  flex: 1 1 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-end;
-  height: 100%;
-  gap: 0.25rem;
-}
-
-.tl__bar {
-  width: 60%;
-  max-width: 34px;
-  border-radius: 6px 6px 0 0;
-  background: hsl(var(--hue, 40) 80% 56%);
-  transition: height 0.2s;
-}
-
-.tl__col--center .tl__bar {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
-}
-
-.tl__val {
-  font-size: 0.8rem;
-  font-weight: 700;
-}
-
-.tl__time {
-  font-size: 0.72rem;
-  color: var(--muted);
-}
-
-.tl__hint {
-  margin-top: 0.6rem;
-  font-size: 0.82rem;
-}
 
 .notes {
   list-style: none;
@@ -1453,33 +1266,6 @@ body {
 .topbanner svg {
   flex-shrink: 0;
   color: var(--accent);
-}
-
-/* Sezione Luce (golden / blue hour) */
-.light__chips {
-  display: flex;
-  gap: 0.6rem;
-  flex-wrap: wrap;
-}
-.light__chip {
-  flex: 1 1 140px;
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-  padding: 0.6rem 0.8rem;
-  border-radius: 12px;
-  background: var(--card);
-  border-left: 3px solid var(--neutral, #ffd479);
-}
-.light__chip--golden {
-  border-left-color: #ffb35c;
-}
-.light__chip--blue {
-  border-left-color: #6ea0ff;
-}
-.light__k {
-  font-size: 0.78rem;
-  color: var(--muted);
 }
 
 /* Confronto preferiti */
@@ -1701,7 +1487,7 @@ body {
   display: flex;
   flex-direction: column;
   padding: 0.35rem;
-  border-radius: var(--r-med);
+  border-radius: var(--r-control);
   background: var(--surface);
   border: 1px solid var(--hairline);
   box-shadow: var(--shadow-sheet);
@@ -1710,7 +1496,7 @@ body {
   text-align: left;
   padding: 0.6rem 0.7rem;
   border: 0;
-  border-radius: 10px;
+  border-radius: var(--r-tile);
   background: transparent;
   color: var(--text);
   font: inherit;
@@ -1736,7 +1522,7 @@ body {
 }
 .home__sun {
   position: absolute;
-  right: 12%;
+  left: 8%;
   bottom: 20%;
   width: 150px;
   height: 150px;
@@ -1802,7 +1588,7 @@ body {
   display: grid;
   place-content: center;
   border: 0;
-  border-radius: 12px;
+  border-radius: var(--r-tile);
   background: var(--accent);
   color: var(--ink);
   cursor: pointer;
@@ -1838,7 +1624,7 @@ body {
   text-align: left;
   background: var(--surface);
   border: 1px solid var(--hairline);
-  border-radius: var(--r-med);
+  border-radius: var(--r-control);
   box-shadow: var(--shadow-sheet);
   max-height: 19rem;
   overflow-y: auto;
@@ -1911,7 +1697,7 @@ body {
   align-items: center;
   gap: 0.85rem;
   padding: 0.7rem 0.8rem;
-  border-radius: var(--r-med);
+  border-radius: var(--r-card);
   background: var(--card);
   border: 1px solid var(--hairline);
   cursor: pointer;
@@ -1925,7 +1711,7 @@ body {
 .spot__thumb {
   position: relative;
   flex-shrink: 0;
-  border-radius: var(--r-thumb);
+  border-radius: var(--r-control);
   overflow: hidden;
 }
 .place__thumb {
@@ -2003,7 +1789,7 @@ body {
   gap: 0.5rem;
   margin-top: 1.3rem;
   padding: 0.85rem;
-  border-radius: var(--r-med);
+  border-radius: var(--r-control);
   border: 1px solid var(--hairline);
   background: var(--card-2);
   color: var(--text);
@@ -2200,7 +1986,7 @@ body {
   gap: 0.4rem;
   padding: 0.5rem 0.2rem;
   border: 0;
-  border-radius: var(--r-med);
+  border-radius: var(--r-control);
   background: transparent;
   cursor: pointer;
   transition: background 0.15s ease;
@@ -2255,7 +2041,7 @@ body {
   align-items: center;
   gap: 0.15rem 0.5rem;
   padding: 0.85rem 0.9rem;
-  border-radius: var(--r-med);
+  border-radius: var(--r-card);
   background: var(--card);
   border: 1px solid var(--hairline);
 }
@@ -2366,6 +2152,31 @@ body {
   color: var(--faint);
   font-size: 0.76rem;
 }
+.why-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.6rem;
+  margin: 0.9rem 0 0;
+  font-size: 0.72rem;
+  color: var(--faint);
+}
+.why-legend__c {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin-right: 0.15rem;
+  border-radius: var(--r-pill);
+}
+.why-legend__c--good {
+  background: var(--good);
+}
+.why-legend__c--neutral {
+  background: var(--neutral);
+}
+.why-legend__c--bad {
+  background: var(--bad);
+}
 
 .drivers {
   list-style: none;
@@ -2382,7 +2193,7 @@ body {
   gap: 0.75rem;
   align-items: flex-start;
   padding: 0.75rem 0.85rem;
-  border-radius: var(--r-med);
+  border-radius: var(--r-card);
   background: var(--card);
   border-left: 3px solid var(--neutral);
 }
@@ -2398,7 +2209,7 @@ body {
   width: 40px;
   height: 40px;
   flex-shrink: 0;
-  border-radius: 10px;
+  border-radius: var(--r-tile);
   background: rgba(156, 144, 134, 0.16);
   color: var(--neutral);
 }
@@ -2492,7 +2303,7 @@ body {
 .swatch {
   flex: 1 1 0;
   height: 40px;
-  border-radius: 10px;
+  border-radius: var(--r-tile);
   border: 1px solid transparent;
 }
 .swatch--center {
@@ -2531,7 +2342,7 @@ body {
   flex-direction: column;
   gap: 0.15rem;
   padding: 0.6rem 0.8rem;
-  border-radius: var(--r-med);
+  border-radius: var(--r-pill);
   border: 1px solid var(--hairline);
   border-left-width: 3px;
 }
@@ -2574,7 +2385,7 @@ body {
   align-items: center;
   gap: 0.8rem;
   padding: 0.6rem;
-  border-radius: var(--r-med);
+  border-radius: var(--r-card);
   background: var(--card);
   border: 1px solid var(--hairline);
   border-left: 3px solid var(--neutral);
@@ -2596,7 +2407,7 @@ body {
   top: 6px;
   font-size: 0.5rem;
   padding: 1px 5px;
-  border-radius: 7px;
+  border-radius: var(--r-pill);
   background: rgba(0, 0, 0, 0.4);
   color: #fff;
   letter-spacing: 0.1em;
@@ -2627,6 +2438,10 @@ body {
 }
 .spot--bad .spot__verdict {
   color: var(--bad);
+}
+.spot__kind {
+  display: inline-flex;
+  color: var(--muted);
 }
 .spot__meta {
   font-size: 0.6rem;
@@ -2679,7 +2494,7 @@ body {
   padding: 0.75rem 1rem;
   text-align: left;
   border: 1px solid var(--hairline);
-  border-radius: var(--r-med);
+  border-radius: var(--r-control);
   background: linear-gradient(90deg, rgba(255, 138, 82, 0.24), rgba(255, 206, 111, 0.06));
   color: var(--text);
   font: inherit;
@@ -2785,7 +2600,7 @@ body {
   width: 52px;
   height: 52px;
   flex-shrink: 0;
-  border-radius: var(--r-thumb);
+  border-radius: var(--r-control);
   overflow: hidden;
 }
 .mp__sundot {
@@ -2849,7 +2664,7 @@ body {
   width: 100%;
   padding: 0.85rem;
   border: 0;
-  border-radius: var(--r-med);
+  border-radius: var(--r-control);
   background: var(--accent);
   color: var(--ink);
   font: inherit;
@@ -2866,7 +2681,7 @@ body {
 
 /* Legenda mappa: card in vetro (usa i token nuovi). */
 .maplegend {
-  border-radius: var(--r-med);
+  border-radius: var(--r-control);
   border-color: var(--hairline);
 }
 
@@ -2920,7 +2735,7 @@ body {
   position: relative;
   overflow: hidden;
   padding: 0.9rem 1rem 1rem;
-  border-radius: var(--r-card);
+  border-radius: var(--r-feature);
   border: 1px solid var(--gold);
   background: linear-gradient(150deg, rgba(255, 206, 111, 0.16), rgba(255, 138, 82, 0.05));
 }
@@ -2954,13 +2769,13 @@ body {
   width: 44px;
   height: 44px;
   flex-shrink: 0;
-  border-radius: var(--r-thumb);
+  border-radius: var(--r-control);
   overflow: hidden;
 }
 .cmp__thumb--lg {
   width: 60px;
   height: 60px;
-  border-radius: var(--r-thumb);
+  border-radius: var(--r-control);
 }
 .cmp__wininfo,
 .cmp__rowinfo {
@@ -2993,7 +2808,7 @@ body {
   align-items: center;
   gap: 0.8rem;
   padding: 0.55rem 0.6rem;
-  border-radius: var(--r-med);
+  border-radius: var(--r-card);
   background: var(--card);
   border: 1px solid var(--hairline);
 }
@@ -3122,7 +2937,7 @@ body {
   width: 100%;
   padding: 0.85rem;
   border: 0;
-  border-radius: var(--r-med);
+  border-radius: var(--r-control);
   background: var(--accent);
   color: var(--ink);
   font: inherit;
@@ -3145,7 +2960,7 @@ body {
   flex: 1 1 0;
   padding: 0.85rem;
   border: 1px solid var(--hairline);
-  border-radius: var(--r-med);
+  border-radius: var(--r-control);
   background: transparent;
   color: var(--text);
   font: inherit;

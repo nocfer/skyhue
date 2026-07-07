@@ -242,6 +242,9 @@ const DICT = {
     'why.footnote': 'Nubi basse e cielo coperto possono ridurre il punteggio finale.',
     'why.showAll': 'Mostra tutti ({n})',
     'why.showLess': 'Mostra meno',
+    'why.legendGood': 'Aiuta',
+    'why.legendNeutral': 'Neutro',
+    'why.legendBad': 'Penalizza',
 
     'trend.arc': 'L’arco di stasera',
     'trend.predicted': 'Colore previsto',
@@ -254,6 +257,10 @@ const DICT = {
     'atmo.tempCap.sunrise': 'all’alba',
 
     'spot.dualLegend': 'numero grande = affaccio · cielo NN = il colore lì',
+    'spot.estTag': 'STIM',
+    'unit.m': 'm',
+    'unit.km': 'km',
+    'unit.min': 'min',
     'spots.seeAll': 'Vedi tutti i punti ({n})',
     'spots.seeLess': 'Mostra meno',
     'cmp.heading': 'Confronto',
@@ -503,6 +510,9 @@ const DICT = {
     'why.footnote': 'Low cloud and overcast can pull the final score down.',
     'why.showAll': 'Show all ({n})',
     'why.showLess': 'Show less',
+    'why.legendGood': 'Helps',
+    'why.legendNeutral': 'Neutral',
+    'why.legendBad': 'Hurts',
 
     'trend.arc': "Tonight's arc",
     'trend.predicted': 'Predicted colour',
@@ -515,6 +525,10 @@ const DICT = {
     'atmo.tempCap.sunrise': 'at sunrise',
 
     'spot.dualLegend': 'big number = the view · sky NN = the colour there',
+    'spot.estTag': 'EST',
+    'unit.m': 'm',
+    'unit.km': 'km',
+    'unit.min': 'min',
     'spots.seeAll': 'See all spots ({n})',
     'spots.seeLess': 'Show less',
     'cmp.heading': 'Compare',

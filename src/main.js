@@ -10,7 +10,7 @@ import {
   dailyList,
   coordsLabel,
 } from './api.js';
-import { computeSunsetScore, scoreLabel, explainScore } from './score.js';
+import { computeSunsetScore, scoreLabel, explainScore, WEIGHTS } from './score.js';
 import {
   sunPosition,
   azimuthToCardinal,
@@ -404,27 +404,33 @@ function spotRowHtml(s) {
   const url = `https://www.openstreetmap.org/?mlat=${s.lat.toFixed(5)}&mlon=${s.lon.toFixed(
     5
   )}#map=15/${s.lat.toFixed(4)}/${s.lon.toFixed(4)}`;
-  // Pillola "cielo NN": il colore atteso nel punto (assente se affaccio ostruito).
+  // Pillola "cielo NN": il colore atteso nel punto (mostrata anche per affacci ostruiti).
   const skyPill =
-    s.skyScore != null && v.sentiment !== 'bad'
+    s.skyScore != null
       ? `<span class="spot__sky" style="--hue:${scoreHue(s.skyScore)}" title="${t('spot.skyTitle')}">${t(
           'spot.sky',
           { n: s.skyScore }
         )}</span>`
       : '';
-  const quota = est && s.elev != null ? ` · ${Math.round(s.elev)} M` : '';
+  const quota = est && s.elev != null ? ` · ${Math.round(s.elev)} ${t('unit.m')}` : '';
   const kindLabel = est ? t('kind.estimate') : t(info.labelKey);
-  const meta = `${kindLabel} · ${dist} KM · ~${s.driveMin} MIN · ${cardinal(s.dir)}${quota}`;
+  const meta = `${kindLabel} · ${dist} ${t('unit.km')} · ~${s.driveMin} ${t('unit.min')} · ${cardinal(
+    s.dir
+  )}${quota}`;
   return `<li class="spot spot--${v.sentiment}">
     <span class="spot__thumb" style="background:var(--sky-swatch)">
       <span class="spot__sundot"></span>
-      ${est ? '<span class="spot__tag mono">EST</span>' : ''}
+      ${est ? `<span class="spot__tag mono">${t('spot.estTag')}</span>` : ''}
     </span>
     <div class="spot__body">
       <a class="spot__name" href="${url}" target="_blank" rel="noopener">${escapeHtml(
         s.name || t(info.labelKey)
       )}</a>
-      <span class="spot__verdict">${icon(v.icon, { size: 15 })} ${t('verdict.' + v.code)}</span>
+      <span class="spot__verdict">${icon(v.icon, { size: 15 })} ${t(
+        'verdict.' + v.code
+      )}<span class="spot__kind" title="${escapeHtml(kindLabel)}">${icon(info.icon, {
+        size: 14,
+      })}</span></span>
       <span class="spot__meta mono">${meta}</span>
     </div>
     <div class="spot__scores">
@@ -475,7 +481,7 @@ function spotsSectionHtml(place, sun) {
   } else if (state.spots.length === 0) {
     body = `<p class="sect__note">${t('spots.none')}</p>`;
   } else {
-    const shown = state.spots.slice(0, SPOTS_SHOW);
+    const shown = state.spots.slice(0, SPOTS_EVALUATE);
     body = `<ul class="spots is-collapsed" id="spots-list">${shown.map(spotRowHtml).join('')}</ul>`;
     if (shown.length > 3) {
       more = `<button type="button" class="linkbtn" id="spots-more" data-more="${t('spots.seeAll', {
@@ -662,11 +668,13 @@ function eventToggleHtml() {
 }
 
 /* "This week": nastro a 7 giorni con pallino + numero colorato. */
-function weekRibbonHtml(scored) {
+function weekRibbonHtml(scored, bestDayIndex = null) {
+  // Riepilogo settimanale: la didascalia usa il massimo; il bagliore evidenzia
+  // solo il giorno "da banner" (≥85 e non oggi), o nessuno se non qualifica.
   const best = scored.reduce((a, b) => (b.score > a.score ? b : a), scored[0]);
   const cols = scored
     .map(({ d, score, date }) => {
-      const isBest = d.dayIndex === best.d.dayIndex;
+      const isBest = bestDayIndex != null && d.dayIndex === bestDayIndex;
       const active = d.dayIndex === state.dayIndex;
       return `
       <button class="wk__col${active ? ' wk__col--active' : ''}${
@@ -736,9 +744,9 @@ function conditionsHtml(cond) {
 
 /* "Why this score": barra "come si compone" + card fattori (top 3 + mostra tutti). */
 function whyHtml({ score, factors, notes }) {
-  const b0 = 35;
-  const d0 = 45 * (factors.drama ?? 0);
-  const c0 = 20 * (factors.clarity ?? 0);
+  const b0 = WEIGHTS.base * 100;
+  const d0 = WEIGHTS.drama * 100 * (factors.drama ?? 0);
+  const c0 = WEIGHTS.clarity * 100 * (factors.clarity ?? 0);
   const rawSum = b0 + d0 + c0 || 1;
   const k = score / rawSum; // riporta le componenti al punteggio finale (penalità incluse)
   const base = Math.round(b0 * k);
@@ -791,6 +799,11 @@ function whyHtml({ score, factors, notes }) {
       </div>
       <ul class="drivers is-collapsed" id="drivers">${cards}</ul>
       ${more}
+      <p class="why-legend">
+        <span class="why-legend__c why-legend__c--good"></span>${t('why.legendGood')}
+        <span class="why-legend__c why-legend__c--neutral"></span>${t('why.legendNeutral')}
+        <span class="why-legend__c why-legend__c--bad"></span>${t('why.legendBad')}
+      </p>
     </section>`;
 }
 
@@ -860,7 +873,7 @@ function areaChartSvg(timeline) {
   </svg>`;
 }
 
-function hourlyHtml({ timeline }) {
+function hourlyHtml({ timeline }, tw, event) {
   const swatches = timeline
     .map(
       (c) =>
@@ -880,15 +893,24 @@ function hourlyHtml({ timeline }) {
         <span class="swatches__k mono">${t('trend.predicted')}</span>
         <div class="swatches__row">${swatches}</div>
       </div>
+      ${lightChipsHtml(tw, event)}
     </section>`;
 }
 
-/* "Where to look": bussola + testo direzione + chip golden/blue hour. */
-function lookAtHtml(sun, tw, event) {
+/* Chip golden/blue hour (riusate in "Where to look" e nel trend orario). */
+function lightChipsHtml(tw, event) {
   const fmtRange = (a, b) => (a && b ? `${fmtTime(a)}–${fmtTime(b)}` : '—');
   const goldenRange =
     event === 'sunset' ? fmtRange(tw.golden, tw.event) : fmtRange(tw.event, tw.golden);
   const blueRange = event === 'sunset' ? fmtRange(tw.event, tw.blue) : fmtRange(tw.blue, tw.event);
+  return `<div class="chips">
+        <div class="chip chip--golden"><span class="chip__k">${t('light.golden')}</span><strong>${goldenRange}</strong></div>
+        <div class="chip chip--blue"><span class="chip__k">${t('light.blue')}</span><strong>${blueRange}</strong></div>
+      </div>`;
+}
+
+/* "Where to look": bussola + testo direzione + chip golden/blue hour. */
+function lookAtHtml(sun, tw, event) {
   return `
     <section class="sect">
       <div class="sect__head"><h2 class="sect__title display">${t('section.lookAt')}</h2></div>
@@ -903,10 +925,7 @@ function lookAtHtml(sun, tw, event) {
           })}</p>
         </div>
       </div>
-      <div class="chips">
-        <div class="chip chip--golden"><span class="chip__k">${t('light.golden')}</span><strong>${goldenRange}</strong></div>
-        <div class="chip chip--blue"><span class="chip__k">${t('light.blue')}</span><strong>${blueRange}</strong></div>
-      </div>
+      ${lightChipsHtml(tw, event)}
     </section>`;
 }
 
@@ -970,8 +989,9 @@ function renderResults(data, scored) {
 
   // Banner "tramonto top in arrivo" (miglior giorno ≥85 e non oggi).
   const best = scored.reduce((a, b) => (b.score > a.score ? b : a), scored[0]);
+  const bannerBest = best && best.score >= 85 && best.d.dayIndex >= 1 ? best : null;
   const bannerHtml =
-    best && best.score >= 85 && best.d.dayIndex >= 1
+    bannerBest
       ? `<button type="button" class="topbanner" id="topbanner">${icon('flame', {
           size: 18,
         })} <span>${t('banner.top', {
@@ -987,9 +1007,9 @@ function renderResults(data, scored) {
       ${bannerHtml}
       ${introHtml(data)}
       ${eventToggleHtml()}
-      ${weekRibbonHtml(scored)}
+      ${weekRibbonHtml(scored, bannerBest ? bannerBest.d.dayIndex : null)}
       ${whyHtml(data)}
-      ${hourlyHtml(data)}
+      ${hourlyHtml(data, tw, event)}
       ${conditionsHtml(data.cond)}
       ${lookAtHtml(sun, tw, event)}
       ${spotsSectionHtml(place, sun)}
