@@ -1777,6 +1777,9 @@ if (langBtn) {
     document.documentElement.lang = getLang();
     applyStaticI18n();
     updateLangToggle();
+    // L'etichetta del tema è composta a mano (glifo + testo tradotto): va
+    // riallineata alla nuova lingua, altrimenti resta nell'idioma precedente.
+    updateThemeToggle();
     updateSuggestAria();
     renderFavorites();
     // Il testo "La tua posizione" era stato tradotto una volta sola al momento
@@ -1796,6 +1799,9 @@ initLang();
 document.documentElement.lang = getLang();
 applyStaticI18n();
 updateLangToggle();
+// initLang() può aver cambiato lingua dopo il primo updateThemeToggle() (fatto
+// al montaggio del bottone): riallineiamo l'etichetta del tema alla lingua reale.
+updateThemeToggle();
 updateSuggestAria();
 renderFavorites();
 initFromUrl();

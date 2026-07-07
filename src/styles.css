@@ -1034,13 +1034,16 @@ body {
   background: var(--hero-melt);
   pointer-events: none;
 }
-.home__top,
 .home__headline,
 .home__tagline {
   position: relative;
   z-index: 2;
 }
 .home__top {
+  position: relative;
+  /* Sopra headline/tagline (z2) e contenuto (z3): così il menu a tendina
+     resta cliccabile e non finisce dietro al titolo. */
+  z-index: 5;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1096,22 +1099,32 @@ body {
   font-size: clamp(3rem, 15vw, 4.2rem);
   line-height: 0.94;
   white-space: pre-line;
-  text-shadow: 0 2px 24px rgba(0, 0, 0, 0.22);
+  /* Ombra ampia e morbida: tiene leggibile il bianco anche dove passa
+     davanti al nucleo caldo del sole. */
+  text-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.3),
+    0 3px 28px rgba(0, 0, 0, 0.45);
 }
 .home__tagline {
   margin: 0.9rem 0 0;
   max-width: 22rem;
-  color: rgba(255, 255, 255, 0.86);
+  color: rgba(255, 255, 255, 0.92);
   font-size: 0.98rem;
+  text-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.35),
+    0 2px 16px rgba(0, 0, 0, 0.5);
 }
 .home__sun {
   position: absolute;
   left: 8%;
-  bottom: 20%;
-  width: 150px;
-  height: 150px;
+  /* Più in basso e leggermente attenuato: il nucleo caldo resta
+     nella fascia sotto il testo, senza appiattirne il contrasto. */
+  bottom: 8%;
+  width: 140px;
+  height: 140px;
   border-radius: 50%;
   background: var(--sun-disc);
+  opacity: 0.88;
   z-index: 1;
 }
 .home__content {

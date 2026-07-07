@@ -7,7 +7,7 @@ const DICT = {
   it: {
     'app.tagline':
       'Quanto sarà bello il prossimo tramonto? Un punteggio da meteo reale e dati astronomici.',
-    'search.placeholder': 'Cerca una città (es. Napoli, Lisbona…)',
+    'search.placeholder': 'Cerca una città…',
     'search.aria': 'Cerca una città',
     'search.suggestAria': 'Suggerimenti di ricerca',
     'search.submit': 'Calcola',
@@ -280,7 +280,7 @@ const DICT = {
   en: {
     'app.tagline':
       'How good will the next sunset be? A score from live weather and astronomical data.',
-    'search.placeholder': 'Search a city (e.g. Naples, Lisbon…)',
+    'search.placeholder': 'Search a city…',
     'search.aria': 'Search a city',
     'search.suggestAria': 'Search suggestions',
     'search.submit': 'Calculate',
