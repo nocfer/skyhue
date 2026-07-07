@@ -303,35 +303,6 @@ body {
   border-radius: var(--r-card);
   box-shadow: var(--card-shadow);
 }
-.card {
-  padding: var(--s-4);
-}
-.card--quiet {
-  background: var(--card-2);
-}
-.card--feature {
-  border-radius: var(--r-feature);
-}
-.card--row {
-  display: flex;
-  align-items: center;
-  gap: var(--s-3);
-  padding: var(--s-3);
-}
-.card--sentiment {
-  border-left-width: 3px;
-  border-left-style: solid;
-}
-.card--good {
-  border-left-color: var(--sentiment-good);
-}
-.card--neutral {
-  border-left-color: var(--sentiment-neutral);
-}
-.card--bad {
-  border-left-color: var(--sentiment-bad);
-}
-
 /* §2.9 StatCell — icona + etichetta + valore display + nota. Unica primitiva
    per "Conditions" (1b) e "Atmosphere" (3d). */
 .stat {
@@ -446,20 +417,6 @@ body {
   background: var(--bg);
 }
 
-.mapview__bar {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.6rem 0.9rem;
-  background: var(--elevated);
-  border-bottom: 1px solid var(--card-border);
-}
-
-.mapview__hint {
-  font-size: 0.9rem;
-  color: var(--muted);
-}
-
 .mapview__canvas {
   flex: 1;
   min-height: 0;
@@ -473,76 +430,10 @@ body {
   overflow-y: auto;
 }
 
-.mp__head {
-  display: flex;
-  align-items: center;
-  gap: 0.9rem;
-}
-
-.mp__verdict {
-  margin: 0.8rem 0;
-  padding-left: 0.6rem;
-  border-left: 3px solid var(--sentiment-neutral);
-}
-
-.mp__verdict.spot--good {
-  border-left-color: var(--sentiment-good);
-}
-
-.mp__verdict.spot--bad {
-  border-left-color: var(--sentiment-bad);
-}
-
 /* --- Icone SVG a linea ---------------------------------------------------- */
 .ico {
   flex-shrink: 0;
   vertical-align: -0.18em;
-}
-
-/* Chrome interattivo: icona + testo allineati e distanziati in modo uniforme. */
-.search button,
-.mode {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--s-2);
-}
-
-.tagline {
-  color: var(--muted);
-  max-width: 34rem;
-  margin: 0.5rem auto 1.75rem;
-}
-
-.search {
-  position: relative;
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-  justify-content: center;
-}
-
-/* Autocompletamento: elenco dei suggerimenti sotto la barra di ricerca. */
-.suggest {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
-  right: 0;
-  z-index: 30;
-  margin: 0;
-  padding: 0.3rem;
-  list-style: none;
-  text-align: left;
-  background: var(--elevated);
-  border: 1px solid var(--card-border);
-  border-radius: 12px;
-  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.32);
-  max-height: 19rem;
-  overflow-y: auto;
-}
-
-.suggest[hidden] {
-  display: none;
 }
 
 .suggest__item {
@@ -556,11 +447,6 @@ body {
   cursor: pointer;
 }
 
-.suggest__item:hover,
-.suggest__item--active {
-  background: var(--panel-strong);
-}
-
 .suggest__name {
   font-weight: 600;
 }
@@ -568,94 +454,6 @@ body {
 .suggest__meta {
   color: var(--muted);
   font-size: 0.88rem;
-}
-
-.search input {
-  flex: 1 1 260px;
-  padding: 0.8rem 1rem;
-  border-radius: 12px;
-  border: 1px solid var(--card-border);
-  background: var(--panel-strong);
-  color: var(--text);
-  font-size: 1rem;
-}
-
-.search input::placeholder {
-  color: var(--muted);
-}
-
-.search button {
-  padding: 0.8rem 1.2rem;
-  border-radius: 12px;
-  border: none;
-  background: var(--accent);
-  color: var(--ink);
-  font-weight: 700;
-  cursor: pointer;
-  font-size: 1rem;
-}
-
-.search button.ghost {
-  background: transparent;
-  border: 1px solid var(--card-border);
-  color: var(--text);
-  font-weight: 500;
-}
-
-.search button:hover {
-  filter: brightness(1.08);
-}
-
-.search button[type='submit'] {
-  box-shadow: 0 6px 18px rgba(255, 138, 92, 0.28);
-}
-
-/* Su schermi stretti: input a tutta larghezza, i due bottoni affiancati sotto. */
-@media (max-width: 560px) {
-  .search input {
-    flex: 1 1 100%;
-  }
-  .search button {
-    flex: 1 1 0;
-  }
-}
-
-/* Selettore alba / tramonto */
-.modes {
-  display: inline-flex;
-  gap: 0.25rem;
-  margin-top: 1rem;
-  padding: 0.25rem;
-  border-radius: 12px;
-  background: var(--panel-strong);
-  border: 1px solid var(--card-border);
-}
-
-.mode {
-  border: none;
-  background: transparent;
-  color: var(--muted);
-  padding: 0.45rem 0.9rem;
-  border-radius: 9px;
-  cursor: pointer;
-  font-size: 0.95rem;
-}
-
-.mode--active {
-  background: var(--accent);
-  color: var(--ink);
-  font-weight: 700;
-}
-
-.status {
-  min-height: 1.2rem;
-  margin-top: 0.9rem;
-  color: var(--muted);
-  font-size: 0.95rem;
-}
-
-.status[data-kind='error'] {
-  color: var(--bad);
 }
 
 /* Barra dei preferiti */
@@ -667,9 +465,7 @@ body {
   margin-top: 1rem;
 }
 
-.fav-toggle,
-.share-btn,
-.shareimg-btn {
+.fav-toggle {
   border: none;
   background: transparent;
   color: var(--accent);
@@ -679,16 +475,12 @@ body {
   vertical-align: middle;
 }
 
-.fav-toggle .ico,
-.share-btn .ico,
-.shareimg-btn .ico {
+.fav-toggle .ico {
   vertical-align: middle;
   transition: transform 0.12s ease;
 }
 
-.fav-toggle:hover .ico,
-.share-btn:hover .ico,
-.shareimg-btn:hover .ico {
+.fav-toggle:hover .ico {
   transform: scale(1.12);
 }
 
@@ -1073,18 +865,6 @@ body {
   }
 }
 
-.map__link {
-  display: inline-block;
-  margin-top: 0.5rem;
-  color: var(--accent);
-  font-size: 0.85rem;
-}
-
-.map__note {
-  margin-top: 0.5rem;
-  font-size: 0.8rem;
-}
-
 /* Bussola del sole */
 .lookat {
   display: flex;
@@ -1129,57 +909,6 @@ body {
 }
 
 
-.notes {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: grid;
-  gap: 0.6rem;
-}
-
-.note {
-  display: flex;
-  gap: 0.75rem;
-  align-items: flex-start;
-  padding: 0.7rem 0.9rem;
-  border-radius: 12px;
-  background: var(--panel);
-  border-left: 3px solid var(--sentiment-neutral);
-}
-
-.note--good {
-  border-left-color: var(--sentiment-good);
-}
-
-.note--bad {
-  border-left-color: var(--sentiment-bad);
-}
-
-.note__icon {
-  display: flex;
-  align-items: center;
-  padding-top: 0.1rem;
-  color: var(--neutral);
-}
-
-.note--good .note__icon {
-  color: var(--good);
-}
-
-.note--bad .note__icon {
-  color: var(--bad);
-}
-
-.note strong {
-  display: block;
-}
-
-.note p {
-  margin: 0.2rem 0 0;
-  color: var(--muted);
-  font-size: 0.9rem;
-}
-
 .foot {
   margin-top: 3rem;
   text-align: center;
@@ -1189,13 +918,6 @@ body {
 
 .foot a {
   color: var(--accent);
-}
-
-@media (max-width: 480px) {
-  .card__head {
-    justify-content: center;
-    text-align: center;
-  }
 }
 
 /* Avviso "tramonto top in arrivo" */
@@ -1222,23 +944,6 @@ body {
   color: var(--accent);
 }
 
-/* Confronto preferiti */
-.fav-compare {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  border-radius: 999px;
-  border: 1px dashed var(--card-border);
-  background: transparent;
-  color: var(--text);
-  padding: 0.35rem 0.8rem;
-  cursor: pointer;
-  font-size: 0.85rem;
-}
-.fav-compare:hover {
-  border-color: var(--accent);
-}
-
 /* Tema chiaro: sfondo con alone caldo su avorio, coerente col tema scuro. */
 :root[data-theme='light'] .sky {
   background:
@@ -1255,14 +960,6 @@ body {
       rgba(251, 244, 236, 0) 82%
     ),
     linear-gradient(180deg, #fdf7ef 0%, #fcefe4 60%, #fbe6d6 100%);
-}
-
-/* Pulsante toggle tema (glifo sole/luna riempito da JS). */
-.theme-toggle {
-  cursor: pointer;
-  min-width: 2.2rem;
-  line-height: 1;
-  font-size: 1rem;
 }
 
 /* ==========================================================================

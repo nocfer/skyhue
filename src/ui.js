@@ -89,20 +89,6 @@ export function chip({ label = '', value = '', variant = 'golden', score, title 
 }
 
 /**
- * Card (§2.4): guscio contenitore. Varianti feature/quiet/row + sentiment.
- * @param {string} inner
- * @param {{variant?:'feature'|'quiet'|'row', sentiment?:'good'|'neutral'|'bad',
- *          cls?:string, tag?:string, attrs?:string}} [o]
- */
-export function card(inner, { variant, sentiment, cls = '', tag = 'div', attrs = '' } = {}) {
-  const classes = ['card'];
-  if (variant) classes.push(`card--${variant}`);
-  if (sentiment) classes.push(`card--sentiment card--${sentiment}`);
-  if (cls) classes.push(cls);
-  return `<${tag} class="${classes.join(' ')}"${attrs ? ' ' + attrs : ''}>${inner}</${tag}>`;
-}
-
-/**
  * Bottone (§2.7): primary (fill accent) / outline / ghost. `icon` è un nome di
  * icona opzionale. Restituisce un <button> (usa `href` per un <a> .btn).
  * @param {string} label
