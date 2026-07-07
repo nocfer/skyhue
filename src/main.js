@@ -21,6 +21,15 @@ import {
 import { getFavorites, isFavorite, toggleFavorite, removeFavorite } from './store.js';
 import { skyGradient, skyGradientCss } from './sky.js';
 import { icon, ICONS } from './icons.js';
+import {
+  scoreHue,
+  scoreNumeral,
+  skySwatch,
+  statCell,
+  sectionHeader,
+  chip,
+  button,
+} from './ui.js';
 import { mountMiniMap } from './map.js';
 import { t, cardinal, initLang, getLang, setLang, applyStaticI18n } from './i18n.js';
 import {
@@ -371,12 +380,6 @@ function fmtWeekdayLong(date) {
   return date.toLocaleDateString(locale(), { weekday: 'long' });
 }
 
-/** Tinta del punteggio: rampa calda e monocromatica, in tinta col tramonto.
- *  Rosso-brace (basso, ~10°) → arancio → oro (alto, ~46°). Niente verde. */
-function scoreHue(score) {
-  return Math.round(10 + (score / 100) * 36);
-}
-
 /**
  * Mini-mappa Leaflet del punto analizzato: contenitore vuoto (Leaflet vi viene
  * montato da `mountMiniMap` dopo l'inserimento nel DOM) + chip "Espandi" e
@@ -390,9 +393,7 @@ function mapEmbedHtml() {
         size: 15,
       })} ${t('detail.expand')}</span>
     </div>
-    <button type="button" class="map__open" id="open-bigmap">${icon('map', {
-      size: 16,
-    })} ${t('detail.openMap')}</button>`;
+    ${button(t('detail.openMap'), { variant: 'primary', icon: 'map', id: 'open-bigmap', cls: 'map__open' })}`;
 }
 
 /** Card di un punto suggerito (usata sia per i POI sia per i punti stimati). */
@@ -407,10 +408,12 @@ function spotRowHtml(s) {
   // Pillola "cielo NN": il colore atteso nel punto (mostrata anche per affacci ostruiti).
   const skyPill =
     s.skyScore != null
-      ? `<span class="spot__sky" style="--hue:${scoreHue(s.skyScore)}" title="${t('spot.skyTitle')}">${t(
-          'spot.sky',
-          { n: s.skyScore }
-        )}</span>`
+      ? chip({
+          variant: 'sky',
+          value: t('spot.sky', { n: s.skyScore }),
+          score: s.skyScore,
+          title: t('spot.skyTitle'),
+        })
       : '';
   const quota = est && s.elev != null ? ` · ${Math.round(s.elev)} ${t('unit.m')}` : '';
   const kindLabel = est ? t('kind.estimate') : t(info.labelKey);
@@ -418,10 +421,7 @@ function spotRowHtml(s) {
     s.dir
   )}${quota}`;
   return `<li class="spot spot--${v.sentiment}">
-    <span class="spot__thumb" style="background:var(--sky-swatch)">
-      <span class="spot__sundot"></span>
-      ${est ? `<span class="spot__tag mono">${t('spot.estTag')}</span>` : ''}
-    </span>
+    ${skySwatch({ size: 'lg', tag: est ? t('spot.estTag') : '' })}
     <div class="spot__body">
       <a class="spot__name" href="${url}" target="_blank" rel="noopener">${escapeHtml(
         s.name || t(info.labelKey)
@@ -434,9 +434,7 @@ function spotRowHtml(s) {
       <span class="spot__meta mono">${meta}</span>
     </div>
     <div class="spot__scores">
-      <span class="spot__score display" style="--hue:${scoreHue(v.score)}" title="${t(
-        'spot.viewQuality'
-      )}">${v.score}</span>
+      ${scoreNumeral(v.score, { size: 'm', score: v.score, title: t('spot.viewQuality') })}
       ${skyPill}
     </div>
   </li>`;
@@ -454,13 +452,12 @@ function estimateBlockHtml() {
     list = `<p class="muted">${t('spots.estimateNone')}</p>`;
   }
   return `
-    <button class="scan-btn" ${state.estimating ? 'disabled' : ''}>
-      ${
-        state.estimating
-          ? t('spots.scanning')
-          : `${icon('compass', { size: 16 })} ${t('spots.scan')}`
-      }
-    </button>
+    ${button(state.estimating ? t('spots.scanning') : t('spots.scan'), {
+      variant: 'outline',
+      icon: state.estimating ? undefined : 'compass',
+      cls: 'scan-btn',
+      attrs: state.estimating ? 'disabled' : '',
+    })}
     ${list}`;
 }
 
@@ -492,7 +489,7 @@ function spotsSectionHtml(place, sun) {
 
   return `
     <section class="sect">
-      <div class="sect__head"><h2 class="sect__title display">${t('section.spots')}</h2></div>
+      ${sectionHeader(t('section.spots'))}
       <p class="sect__cap">${dirNote}</p>
       <p class="dualscore mono">${t('spot.dualLegend')}</p>
       ${body}
@@ -641,9 +638,10 @@ function heroHtml({ eventDate, score, event }) {
     event
   )} ${fmtTime(eventDate)}</p>
         <h1 class="verdict__headline">${t('headline.' + label + '.' + event)}</h1>
-        <p class="rhero__score"><b style="--hue:${scoreHue(
-          score
-        )}">${score}</b><span>${t('results.scoreOutOf')}</span></p>
+        <p class="rhero__score">${scoreNumeral(score, {
+          size: 'l',
+          score,
+        })}<span>${t('results.scoreOutOf')}</span></p>
       </div>
     </header>`;
 }
@@ -680,7 +678,7 @@ function weekRibbonHtml(scored, bestDayIndex = null) {
       <button class="wk__col${active ? ' wk__col--active' : ''}${
         isBest ? ' wk__col--best' : ''
       }" data-day="${d.dayIndex}">
-        <span class="wk__score" style="--hue:${scoreHue(score)}">${score}</span>
+        ${scoreNumeral(score, { size: 'xs', score, cls: 'wk__score' })}
         <span class="wk__dot"></span>
         <span class="wk__day">${fmtWeekdayShort(date)}</span>
       </button>`;
@@ -688,7 +686,7 @@ function weekRibbonHtml(scored, bestDayIndex = null) {
     .join('');
   return `
     <section class="sect sect--week">
-      <div class="sect__head"><h2 class="sect__title display">${t('section.week')}</h2></div>
+      ${sectionHeader(t('section.week'))}
       <p class="sect__cap">${t('week.caption', {
         day: fmtWeekdayShort(best.date),
         score: best.score,
@@ -728,16 +726,14 @@ function condDesc(type, v) {
 
 function conditionsHtml(cond) {
   const visKm = cond.visibility / 1000;
-  const card = (ico, label, value, desc) =>
-    `<div class="cond">${icon(ico, { size: 15, cls: 'cond__ico' })}<span class="cond__k">${label}</span><strong class="cond__v display">${value}</strong><span class="cond__d">${desc}</span></div>`;
   return `
     <section class="sect">
-      <div class="sect__head"><h2 class="sect__title display">${t('section.conditions')}</h2></div>
-      <div class="conds">
-        ${card('cloud-sun', t('cond.highCloud'), Math.round(cond.cloudCoverHigh) + '%', condDesc('high', cond.cloudCoverHigh))}
-        ${card('cloud', t('cond.lowCloud'), Math.round(cond.cloudCoverLow) + '%', condDesc('low', cond.cloudCoverLow))}
-        ${card('eye', t('stat.visibility'), visKm.toFixed(0) + ' km', condDesc('vis', visKm))}
-        ${card('droplet', t('stat.humidity'), Math.round(cond.humidity) + '%', condDesc('hum', cond.humidity))}
+      ${sectionHeader(t('section.conditions'))}
+      <div class="statgrid">
+        ${statCell({ icon: 'cloud-sun', label: t('cond.highCloud'), value: Math.round(cond.cloudCoverHigh) + '%', note: condDesc('high', cond.cloudCoverHigh) })}
+        ${statCell({ icon: 'cloud', label: t('cond.lowCloud'), value: Math.round(cond.cloudCoverLow) + '%', note: condDesc('low', cond.cloudCoverLow) })}
+        ${statCell({ icon: 'eye', label: t('stat.visibility'), value: visKm.toFixed(0) + ' km', note: condDesc('vis', visKm) })}
+        ${statCell({ icon: 'droplet', label: t('stat.humidity'), value: Math.round(cond.humidity) + '%', note: condDesc('hum', cond.humidity) })}
       </div>
     </section>`;
 }
@@ -780,11 +776,12 @@ function whyHtml({ score, factors, notes }) {
 
   return `
     <section class="sect">
-      <div class="sect__head"><h2 class="sect__title display">${t('section.why')}</h2></div>
+      ${sectionHeader(t('section.why'))}
       <div class="addsup">
-        <div class="addsup__head"><span class="mono">${t('why.addsUp')}</span><span class="addsup__score display" style="--hue:${scoreHue(
-          score
-        )}">${score}</span></div>
+        <div class="addsup__head"><span class="mono">${t('why.addsUp')}</span>${scoreNumeral(
+          score,
+          { size: 's', score, cls: 'addsup__score' }
+        )}</div>
         <div class="addsup__bar">
           <span class="addsup__seg addsup__seg--base" style="width:${pct(base)}%"></span>
           <span class="addsup__seg addsup__seg--drama" style="width:${pct(drama)}%"></span>
@@ -877,14 +874,14 @@ function hourlyHtml({ timeline }, tw, event) {
   const swatches = timeline
     .map(
       (c) =>
-        `<span class="swatch${c.isCenter ? ' swatch--center' : ''}" style="background:${skyGradientCss(
+        `<span class="trendsw${c.isCenter ? ' trendsw--center' : ''}" style="background:${skyGradientCss(
           skyGradient(c.factors, c.score)
         )}"></span>`
     )
     .join('');
   return `
     <section class="sect">
-      <div class="sect__head"><h2 class="sect__title display">${t('trend.arc')}</h2></div>
+      ${sectionHeader(t('trend.arc'))}
       <p class="sect__cap">${t('trend.hint', {
         when: t(state.event === 'sunset' ? 'when.sunset2' : 'when.sunrise2'),
       })}</p>
@@ -904,8 +901,8 @@ function lightChipsHtml(tw, event) {
     event === 'sunset' ? fmtRange(tw.golden, tw.event) : fmtRange(tw.event, tw.golden);
   const blueRange = event === 'sunset' ? fmtRange(tw.event, tw.blue) : fmtRange(tw.blue, tw.event);
   return `<div class="chips">
-        <div class="chip chip--golden"><span class="chip__k">${t('light.golden')}</span><strong>${goldenRange}</strong></div>
-        <div class="chip chip--blue"><span class="chip__k">${t('light.blue')}</span><strong>${blueRange}</strong></div>
+        ${chip({ variant: 'golden', label: t('light.golden'), value: goldenRange })}
+        ${chip({ variant: 'blue', label: t('light.blue'), value: blueRange })}
       </div>`;
 }
 
@@ -913,7 +910,7 @@ function lightChipsHtml(tw, event) {
 function lookAtHtml(sun, tw, event) {
   return `
     <section class="sect">
-      <div class="sect__head"><h2 class="sect__title display">${t('section.lookAt')}</h2></div>
+      ${sectionHeader(t('section.lookAt'))}
       <div class="lookat">
         ${compassSvg(sun.azimuth)}
         <div class="lookat__body">
@@ -943,8 +940,8 @@ function pointHtml({ cond, phase }) {
         })
       : '';
 
-  const atmo = (ico, label, value, cap) =>
-    `<div class="atmo">${icon(ico, { size: 15, cls: 'atmo__ico' })}<span class="atmo__k">${label}</span><strong class="atmo__v display">${value}</strong><span class="atmo__d">${cap}</span></div>`;
+  const atmo = (name, label, value, cap) =>
+    statCell({ icon: name, label, value, note: cap, noteAccent: true });
 
   const aerosolCard =
     cond.aerosol != null
@@ -966,13 +963,11 @@ function pointHtml({ cond, phase }) {
 
   return `
     <section class="sect">
-      <div class="sect__head"><h2 class="sect__title display">${t('section.point')}</h2></div>
+      ${sectionHeader(t('section.point'))}
       ${mapEmbedHtml()}
       ${gridNote ? `<p class="gridnote mono">${gridNote}</p>` : ''}
-      <div class="sect__head sect__head--sub"><h3 class="mono atmo__title">${t(
-        'section.atmosphere'
-      )}</h3></div>
-      <div class="atmos">
+      ${sectionHeader(t('section.atmosphere'), { variant: 'mono', sub: true })}
+      <div class="statgrid">
         ${aerosolCard}
         ${atmo('moon', t('stat.moon'), Math.round(phase * 100) + '%', t('moon.' + moonPhaseName(phase)))}
         ${horizonCard}
@@ -1290,19 +1285,17 @@ function openShareSheet(data) {
       <h2 class="sheet__title display">${t('share.title.' + event)}</h2>
       <div class="sharecard" style="background:${skyCss}">
         <span class="sharecard__brand">${icon('sunset', { size: 15 })} SkyHue</span>
-        <span class="sharecard__score display">${score}</span>
+        ${scoreNumeral(score, { size: 'xl', color: '#fff', cls: 'sharecard__score' })}
         <span class="sharecard__label display">${label}</span>
         <div class="sharecard__foot">
           <strong>${escapeHtml(place.label)}</strong>
           <span>${noun} ${fmtTime(eventDate)} · ${dir} ${Math.round(sun.azimuth)}°</span>
         </div>
       </div>
-      <button type="button" class="sheet__primary" id="sh-share">${icon('share', {
-        size: 18,
-      })} ${t('share.image')}</button>
+      ${button(t('share.image'), { variant: 'primary', icon: 'share', iconSize: 18, id: 'sh-share', cls: 'sheet__primary' })}
       <div class="sheet__row">
-        <button type="button" class="sheet__ghost" id="sh-save">${t('share.save')}</button>
-        <button type="button" class="sheet__ghost" id="sh-copy">${t('share.copy')}</button>
+        ${button(t('share.save'), { variant: 'ghost', id: 'sh-save', cls: 'sheet__ghost' })}
+        ${button(t('share.copy'), { variant: 'ghost', id: 'sh-copy', cls: 'sheet__ghost' })}
       </div>
     </div>`;
   document.body.appendChild(overlay);
@@ -1347,12 +1340,12 @@ function renderFavorites() {
       .map(
         (f) => `
       <div class="place" role="button" tabindex="0" data-id="${f.id}">
-        <span class="place__thumb" style="background:var(--sky-swatch)"><span class="place__sundot"></span></span>
+        ${skySwatch({ size: 'md' })}
         <span class="place__body">
           <span class="place__name">${escapeHtml(f.label)}</span>
           <span class="place__when" data-when>${t('cmp.calc')}</span>
         </span>
-        <span class="place__score display" data-score>—</span>
+        <span class="score score--m place__score" data-score>—</span>
         <button class="place__del" data-del="${f.id}" title="${t('fav.remove')}" aria-label="${t(
           'fav.remove'
         )}">×</button>
@@ -1470,7 +1463,6 @@ async function compareFavorites() {
   );
   rows.sort((a, b) => (b.score ?? -1) - (a.score ?? -1));
 
-  const swatch = '<span class="cmp__thumb" style="background:var(--sky-swatch)"><span class="place__sundot"></span></span>';
   const when = (r) => (r.time ? `${noun} ${fmtTime(r.time)}` : t('cmp.na'));
 
   const list = overlay.querySelector('.cmp__list');
@@ -1482,13 +1474,13 @@ async function compareFavorites() {
       ? `<div class="cmp__winner" style="--hue:${scoreHue(winner.score)}">
           <span class="cmp__best">★ ${t('cmp.best')}</span>
           <div class="cmp__winrow">
-            ${swatch.replace('cmp__thumb', 'cmp__thumb cmp__thumb--lg')}
+            ${skySwatch({ size: 'lg' })}
             <div class="cmp__wininfo">
               <strong>${escapeHtml(winner.label)}</strong>
               <span class="cmp__time">${when(winner)}</span>
             </div>
             <div class="cmp__winscore">
-              <span class="cmp__bignum display">${winner.score}</span>
+              ${scoreNumeral(winner.score, { size: 'l', score: winner.score, cls: 'cmp__bignum' })}
               <span class="cmp__label">${t('label.' + scoreLabel(winner.score))}</span>
             </div>
           </div>
@@ -1500,14 +1492,12 @@ async function compareFavorites() {
       (r, i) => `
       <div class="cmp__row">
         <span class="cmp__rank mono">${i + 2}</span>
-        ${swatch}
+        ${skySwatch({ size: 'sm' })}
         <div class="cmp__rowinfo">
           <strong>${escapeHtml(r.label)}</strong>
           <span class="cmp__time">${when(r)}</span>
         </div>
-        <span class="cmp__score display" style="--hue:${scoreHue(r.score ?? 0)}">${
-          r.score ?? '—'
-        }</span>
+        ${scoreNumeral(r.score ?? '—', { size: 'm', score: r.score ?? undefined, cls: 'cmp__score' })}
       </div>`
     )
     .join('');

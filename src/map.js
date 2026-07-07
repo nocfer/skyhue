@@ -15,24 +15,26 @@ import {
   kindInfo,
 } from './spots.js';
 import { icon } from './icons.js';
+import { scoreNumeral, skySwatch, button } from './ui.js';
 import { t, cardinal, getLang } from './i18n.js';
 
 const LEAFLET_CSS = 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css';
 const LEAFLET_JS = 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js';
 
-// Basemap CartoDB (niente API key): scuro (Dark Matter) col tema scuro, chiaro
-// (Positron) col tema chiaro, così la mappa segue il tema dell'app.
+// Basemap CartoDB (niente API key): Dark Matter, sempre scuro (la mappa è un
+// inset scuro fisso in entrambi i temi — vedi tileUrl()).
 const TILE_DARK = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
-const TILE_LIGHT = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
 const TILE_OPTS = {
   subdomains: 'abcd',
   maxZoom: 20,
   attribution: '© OpenStreetMap © CARTO',
 };
 
-/** URL dei tile in base al tema corrente dell'app. */
+/** URL dei tile della mappa. La mappa è un inset SCURO in entrambi i temi
+ *  (§1.1: --map-canvas fisso, anelli marker chiari, imagery calda sopra):
+ *  usiamo sempre il basemap scuro, così identità e contrasto restano coerenti. */
 function tileUrl() {
-  return document.documentElement.dataset.theme === 'light' ? TILE_LIGHT : TILE_DARK;
+  return TILE_DARK;
 }
 
 const els = {
@@ -77,8 +79,17 @@ function scoreColor(score) {
   return `hsl(${Math.round(10 + (score / 100) * 36)}, 80%, 58%)`;
 }
 
-// Colori dei punti suggeriti per qualità dell'affaccio (caldo, in tinta col tema).
-const SENT = { good: '#6ee7a8', bad: '#ff7a8a', neutral: '#ffd479' };
+// Imagery della mappa: mirror JS dei token §1.1. La mappa è un inset SCURO in
+// entrambi i temi (--map-canvas), quindi questi colori sono fissi. Leaflet
+// disegna su canvas/SVG via JS e non può leggere le var CSS: le rispecchiamo qui.
+const IMG = {
+  gold: '#ffce6f', // --gold-img: raggio verso il sole, glow del sole
+  accent: '#ff8a52', // --accent (dark): marker del tap
+  vis: '#6ea0ff', // anello visibilità (famiglia blue-hour, --blue-chip-bd)
+};
+// Colori dei punti suggeriti per affaccio: riuso della sentiment calda dell'app
+// (--sentiment-good/bad/neutral, valori tema scuro) invece di un set a parte.
+const SENT = { good: '#ffce6f', bad: '#d85a3c', neutral: '#9c9086' };
 
 /** Popup ricco per un punto suggerito: nome, affaccio, cielo, distanza, link OSM. */
 function spotPopupHtml(s) {
@@ -120,7 +131,7 @@ function buildSunsetOverlays(L, group, { lat, lon, azimuth, score, event, visibi
     [end.lat, end.lon],
   ];
   // Raggio verso il sole: alone caldo morbido + linea tratteggiata luminosa.
-  L.polyline(ray, { color: '#ffce6f', weight: 9, opacity: 0.16, lineCap: 'round' }).addTo(group);
+  L.polyline(ray, { color: IMG.gold, weight: 9, opacity: 0.16, lineCap: 'round' }).addTo(group);
   L.polyline(ray, { color, weight: 2.5, opacity: 0.95, dashArray: '1 8', lineCap: 'round' }).addTo(
     group
   );
@@ -129,10 +140,10 @@ function buildSunsetOverlays(L, group, { lat, lon, azimuth, score, event, visibi
   if (Number.isFinite(visibility) && visibility > 0) {
     L.circle([lat, lon], {
       radius: visibility,
-      color: '#8fd0ff',
+      color: IMG.vis,
       weight: 1,
       opacity: 0.5,
-      fillColor: '#8fd0ff',
+      fillColor: IMG.vis,
       fillOpacity: 0.06,
       dashArray: '4 6',
     }).addTo(group);
@@ -140,7 +151,7 @@ function buildSunsetOverlays(L, group, { lat, lon, azimuth, score, event, visibi
 
   // Marker dei punti suggeriti, colorati per qualità dell'affaccio.
   (spots || []).forEach((s) => {
-    const c = SENT[s.verdict?.sentiment] || '#ffd479';
+    const c = SENT[s.verdict?.sentiment] || SENT.neutral;
     const m = L.marker([s.lat, s.lon], {
       icon: L.divIcon({
         className: 'spotmark',
@@ -375,9 +386,9 @@ async function selectPoint(lat, lon) {
   else
     marker = L.circleMarker([lat, lon], {
       radius: 9,
-      color: '#ff8a5c',
+      color: IMG.accent,
       weight: 3,
-      fillColor: '#ff8a5c',
+      fillColor: IMG.accent,
       fillOpacity: 0.5,
       className: 'tapmark',
     }).addTo(map);
@@ -478,7 +489,6 @@ async function evaluatePoint(lat, lon) {
 }
 
 function renderPanel({ lat, lon, sunsetDate, score, sun, verdict, visibility, elevation }) {
-  const hue = Math.round(10 + (score / 100) * 36);
   const coords = `${Math.abs(lat).toFixed(2)}°${lat >= 0 ? 'N' : 'S'} · ${Math.abs(lon).toFixed(
     2
   )}°${lon >= 0 ? 'E' : 'W'}`;
@@ -486,20 +496,20 @@ function renderPanel({ lat, lon, sunsetDate, score, sun, verdict, visibility, el
   els.panel.innerHTML = `
     <span class="mp__handle" aria-hidden="true"></span>
     <div class="mp__head">
-      <span class="mp__thumb" style="background:var(--sky-swatch)"><span class="mp__sundot"></span></span>
+      ${skySwatch({ size: 'md' })}
       <div class="mp__title">
         <strong>${t('map.pointName')}</strong>
         <span class="mp__coords mono">${coords}</span>
       </div>
       <div class="mp__scorebox">
-        <span class="mp__score display" style="--hue:${hue}">${score}</span>
+        ${scoreNumeral(score, { size: 'l', score, cls: 'mp__score' })}
         <span class="mp__label">${t('label.' + scoreLabel(score))}</span>
       </div>
     </div>
     <p class="mp__verdict spot--${verdict.sentiment}">${icon(verdict.icon, { size: 16 })} ${t(
     'verdict.' + verdict.code
   )} — ${t('mappop.towards', { dir })} (${Math.round(sun.azimuth)}°)</p>
-    <button id="mp-open" class="mp__open">${t('mp.openDetail')}</button>
+    ${button(t('mp.openDetail'), { variant: 'primary', id: 'mp-open', cls: 'mp__open' })}
   `;
   const open = document.getElementById('mp-open');
   open.addEventListener('click', () => {
