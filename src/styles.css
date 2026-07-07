@@ -1424,14 +1424,14 @@ body {
   padding: 0 var(--side-pad) 2.4rem;
 }
 
-/* Barra di ricerca: pillola in vetro (lente + input + tondo posizione). */
+/* Barra di ricerca: rettangolo arrotondato in vetro (lente + input + tondo posizione). */
 .search {
   position: relative;
   display: flex;
   align-items: center;
   gap: 0.5rem;
   padding: 0.45rem 0.5rem 0.45rem 0.9rem;
-  border-radius: var(--r-pill);
+  border-radius: var(--r-control);
   background: rgba(40, 28, 44, 0.92);
   border: 1px solid var(--hairline);
   box-shadow: var(--shadow-sheet);
@@ -1527,7 +1527,7 @@ body {
   gap: 0.25rem;
   margin-top: 1.1rem;
   padding: 0.28rem;
-  border-radius: var(--r-pill);
+  border-radius: var(--r-control);
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid var(--hairline);
 }
@@ -1539,7 +1539,7 @@ body {
   background: transparent;
   color: var(--muted);
   padding: 0.45rem 1rem;
-  border-radius: var(--r-pill);
+  border-radius: var(--r-tile);
   cursor: pointer;
   font: inherit;
   font-size: 0.9rem;
@@ -1788,6 +1788,23 @@ body {
 .rhero__score span {
   color: rgba(255, 255, 255, 0.78);
   font-size: 0.9rem;
+}
+/* Barra 0–100: rende leggibile "quanto è alto" il punteggio, senza rubare la
+   scena al numerale (sottile, semitrasparente, riempita con la rampa del hue). */
+.rhero__meter {
+  position: relative;
+  margin: 0.85rem 0 0;
+  width: min(240px, 70%);
+  height: 4px;
+  border-radius: var(--r-pill);
+  background: rgba(255, 255, 255, 0.22);
+  overflow: hidden;
+}
+.rhero__meterfill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: hsl(var(--hue, 40) 90% 72%);
 }
 
 .rcontent {

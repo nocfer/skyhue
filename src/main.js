@@ -642,6 +642,9 @@ function heroHtml({ eventDate, score, event }) {
           size: 'l',
           score,
         })}<span>${t('results.scoreOutOf')}</span></p>
+        <div class="rhero__meter" role="presentation" aria-hidden="true">
+          <span class="rhero__meterfill" style="width:${Math.max(0, Math.min(100, score))}%"></span>
+        </div>
       </div>
     </header>`;
 }
@@ -735,6 +738,7 @@ function conditionsHtml(cond) {
         ${statCell({ icon: 'eye', label: t('stat.visibility'), value: visKm.toFixed(0) + ' km', note: condDesc('vis', visKm) })}
         ${statCell({ icon: 'droplet', label: t('stat.humidity'), value: Math.round(cond.humidity) + '%', note: condDesc('hum', cond.humidity) })}
       </div>
+      <p class="sect__cap cond__mid">${t('cond.midNote', { mid: Math.round(cond.cloudCoverMid ?? 0) })}</p>
     </section>`;
 }
 
