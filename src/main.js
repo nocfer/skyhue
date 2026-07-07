@@ -634,9 +634,7 @@ function heroHtml({ eventDate, score, event }) {
         <p class="rhero__eyebrow mono">${whenWord(eventDate, event)} · ${eventNoun(
     event
   )} ${fmtTime(eventDate)}</p>
-        <h1 class="verdict__headline">${t('headline.' + label, {
-          noun: eventNoun(event).toLowerCase(),
-        })}</h1>
+        <h1 class="verdict__headline">${t('headline.' + label + '.' + event)}</h1>
         <p class="rhero__score"><b style="--hue:${scoreHue(
           score
         )}">${score}</b><span>${t('results.scoreOutOf')}</span></p>
@@ -645,7 +643,10 @@ function heroHtml({ eventDate, score, event }) {
 }
 
 function introHtml({ score, sun }) {
-  return `<p class="rintro">${t('intro.' + scoreLabel(score), { dir: dirName(sun.azimuth) })}</p>`;
+  return `<p class="rintro">${t('intro.' + scoreLabel(score), {
+    dir: dirName(sun.azimuth),
+    verb: t(state.event === 'sunset' ? 'verb.sets' : 'verb.rises'),
+  })}</p>`;
 }
 
 /* Toggle compatto alba/tramonto nella schermata risultati. */
@@ -956,9 +957,7 @@ function pointHtml({ cond, phase }) {
         ${aerosolCard}
         ${atmo('moon', t('stat.moon'), Math.round(phase * 100) + '%', t('moon.' + moonPhaseName(phase)))}
         ${horizonCard}
-        ${atmo('thermometer', t('stat.temp'), Math.round(cond.temperature) + '°C', t('atmo.tempCap', {
-          noun: eventNoun(state.event).toLowerCase(),
-        }))}
+        ${atmo('thermometer', t('stat.temp'), Math.round(cond.temperature) + '°C', t('atmo.tempCap.' + state.event))}
       </div>
     </section>`;
 }
@@ -1268,7 +1267,7 @@ function openShareSheet(data) {
   overlay.innerHTML = `
     <div class="sheet" role="dialog" aria-modal="true">
       <span class="sheet__handle" aria-hidden="true"></span>
-      <h2 class="sheet__title display">${t('share.title', { noun: noun.toLowerCase() })}</h2>
+      <h2 class="sheet__title display">${t('share.title.' + event)}</h2>
       <div class="sharecard" style="background:${skyCss}">
         <span class="sharecard__brand">${icon('sunset', { size: 15 })} SkyHue</span>
         <span class="sharecard__score display">${score}</span>
@@ -1423,7 +1422,7 @@ async function compareFavorites() {
       <header class="cmp__header">
         <div>
           <h2 class="cmp__title display">${t('cmp.heading')}</h2>
-          <p class="cmp__sub">${t('cmp.sub', { event: noun.toLowerCase() })}</p>
+          <p class="cmp__sub">${t('cmp.sub.' + state.event)}</p>
         </div>
         <button class="cmp__close gcircle" aria-label="${t('cmp.close')}">×</button>
       </header>
@@ -1493,9 +1492,7 @@ async function compareFavorites() {
     )
     .join('');
 
-  list.innerHTML = `${winnerHtml}${rowsHtml}<p class="cmp__foot">${t('cmp.foot', {
-    event: noun.toLowerCase(),
-  })}</p>`;
+  list.innerHTML = `${winnerHtml}${rowsHtml}<p class="cmp__foot">${t('cmp.foot.' + state.event)}</p>`;
 }
 
 // --- Eventi UI -------------------------------------------------------------
@@ -1673,7 +1670,12 @@ els.geoBtn.addEventListener('click', () => {
   navigator.geolocation.getCurrentPosition(
     (pos) => {
       const { latitude, longitude } = pos.coords;
-      analyze({ latitude, longitude, label: `${t('geo.here')} (${coordsLabel(latitude, longitude)})` });
+      analyze({
+        latitude,
+        longitude,
+        label: `${t('geo.here')} (${coordsLabel(latitude, longitude)})`,
+        isGeo: true,
+      });
     },
     (err) => setStatus(t('status.geoUnavailable', { msg: err.message }), 'error')
   );
@@ -1763,6 +1765,11 @@ if (langBtn) {
     updateLangToggle();
     updateSuggestAria();
     renderFavorites();
+    // Il testo "La tua posizione" era stato tradotto una volta sola al momento
+    // della geolocalizzazione: va rigenerato nella lingua nuova prima di ri-renderizzare.
+    if (state.place?.isGeo) {
+      state.place.label = `${t('geo.here')} (${coordsLabel(state.place.latitude, state.place.longitude)})`;
+    }
     // Ri-renderizza il risultato corrente, se presente.
     if (state.forecast && state.place) render();
     // Aggiorna il pannello mappa se aperto.

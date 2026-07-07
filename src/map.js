@@ -210,7 +210,7 @@ export async function mountMiniMap(mount, { lat, lon, azimuth, score, event, vis
   const spotSig = (spots || []).length;
   const key = `${lat.toFixed(4)}|${lon.toFixed(4)}|${Math.round(azimuth)}|${score}|${event}|${Math.round(
     visibility || 0
-  )}|${spotSig}`;
+  )}|${spotSig}|${getLang()}`;
 
   // Stesso stato di un render precedente: sposta il container esistente nel
   // nuovo nodo (le render sono sequenziali → l'ultima, quella viva, vince).
