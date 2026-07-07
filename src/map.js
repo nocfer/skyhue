@@ -172,13 +172,14 @@ function buildSunsetOverlays(L, group, { lat, lon, azimuth, score, event, visibi
     keyboard: false,
   }).addTo(group);
 
-  // Punto analizzato: pallino colorato per punteggio con alone.
+  // Punto analizzato: bolla del punteggio (oro, testo scuro) sopra un pallino in
+  // tinta col punteggio, con anello bianco e alone.
   L.marker([lat, lon], {
     icon: L.divIcon({
       className: 'skymark',
-      html: `<span class="skymark__dot" style="--c:${color}"></span>`,
-      iconSize: [22, 22],
-      iconAnchor: [11, 11],
+      html: `<span class="skymark__score">${score}</span><span class="skymark__dot" style="--c:${color}"></span>`,
+      iconSize: [44, 48],
+      iconAnchor: [22, 44],
     }),
   })
     .addTo(group)
@@ -484,31 +485,27 @@ async function evaluatePoint(lat, lon) {
 
 function renderPanel({ lat, lon, sunsetDate, score, sun, verdict, visibility, elevation }) {
   const hue = Math.round(10 + (score / 100) * 36);
-  const visKm = Number.isFinite(visibility) ? (visibility / 1000).toFixed(0) : null;
-  const horizonKm = Number.isFinite(elevation) ? horizonDistanceKm(elevation).toFixed(0) : null;
-  const extra = [
-    visKm != null ? t('mp.vis', { km: visKm }) : null,
-    horizonKm != null && elevation > 2 ? t('mp.horizon', { km: horizonKm }) : null,
-  ]
-    .filter(Boolean)
-    .join(' · ');
+  const coords = `${Math.abs(lat).toFixed(2)}°${lat >= 0 ? 'N' : 'S'} · ${Math.abs(lon).toFixed(
+    2
+  )}°${lon >= 0 ? 'E' : 'W'}`;
+  const dir = cardinal(azimuthToCardinal(sun.azimuth));
   els.panel.innerHTML = `
+    <span class="mp__handle" aria-hidden="true"></span>
     <div class="mp__head">
-      <div class="mp__score" style="--hue:${hue}">${score}</div>
-      <div>
-        <strong>${t('label.' + scoreLabel(score))}</strong>
-        <p class="muted">${t('mp.meta', {
-          time: fmtTime(sunsetDate),
-          dir: cardinal(azimuthToCardinal(sun.azimuth)),
-          deg: Math.round(sun.azimuth),
-        })}</p>
+      <span class="mp__thumb" style="background:var(--sky-swatch)"><span class="mp__sundot"></span></span>
+      <div class="mp__title">
+        <strong>${t('map.pointName')}</strong>
+        <span class="mp__coords mono">${coords}</span>
+      </div>
+      <div class="mp__scorebox">
+        <span class="mp__score display" style="--hue:${hue}">${score}</span>
+        <span class="mp__label">${t('label.' + scoreLabel(score))}</span>
       </div>
     </div>
-    <p class="mp__verdict spot--${verdict.sentiment}">${icon(verdict.icon, { size: 18 })} ${t(
+    <p class="mp__verdict spot--${verdict.sentiment}">${icon(verdict.icon, { size: 16 })} ${t(
     'verdict.' + verdict.code
-  )}</p>
-    ${extra ? `<p class="muted mp__extra">${extra}</p>` : ''}
-    <button id="mp-open" class="mp__open">${t('mp.open')}</button>
+  )} — ${t('mappop.towards', { dir })} (${Math.round(sun.azimuth)}°)</p>
+    <button id="mp-open" class="mp__open">${t('mp.openDetail')}</button>
   `;
   const open = document.getElementById('mp-open');
   open.addEventListener('click', () => {

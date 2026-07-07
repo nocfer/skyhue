@@ -190,6 +190,87 @@ const DICT = {
 
     'foot.credits':
       'Dati meteo &amp; astronomici da <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a>. Posizione solare con algoritmo NOAA.',
+
+    // --- Redesign "Atmosphere" ---
+    'menu.aria': 'Altre opzioni',
+    'menu.theme': 'Tema',
+    'menu.lang': 'Lingua',
+    'home.headline': 'Insegui<br />la luce.',
+    'fav.title': 'I tuoi luoghi',
+    'map.pickSpot': 'Scegli un punto sulla mappa',
+    'map.pickTitle': 'Scegli un punto',
+    'map.pointName': 'Punto sulla mappa',
+    'mp.openDetail': 'Apri il dettaglio →',
+    'results.scoreOutOf': '/ 100 punteggio',
+    'time.tonight': 'Stasera',
+    'rhero.change': 'Cambia località',
+    'rhero.searchAria': 'Nuova ricerca',
+
+    'headline.exceptional': 'Un {noun}\nda non\nperdere.',
+    'headline.great': 'Gran bel\n{noun} in\narrivo.',
+    'headline.good': 'Un buon\n{noun}\nstasera.',
+    'headline.fair': 'Un {noun}\ndiscreto\nin arrivo.',
+    'headline.mediocre': 'Un {noun}\nsmorzato\nstasera.',
+    'headline.poor': 'Un {noun}\nspento\nin arrivo.',
+
+    'intro.exceptional':
+      'Cielo limpido e acceso: cirri alti e aria tersa promettono colori vividi. Il sole scende verso {dir}.',
+    'intro.great':
+      'Cielo limpido e acceso: cirri alti e aria tersa si allineano per colori vivi. Il sole scende verso {dir}.',
+    'intro.good':
+      'Buone condizioni per il colore, con qualche velatura utile. Il sole scende verso {dir}.',
+    'intro.fair':
+      'Condizioni nella media: il colore potrebbe esserci a tratti. Il sole scende verso {dir}.',
+    'intro.mediocre':
+      'Cielo poco favorevole: nubi o foschia smorzano le tinte. Il sole scende verso {dir}.',
+    'intro.poor': 'Cielo chiuso: colori improbabili stasera. Il sole scende verso {dir}.',
+
+    'section.week': 'Questa settimana',
+    'week.caption': 'Migliore {day} · {score}/100',
+    'section.conditions': 'Condizioni',
+    'cond.highCloud': 'Nuvole alte',
+    'cond.lowCloud': 'Nuvole basse',
+    'desc.litCirrus': 'cirri illuminati',
+    'desc.heavyHigh': 'velatura fitta',
+    'desc.fewHigh': 'poche nubi alte',
+    'desc.clearHorizon': 'orizzonte libero',
+    'desc.someLow': 'qualche nube bassa',
+    'desc.blockedLow': 'orizzonte coperto',
+    'desc.crispAir': 'aria tersa',
+    'desc.okVis': 'discreta',
+    'desc.hazyVis': 'foschia',
+    'desc.dryAir': 'aria secca',
+    'desc.okHum': 'nella media',
+    'desc.humidAir': 'aria umida',
+
+    'why.addsUp': 'Come si compone',
+    'why.baseline': 'Base',
+    'why.drama': 'Dramma del cielo',
+    'why.clarity': 'Nitidezza',
+    'why.footnote': 'Nubi basse e cielo coperto possono ridurre il punteggio finale.',
+    'why.showAll': 'Mostra tutti ({n})',
+    'why.showLess': 'Mostra meno',
+
+    'trend.arc': 'L’arco di stasera',
+    'trend.predicted': 'Colore previsto',
+
+    'section.atmosphere': 'Atmosfera',
+    'atmo.aerosolCap': 'esalta i rossi',
+    'atmo.horizon': 'Orizzonte',
+    'atmo.horizonCap': 'da {m} m di quota',
+    'atmo.tempCap': 'al {noun}',
+
+    'spot.dualLegend': 'numero grande = affaccio · cielo NN = il colore lì',
+    'spots.seeAll': 'Vedi tutti i punti ({n})',
+    'spots.seeLess': 'Mostra meno',
+    'cmp.heading': 'Confronto',
+    'cmp.sub': 'Prossimo {event} · i tuoi luoghi',
+    'cmp.best': 'MIGLIORE STASERA',
+    'cmp.foot': 'Calcolato dal meteo reale di ogni luogo al {event}.',
+    'share.title': 'Condividi il {noun} di stasera',
+    'share.image': 'Condividi immagine',
+    'share.save': 'Salva immagine',
+    'share.copy': 'Copia link',
   },
 
   en: {
@@ -375,6 +456,86 @@ const DICT = {
 
     'foot.credits':
       'Weather &amp; astronomical data from <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a>. Solar position via the NOAA algorithm.',
+
+    // --- Redesign "Atmosphere" ---
+    'menu.aria': 'More options',
+    'menu.theme': 'Theme',
+    'menu.lang': 'Language',
+    'home.headline': 'Chase<br />the light.',
+    'fav.title': 'Your places',
+    'map.pickSpot': 'Pick a spot on the map',
+    'map.pickTitle': 'Pick a spot',
+    'map.pointName': 'Point on the map',
+    'mp.openDetail': 'Open full detail →',
+    'results.scoreOutOf': '/ 100 score',
+    'time.tonight': 'Tonight',
+    'rhero.change': 'Change location',
+    'rhero.searchAria': 'New search',
+
+    'headline.exceptional': 'An\nunmissable\n{noun}.',
+    'headline.great': 'Great\n{noun}\nahead.',
+    'headline.good': 'A good\n{noun}\ntonight.',
+    'headline.fair': 'A fair\n{noun}\nahead.',
+    'headline.mediocre': 'A muted\n{noun}\ntonight.',
+    'headline.poor': 'A dull\n{noun}\nahead.',
+
+    'intro.exceptional':
+      'A clear, lit-up sky — high cirrus and crisp air promise vivid colour. The sun drops to the {dir}.',
+    'intro.great':
+      'A clear, lit-up sky — high cirrus and crisp air line up for vivid colour. The sun drops to the {dir}.',
+    'intro.good':
+      'Good conditions for colour, with some helpful high cloud. The sun drops to the {dir}.',
+    'intro.fair': 'Average conditions — colour may come and go. The sun drops to the {dir}.',
+    'intro.mediocre':
+      'Unfavourable sky — cloud or haze mutes the tones. The sun drops to the {dir}.',
+    'intro.poor': 'A closed sky — colour is unlikely tonight. The sun drops to the {dir}.',
+
+    'section.week': 'This week',
+    'week.caption': 'Best {day} · {score}/100',
+    'section.conditions': 'Conditions',
+    'cond.highCloud': 'High cloud',
+    'cond.lowCloud': 'Low cloud',
+    'desc.litCirrus': 'lit cirrus',
+    'desc.heavyHigh': 'heavy veil',
+    'desc.fewHigh': 'few high clouds',
+    'desc.clearHorizon': 'clear horizon',
+    'desc.someLow': 'some low cloud',
+    'desc.blockedLow': 'blocked horizon',
+    'desc.crispAir': 'crisp air',
+    'desc.okVis': 'decent',
+    'desc.hazyVis': 'hazy',
+    'desc.dryAir': 'dry air',
+    'desc.okHum': 'average',
+    'desc.humidAir': 'humid air',
+
+    'why.addsUp': 'How it adds up',
+    'why.baseline': 'Baseline',
+    'why.drama': 'Sky drama',
+    'why.clarity': 'Clarity',
+    'why.footnote': 'Low cloud and overcast can pull the final score down.',
+    'why.showAll': 'Show all ({n})',
+    'why.showLess': 'Show less',
+
+    'trend.arc': "Tonight's arc",
+    'trend.predicted': 'Predicted colour',
+
+    'section.atmosphere': 'Atmosphere',
+    'atmo.aerosolCap': 'warms the reds',
+    'atmo.horizon': 'Horizon',
+    'atmo.horizonCap': 'from {m} m elev.',
+    'atmo.tempCap': 'at {noun}',
+
+    'spot.dualLegend': 'big number = the view · sky NN = the colour there',
+    'spots.seeAll': 'See all spots ({n})',
+    'spots.seeLess': 'Show less',
+    'cmp.heading': 'Compare',
+    'cmp.sub': 'Next {event} · your places',
+    'cmp.best': 'BEST TONIGHT',
+    'cmp.foot': "Scored from each place's live weather at {event}.",
+    'share.title': "Share tonight's {noun}",
+    'share.image': 'Share image',
+    'share.save': 'Save image',
+    'share.copy': 'Copy link',
   },
 };
 
