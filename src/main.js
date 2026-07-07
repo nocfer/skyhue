@@ -1820,6 +1820,11 @@ if (moreBtn && moreMenu) {
     moreMenu.hidden = !willOpen;
     moreBtn.setAttribute('aria-expanded', String(willOpen));
   });
+  // Scegliere una voce (tema/lingua) chiude il menu: altrimenti resta aperto e
+  // sembra che il click non abbia avuto effetto.
+  moreMenu.querySelectorAll('.menu__item').forEach((item) => {
+    item.addEventListener('click', closeMenu);
+  });
   document.addEventListener('click', (e) => {
     if (!moreMenu.hidden && !moreMenu.contains(e.target) && e.target !== moreBtn) closeMenu();
   });
@@ -1883,9 +1888,7 @@ if (langBtn) {
     document.documentElement.lang = getLang();
     applyStaticI18n();
     updateLangToggle();
-    // L'etichetta del tema è composta a mano (glifo + testo tradotto): va
-    // riallineata alla nuova lingua, altrimenti resta nell'idioma precedente.
-    updateThemeToggle();
+    updateThemeToggle(); // l'etichetta "Tema/Theme" deve seguire la lingua
     updateSuggestAria();
     renderFavorites();
     // Il testo "La tua posizione" era stato tradotto una volta sola al momento
@@ -1905,8 +1908,8 @@ initLang();
 document.documentElement.lang = getLang();
 applyStaticI18n();
 updateLangToggle();
-// initLang() può aver cambiato lingua dopo il primo updateThemeToggle() (fatto
-// al montaggio del bottone): riallineiamo l'etichetta del tema alla lingua reale.
+// initLang() può aver cambiato la lingua rispetto al render iniziale del toggle
+// tema (eseguito prima): risincronizza l'etichetta "Tema/Theme".
 updateThemeToggle();
 updateSuggestAria();
 renderFavorites();
