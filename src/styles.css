@@ -96,6 +96,8 @@
   --r-card: 18px;
   --r-med: 14px;
   --r-pill: 999px;
+  --r-thumb: 12px; /* thumbnail sky-swatch (stesso raggio ovunque) */
+  --gap-card: 0.6rem; /* gap uniforme tra card impilate in lista */
   --shadow-sheet: 0 16px 40px -12px rgba(0, 0, 0, 0.6);
 
   font-family: var(--font-ui);
@@ -931,13 +933,13 @@ body {
 .map__open {
   width: 100%;
   margin-top: 0.55rem;
-  padding: 0.62rem 0.9rem;
-  border: none;
-  border-radius: 12px;
-  background: linear-gradient(100deg, #ffb066 0%, #ff8a52 100%);
+  padding: 0.85rem;
+  border: 0;
+  border-radius: var(--r-med);
+  background: var(--accent);
   color: var(--ink);
+  font: inherit;
   font-weight: 700;
-  font-size: 0.92rem;
   cursor: pointer;
   transition: filter 0.18s ease, transform 0.12s ease;
 }
@@ -1535,7 +1537,7 @@ body {
 }
 .cmp__list {
   display: grid;
-  gap: 0.55rem;
+  gap: var(--gap-card);
 }
 .cmp__row {
   display: flex;
@@ -1902,7 +1904,7 @@ body {
 .favorites {
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
+  gap: var(--gap-card);
 }
 .place {
   display: flex;
@@ -1923,7 +1925,7 @@ body {
 .spot__thumb {
   position: relative;
   flex-shrink: 0;
-  border-radius: 12px;
+  border-radius: var(--r-thumb);
   overflow: hidden;
 }
 .place__thumb {
@@ -2238,7 +2240,13 @@ body {
 .atmos {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 0.6rem;
+  gap: var(--gap-card);
+}
+/* Se una card meteo/atmosfera manca (dato assente), l'ultima occupa la riga
+   intera così la griglia 2×2 non resta con una cella vuota sbilanciata. */
+.conds .cond:last-child:nth-child(odd),
+.atmos .atmo:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
 }
 .cond,
 .atmo {
@@ -2364,7 +2372,7 @@ body {
   padding: 0;
   margin: 0.7rem 0 0;
   display: grid;
-  gap: 0.5rem;
+  gap: var(--gap-card);
 }
 .drivers.is-collapsed .driver:nth-child(n + 4) {
   display: none;
@@ -2514,7 +2522,7 @@ body {
 }
 .chips {
   display: flex;
-  gap: 0.6rem;
+  gap: var(--gap-card);
   margin-top: 1rem;
 }
 .chip {
@@ -2546,7 +2554,7 @@ body {
 
 /* Where to watch: legenda doppio punteggio + card punti. */
 .dualscore {
-  margin: -0.4rem 0 0.9rem;
+  margin: 0 0 0.9rem;
   font-size: 0.62rem;
   letter-spacing: 0.12em;
   color: var(--faint);
@@ -2556,7 +2564,7 @@ body {
   padding: 0;
   margin: 0;
   display: grid;
-  gap: 0.55rem;
+  gap: var(--gap-card);
 }
 .spots.is-collapsed .spot:nth-child(n + 4) {
   display: none;
@@ -2588,7 +2596,7 @@ body {
   top: 6px;
   font-size: 0.5rem;
   padding: 1px 5px;
-  border-radius: 5px;
+  border-radius: 7px;
   background: rgba(0, 0, 0, 0.4);
   color: #fff;
   letter-spacing: 0.1em;
@@ -2622,7 +2630,7 @@ body {
 }
 .spot__meta {
   font-size: 0.6rem;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.1em;
   color: var(--faint);
 }
 .spot__scores {
@@ -2656,7 +2664,7 @@ body {
 .gridnote {
   margin: 0.7rem 0 0;
   font-size: 0.6rem;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   color: var(--faint);
   word-break: break-word;
 }
@@ -2763,7 +2771,7 @@ body {
   display: block;
   width: 130px;
   height: 5px;
-  margin: 0 auto 0.9rem;
+  margin: 0 auto 1rem;
   border-radius: 3px;
   background: rgba(255, 255, 255, 0.35);
 }
@@ -2777,15 +2785,15 @@ body {
   width: 52px;
   height: 52px;
   flex-shrink: 0;
-  border-radius: 12px;
+  border-radius: var(--r-thumb);
   overflow: hidden;
 }
 .mp__sundot {
   position: absolute;
   right: 9px;
-  bottom: 10px;
-  width: 13px;
-  height: 13px;
+  bottom: 11px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
   background: radial-gradient(circle, #fff4d4, rgba(255, 206, 111, 0));
 }
@@ -2906,7 +2914,7 @@ body {
 }
 .cmp__list {
   display: grid;
-  gap: 0.55rem;
+  gap: var(--gap-card);
 }
 .cmp__winner {
   position: relative;
@@ -2946,13 +2954,13 @@ body {
   width: 44px;
   height: 44px;
   flex-shrink: 0;
-  border-radius: 11px;
+  border-radius: var(--r-thumb);
   overflow: hidden;
 }
 .cmp__thumb--lg {
   width: 60px;
   height: 60px;
-  border-radius: 14px;
+  border-radius: var(--r-thumb);
 }
 .cmp__wininfo,
 .cmp__rowinfo {
@@ -3135,7 +3143,7 @@ body {
 }
 .sheet__ghost {
   flex: 1 1 0;
-  padding: 0.75rem;
+  padding: 0.85rem;
   border: 1px solid var(--hairline);
   border-radius: var(--r-med);
   background: transparent;
