@@ -11,6 +11,7 @@ import {
   coordsLabel,
 } from './api.js';
 import { computeSunsetScore, scoreLabel, explainScore, WEIGHTS } from './score.js';
+import { fetchLightPath, lightPathClearAt } from './lightpath.js';
 import {
   sunPosition,
   azimuthToCardinal,
@@ -74,6 +75,10 @@ const state = {
   estimatedSpots: null, // punti "da coordinate" (griglia), su richiesta
   estimating: false,
   estimateError: false,
+  // Nuvole lungo il raggio verso il sole: null = non richiesto, altrimenti
+  // { status:'loading'|'ready'|'error', place, event, azimuth, data }.
+  // Assente/errore → il punteggio si calcola senza fattore percorso (neutro).
+  lightPath: null,
 };
 
 // Quanti punti valutare (per limitare la chiamata batch sulle quote) e mostrare.
@@ -115,9 +120,11 @@ async function analyze(place) {
     state.estimatedSpots = null;
     state.estimating = false;
     state.estimateError = false;
+    state.lightPath = null;
     render();
     setStatus('', 'info');
     loadSpots(place); // in background: non blocca la vista principale
+    loadLightPath(place); // idem: l'azimut richiede il forecast appena arrivato
   } catch (err) {
     console.error(err);
     setStatus(t('status.error', { msg: err.message }), 'error');
@@ -145,6 +152,42 @@ function currentAzimuth() {
   const { forecast, place, event, dayIndex } = state;
   const iso = dailyList(forecast)[dayIndex][event];
   return sunPosition(new Date(iso), place.latitude, place.longitude).azimuth;
+}
+
+/**
+ * Carica in background le nuvole lungo il raggio verso il sole (percorso della
+ * luce). Le 4 previsioni coprono 7 giorni di orari, quindi un solo giro serve
+ * punteggio, timeline e striscia multi-giorno; si riusa l'azimut del giorno
+ * selezionato per tutta la settimana (deriva ≤ ~3° ≈ 13 km laterali a 250 km,
+ * meno di una cella del modello). Fallimento → punteggio senza fattore.
+ */
+async function loadLightPath(place) {
+  const { event } = state;
+  state.lightPath = { status: 'loading', place, event, azimuth: null, data: null };
+  try {
+    const azimuth = currentAzimuth();
+    const data = await fetchLightPath(place.latitude, place.longitude, azimuth);
+    if (state.place !== place || state.event !== event) return; // superato
+    const valid = data.points.filter((p) => p.forecast).length;
+    state.lightPath =
+      valid >= 2
+        ? { status: 'ready', place, event, azimuth, data }
+        : { status: 'error', place, event, azimuth, data: null };
+    render();
+  } catch (err) {
+    console.warn('Percorso della luce non disponibile:', err);
+    if (state.place !== place || state.event !== event) return;
+    state.lightPath = { status: 'error', place, event, azimuth: null, data: null };
+    render();
+  }
+}
+
+/** Chiarezza del percorso della luce (0-1) all'istante ISO, o null se i
+ *  campioni non sono (ancora) disponibili → punteggio senza fattore. */
+function pathClearAt(iso) {
+  const lp = state.lightPath;
+  if (!lp || lp.status !== 'ready' || lp.place !== state.place) return null;
+  return lightPathClearAt(lp.data, state.forecast, iso);
 }
 
 /**
@@ -342,7 +385,11 @@ function evaluateDay(dayIndex) {
   const { forecast, place, event } = state;
   const day = dailyList(forecast)[dayIndex];
   const eventIso = day[event];
-  const cond = { ...conditionsAtTime(forecast, eventIso), ...airAtTime(state.air, eventIso) };
+  const cond = {
+    ...conditionsAtTime(forecast, eventIso),
+    ...airAtTime(state.air, eventIso),
+    pathClear: pathClearAt(eventIso),
+  };
   const { score, factors } = computeSunsetScore(cond);
   const notes = explainScore(factors);
   const eventDate = new Date(eventIso);
@@ -352,7 +399,7 @@ function evaluateDay(dayIndex) {
   // Timeline: evoluzione delle condizioni del cielo nelle ore attorno all'evento.
   // Conserviamo anche i factors, così ogni ora può disegnare il proprio swatch.
   const timeline = conditionsWindow(forecast, eventIso, 2, 2).map((c) => {
-    const hourCond = { ...c, ...airAtTime(state.air, c.time) };
+    const hourCond = { ...c, ...airAtTime(state.air, c.time), pathClear: pathClearAt(c.time) };
     const { score: s, factors: f } = computeSunsetScore(hourCond);
     return { time: new Date(c.time), score: s, factors: f, isCenter: c.isCenter };
   });
@@ -549,12 +596,15 @@ function setEvent(ev) {
   document
     .querySelectorAll('.mode')
     .forEach((b) => b.classList.toggle('mode--active', b.dataset.event === ev));
-  // L'azimut cambia molto tra alba e tramonto: rivaluta l'affaccio dei punti.
+  // L'azimut cambia molto tra alba e tramonto: rivaluta l'affaccio dei punti
+  // e ricampiona il percorso della luce (raggio quasi opposto).
   if (state.rawSpots && state.rawSpotsFor === state.place) {
     state.spots = null;
     state.spotsError = false;
   }
+  state.lightPath = null;
   if (state.forecast) render();
+  if (state.forecast) loadLightPath(state.place); // di solito cache hit: istantaneo
   if (state.rawSpots && state.rawSpotsFor === state.place) evaluateSpots();
   if (!state.forecast) renderFavorites(); // aggiorna i punteggi dei preferiti in home
 }
@@ -581,6 +631,7 @@ function render() {
     const cond = {
       ...conditionsAtTime(forecast, d[state.event]),
       ...airAtTime(state.air, d[state.event]),
+      pathClear: pathClearAt(d[state.event]),
     };
     return { d, score: computeSunsetScore(cond).score, date: new Date(d[state.event]) };
   });
@@ -719,12 +770,34 @@ function condDesc(type, v) {
         : v >= 10
         ? 'okVis'
         : 'hazyVis'
+      : type === 'path'
+      ? v >= 0.8
+        ? 'pathClear'
+        : v >= 0.45
+        ? 'pathPartial'
+        : 'pathBlocked'
       : v <= 50
       ? 'dryAir'
       : v <= 70
       ? 'okHum'
       : 'humidAir';
   return t('desc.' + key);
+}
+
+/** Cella "Percorso luce": stato di caricamento, errore o percentuale libera.
+ *  Le soglie sono le stesse delle note esplicative (explainScore). */
+function lightPathCell(cond) {
+  const lp = state.lightPath;
+  let value = '—';
+  let note = t('desc.pathUnknown');
+  if (lp && lp.status === 'loading') {
+    value = '…';
+    note = t('desc.pathLoading');
+  } else if (cond.pathClear !== null && cond.pathClear !== undefined) {
+    value = Math.round(cond.pathClear * 100) + '%';
+    note = condDesc('path', cond.pathClear);
+  }
+  return statCell({ icon: 'compass', label: t('stat.lightPath'), value, note });
 }
 
 function conditionsHtml(cond) {
@@ -737,6 +810,7 @@ function conditionsHtml(cond) {
         ${statCell({ icon: 'cloud', label: t('cond.lowCloud'), value: Math.round(cond.cloudCoverLow) + '%', note: condDesc('low', cond.cloudCoverLow) })}
         ${statCell({ icon: 'eye', label: t('stat.visibility'), value: visKm.toFixed(0) + ' km', note: condDesc('vis', visKm) })}
         ${statCell({ icon: 'droplet', label: t('stat.humidity'), value: Math.round(cond.humidity) + '%', note: condDesc('hum', cond.humidity) })}
+        ${lightPathCell(cond)}
       </div>
       <p class="sect__cap cond__mid">${t('cond.midNote', { mid: Math.round(cond.cloudCoverMid ?? 0) })}</p>
     </section>`;

@@ -18,6 +18,46 @@ export function bellReward(x, ideal, width) {
 }
 
 /**
+ * Fattore "percorso della luce": trasparenza (0-1) dell'atmosfera LONTANA in
+ * direzione del sole. La luce radente che accende le nuvole locali sta a quota
+ * h(d) ≈ d²/2R andando verso il sole (~0,13 km a 40 km, ~4,9 km a 250 km):
+ * le nuvole basse lontane la intercettano a ogni distanza, le medie da ~130 km,
+ * i cirri restano traslucidi. I campioni lontani pesano di più (lì passa la
+ * luce "utile", più bassa; quello a 40 km è in parte già contato dal lowBlock
+ * locale).
+ *
+ * @param {Array<{distKm:number, cloudCoverLow?:number, cloudCoverMid?:number,
+ *                cloudCoverHigh?:number}>} samples campioni lungo l'azimut del sole
+ * @returns {number|null} 1 = via libera, 0 = muro; null con meno di 2 campioni validi
+ */
+export function lightPathFactor(samples) {
+  const valid = (samples ?? []).filter(
+    (s) =>
+      s &&
+      Number.isFinite(s.distKm) &&
+      (Number.isFinite(s.cloudCoverLow) ||
+        Number.isFinite(s.cloudCoverMid) ||
+        Number.isFinite(s.cloudCoverHigh))
+  );
+  if (valid.length < 2) return null; // dati parziali → neutro, non un falso segnale
+
+  let clear = 1;
+  for (const s of valid) {
+    const low = clamp(s.cloudCoverLow ?? 0, 0, 100);
+    const mid = clamp(s.cloudCoverMid ?? 0, 0, 100);
+    const high = clamp(s.cloudCoverHigh ?? 0, 0, 100);
+    // Opacità del campione: basse piene, medie quasi (coerente con opaqueDeck),
+    // cirri traslucidi come nel resto dell'algoritmo.
+    const block = clamp((low + 0.85 * mid + 0.25 * high) / 100, 0, 1);
+    // Occlusione massima crescente con la distanza: 0.42/0.51/0.64/0.80 a
+    // 40/90/160/250 km. Mai 1: parte della luce diffusa sopravvive comunque.
+    const occlusion = clamp(0.35 + 0.0018 * s.distKm, 0, 0.85);
+    clear *= 1 - occlusion * block;
+  }
+  return clear;
+}
+
+/**
  * Condizioni meteo/astronomiche all'ora del tramonto.
  * @typedef {Object} SunsetConditions
  * @property {number} cloudCover       copertura nuvolosa totale (%)
@@ -28,6 +68,7 @@ export function bellReward(x, ideal, width) {
  * @property {number} humidity         umidità relativa (%)
  * @property {number} [aerosol]        aerosol optical depth (adimensionale, opz.)
  * @property {number} [pm25]           particolato PM2.5 (µg/m³, opz.)
+ * @property {number} [pathClear]      percorso della luce libero 0-1 (da lightPathFactor, opz.)
  */
 
 // Pesi dei fattori compositi (documentati per rendere l'algoritmo trasparente).
@@ -92,11 +133,20 @@ export function computeSunsetScore(c) {
     aerosolMult *= 1 - 0.25 * pmHaze;
   }
 
+  // Percorso della luce: quanto è sgombra l'atmosfera LONTANA verso il sole
+  // (vedi lightPathFactor). Un muro di nubi a 40-250 km spegne la luce radente
+  // prima che arrivi. K=0.45: più della foschia (0.3), meno del lowBlock locale
+  // (0.85) — la previsione a quelle distanze ha skill minore e la luce
+  // crepuscolare di base sopravvive. Opzionale: assente → punteggio invariato.
+  const pathClear = c.pathClear ?? null;
+  const pathMult =
+    pathClear === null ? 1 : 1 - 0.45 * (1 - clamp(pathClear, 0, 1));
+
   const raw =
     100 * (WEIGHTS.base + WEIGHTS.drama * drama + WEIGHTS.clarity * clarity);
 
   const score = clamp(
-    raw * (1 - 0.85 * lowBlock) * (1 - 0.9 * overcast) * aerosolMult,
+    raw * (1 - 0.85 * lowBlock) * (1 - 0.9 * overcast) * aerosolMult * pathMult,
     0,
     100
   );
@@ -123,6 +173,7 @@ export function computeSunsetScore(c) {
       pm25,
       aerosolEnhance,
       aerosolHaze,
+      pathClear: pathClear === null ? null : clamp(pathClear, 0, 1),
     },
   };
 }
@@ -198,6 +249,19 @@ export function explainScore(f) {
       });
     } else if (f.aerosolEnhance >= 0.6) {
       notes.push({ code: 'aerosolGood', sentiment: 'good', icon: 'flame', params: {} });
+    }
+  }
+
+  // Percorso della luce (solo se i campioni lontani sono disponibili)
+  if (f.pathClear !== null && f.pathClear !== undefined) {
+    const clear = Math.round(f.pathClear * 100);
+    if (f.pathClear < 0.45) {
+      notes.push({ code: 'pathBlocked', sentiment: 'bad', icon: 'cloud-fog', params: { clear } });
+    } else if (f.pathClear < 0.8) {
+      notes.push({ code: 'pathPartial', sentiment: 'neutral', icon: 'compass', params: { clear } });
+    } else if (f.drama >= 0.4) {
+      // Via libera + nuvole "sceniche" locali: il deck può accendersi da sotto.
+      notes.push({ code: 'pathClear', sentiment: 'good', icon: 'sunset', params: { clear } });
     }
   }
 

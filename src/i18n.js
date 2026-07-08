@@ -37,6 +37,7 @@ const DICT = {
     'stat.humidity': 'Umidità',
     'stat.aerosol': 'Aerosol · PM2.5',
     'stat.moon': 'Luna',
+    'stat.lightPath': 'Percorso luce',
 
     'section.point': 'Punto analizzato',
     'grid.note': 'Punto richiesto {reqLat}, {reqLon} · cella meteo {gLat}, {gLon}',
@@ -164,6 +165,15 @@ const DICT = {
     'explain.humidHigh.detail': 'Umidità al {humidity}%: colori più smorzati.',
     'explain.humidDry.title': 'Aria secca',
     'explain.humidDry.detail': 'Umidità al {humidity}%: favorisce colori intensi.',
+    'explain.pathBlocked.title': 'Luce bloccata a distanza',
+    'explain.pathBlocked.detail':
+      'Un fronte lontano verso il sole spegne la luce radente prima che arrivi (solo il {clear}% passa).',
+    'explain.pathPartial.title': 'Nubi lontane sulla traiettoria',
+    'explain.pathPartial.detail':
+      'Nuvole a 40–250 km verso il sole filtrano parte della luce (il {clear}% passa).',
+    'explain.pathClear.title': 'Luce in arrivo libera',
+    'explain.pathClear.detail':
+      'Verso il sole la via è libera al {clear}%: la luce radente può accendere le nuvole sopra di te da sotto.',
 
     'moon.new': 'Luna nuova',
     'moon.waxingCrescent': 'Luna crescente',
@@ -235,6 +245,11 @@ const DICT = {
     'desc.dryAir': 'aria secca',
     'desc.okHum': 'nella media',
     'desc.humidAir': 'aria umida',
+    'desc.pathClear': 'via libera al sole',
+    'desc.pathPartial': 'nubi lontane sparse',
+    'desc.pathBlocked': 'nubi lontane a muro',
+    'desc.pathLoading': 'calcolo in corso…',
+    'desc.pathUnknown': 'dato non disponibile',
 
     'why.addsUp': 'Come si compone',
     'why.baseline': 'Base',
@@ -310,6 +325,7 @@ const DICT = {
     'stat.humidity': 'Humidity',
     'stat.aerosol': 'Aerosol · PM2.5',
     'stat.moon': 'Moon',
+    'stat.lightPath': 'Light path',
 
     'section.point': 'Analysed point',
     'grid.note': 'Requested point {reqLat}, {reqLon} · weather cell {gLat}, {gLon}',
@@ -434,6 +450,15 @@ const DICT = {
     'explain.humidHigh.detail': 'Humidity at {humidity}%: more muted colours.',
     'explain.humidDry.title': 'Dry air',
     'explain.humidDry.detail': 'Humidity at {humidity}%: favours intense colours.',
+    'explain.pathBlocked.title': 'Light blocked far away',
+    'explain.pathBlocked.detail':
+      'A distant front toward the sun kills the grazing light before it arrives (only {clear}% gets through).',
+    'explain.pathPartial.title': 'Distant clouds on the path',
+    'explain.pathPartial.detail':
+      'Clouds 40–250 km toward the sun filter part of the light ({clear}% gets through).',
+    'explain.pathClear.title': 'Incoming light unblocked',
+    'explain.pathClear.detail':
+      'The path toward the sun is {clear}% clear: grazing light can ignite your clouds from below.',
 
     'moon.new': 'New moon',
     'moon.waxingCrescent': 'Waxing crescent',
@@ -504,6 +529,11 @@ const DICT = {
     'desc.dryAir': 'dry air',
     'desc.okHum': 'average',
     'desc.humidAir': 'humid air',
+    'desc.pathClear': 'clear run to the sun',
+    'desc.pathPartial': 'some distant clouds',
+    'desc.pathBlocked': 'distant cloud wall',
+    'desc.pathLoading': 'checking…',
+    'desc.pathUnknown': 'not available',
 
     'why.addsUp': 'How it adds up',
     'why.baseline': 'Baseline',

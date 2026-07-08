@@ -7,6 +7,7 @@ import {
   explainScore,
   clamp,
   bellReward,
+  lightPathFactor,
 } from '../src/score.js';
 
 test('clamp limita ai bordi', () => {
@@ -170,4 +171,154 @@ test('explainScore segnala le nuvole basse come negative', () => {
   assert.ok(low, 'attesa una nota sulle nuvole basse');
   assert.equal(low.sentiment, 'bad');
   assert.equal(low.params.low, 70);
+});
+
+// ---------------------------------------------------------------------------
+// Percorso della luce (lightPathFactor + gate pathClear)
+// ---------------------------------------------------------------------------
+
+/** Campione sereno a una data distanza. */
+const sereno = (distKm) => ({ distKm, cloudCoverLow: 0, cloudCoverMid: 0, cloudCoverHigh: 0 });
+/** Muro di nuvole basse a una data distanza. */
+const muro = (distKm) => ({ distKm, cloudCoverLow: 100, cloudCoverMid: 0, cloudCoverHigh: 0 });
+
+test('lightPathFactor è null con meno di 2 campioni validi', () => {
+  assert.equal(lightPathFactor([]), null);
+  assert.equal(lightPathFactor([sereno(90)]), null);
+  assert.equal(lightPathFactor([sereno(90), { distKm: 160 }]), null); // senza coperture
+  assert.equal(lightPathFactor(null), null);
+});
+
+test('lightPathFactor con cielo sereno lungo tutto il raggio è ~1', () => {
+  const clear = lightPathFactor([sereno(40), sereno(90), sereno(160), sereno(250)]);
+  assert.ok(clear > 0.95, `atteso > 0.95, ottenuto ${clear}`);
+});
+
+test('un muro di nuvole basse a 90 km abbassa molto la trasparenza', () => {
+  const clear = lightPathFactor([sereno(40), muro(90), sereno(160), sereno(250)]);
+  assert.ok(clear < 0.6, `atteso < 0.6, ottenuto ${clear}`);
+});
+
+test('un muro lontano (250 km) pesa più di uno vicino (90 km)', () => {
+  const vicino = lightPathFactor([sereno(40), muro(90), sereno(160), sereno(250)]);
+  const lontano = lightPathFactor([sereno(40), sereno(90), sereno(160), muro(250)]);
+  assert.ok(lontano < vicino, `lontano (${lontano}) dovrebbe essere < vicino (${vicino})`);
+});
+
+test('i cirri lontani sono traslucidi: penalità lieve', () => {
+  const clear = lightPathFactor([
+    sereno(40),
+    sereno(90),
+    sereno(160),
+    { distKm: 250, cloudCoverLow: 0, cloudCoverMid: 0, cloudCoverHigh: 100 },
+  ]);
+  assert.ok(clear >= 0.75, `atteso >= 0.75, ottenuto ${clear}`);
+});
+
+test('lightPathFactor è monotono nella copertura', () => {
+  const mk = (low) => [
+    sereno(40),
+    { distKm: 90, cloudCoverLow: low, cloudCoverMid: 0, cloudCoverHigh: 0 },
+    sereno(160),
+    sereno(250),
+  ];
+  assert.ok(lightPathFactor(mk(80)) < lightPathFactor(mk(40)));
+  assert.ok(lightPathFactor(mk(40)) < lightPathFactor(mk(10)));
+});
+
+test('pathClear è opzionale: null o 1 non cambiano il punteggio', () => {
+  const base = {
+    cloudCover: 45,
+    cloudCoverLow: 5,
+    cloudCoverMid: 40,
+    cloudCoverHigh: 50,
+    visibility: 22000,
+    humidity: 45,
+  };
+  const senza = computeSunsetScore(base).score;
+  assert.equal(computeSunsetScore({ ...base, pathClear: null }).score, senza);
+  assert.equal(computeSunsetScore({ ...base, pathClear: 1 }).score, senza);
+});
+
+test('un percorso della luce bloccato abbassa il punteggio', () => {
+  const base = {
+    cloudCover: 45,
+    cloudCoverLow: 5,
+    cloudCoverMid: 40,
+    cloudCoverHigh: 50,
+    visibility: 22000,
+    humidity: 45,
+  };
+  const libero = computeSunsetScore({ ...base, pathClear: 0.9 }).score;
+  const bloccato = computeSunsetScore({ ...base, pathClear: 0.2 }).score;
+  assert.ok(bloccato < libero, `bloccato (${bloccato}) dovrebbe essere < libero (${libero})`);
+  const muroTotale = computeSunsetScore({ ...base, pathClear: 0 }).score;
+  assert.ok(muroTotale > 0 && muroTotale <= 100);
+});
+
+test('explainScore segnala il percorso bloccato come negativo', () => {
+  const { factors } = computeSunsetScore({
+    cloudCover: 45,
+    cloudCoverLow: 5,
+    cloudCoverMid: 40,
+    cloudCoverHigh: 50,
+    visibility: 22000,
+    humidity: 45,
+    pathClear: 0.2,
+  });
+  const nota = explainScore(factors).find((n) => n.code === 'pathBlocked');
+  assert.ok(nota, 'attesa una nota pathBlocked');
+  assert.equal(nota.sentiment, 'bad');
+  assert.equal(nota.params.clear, 20);
+});
+
+test('explainScore: via libera è una nota positiva solo con drama locale', () => {
+  const conDrama = computeSunsetScore({
+    cloudCover: 45,
+    cloudCoverLow: 5,
+    cloudCoverMid: 40,
+    cloudCoverHigh: 50,
+    visibility: 22000,
+    humidity: 45,
+    pathClear: 0.9,
+  }).factors;
+  assert.ok(explainScore(conDrama).some((n) => n.code === 'pathClear'));
+
+  const senzaDrama = computeSunsetScore({
+    cloudCover: 0,
+    cloudCoverLow: 0,
+    cloudCoverMid: 0,
+    cloudCoverHigh: 0,
+    visibility: 24000,
+    humidity: 40,
+    pathClear: 0.9,
+  }).factors;
+  assert.ok(!explainScore(senzaDrama).some((n) => n.code.startsWith('path')));
+});
+
+test('explainScore: trasparenza intermedia dà una nota neutra', () => {
+  const { factors } = computeSunsetScore({
+    cloudCover: 45,
+    cloudCoverLow: 5,
+    cloudCoverMid: 40,
+    cloudCoverHigh: 50,
+    visibility: 22000,
+    humidity: 45,
+    pathClear: 0.6,
+  });
+  const nota = explainScore(factors).find((n) => n.code === 'pathPartial');
+  assert.ok(nota, 'attesa una nota pathPartial');
+  assert.equal(nota.sentiment, 'neutral');
+});
+
+test('senza dato di percorso non compaiono note path*', () => {
+  const { factors } = computeSunsetScore({
+    cloudCover: 45,
+    cloudCoverLow: 5,
+    cloudCoverMid: 40,
+    cloudCoverHigh: 50,
+    visibility: 22000,
+    humidity: 45,
+  });
+  assert.ok(!explainScore(factors).some((n) => n.code.startsWith('path')));
 });
