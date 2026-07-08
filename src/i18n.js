@@ -258,7 +258,8 @@ const DICT = {
     'why.legendNeutral': 'Neutro',
     'why.legendBad': 'Penalizza',
     'why.missing': 'Cosa manca per salire',
-    'why.missingFoot': 'Quanto varrebbe, da solo, ciascun ingrediente mancante.',
+    'why.missingFoot':
+      'Ogni guadagno vale da solo: i fattori si moltiplicano, non si sommano. Tutti insieme varrebbero ~{ceiling}.',
     'upside.cirrus.title': 'Cirri alti · +{gain}',
     'upside.cirrus.detail': 'Con un velo di nuvole alte attorno al 50% saliresti a ~{target}.',
     'upside.horizon.title': 'Orizzonte libero · +{gain}',
@@ -554,7 +555,8 @@ const DICT = {
     'why.legendNeutral': 'Neutral',
     'why.legendBad': 'Hurts',
     'why.missing': "What's missing to climb",
-    'why.missingFoot': 'What each missing ingredient would be worth on its own.',
+    'why.missingFoot':
+      "Each gain stands alone: factors multiply, they don't add. All together they'd be worth ~{ceiling}.",
     'upside.cirrus.title': 'High cirrus · +{gain}',
     'upside.cirrus.detail': "With a ~50% veil of high cloud you'd climb to ~{target}.",
     'upside.horizon.title': 'Clear horizon · +{gain}',

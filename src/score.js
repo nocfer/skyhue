@@ -248,10 +248,10 @@ export function explainScore(f) {
  * @returns {Array<{code:string, gain:number, target:number}>} per guadagno
  *          decrescente, solo guadagni ≥ 5 punti, al massimo 3 voci
  */
-export function scoreUpside(c) {
-  const base = computeSunsetScore(c).score;
-
-  const levers = [
+// Counterfactual levers as monotone condition patches (min/max: never suggest
+// a worsening; already-ideal inputs yield zero gain and get filtered out).
+function upsideLevers(c) {
+  return [
     { code: 'cirrus', patch: { cloudCoverHigh: 50 } },
     { code: 'horizon', patch: { cloudCoverLow: 0 } },
     {
@@ -274,13 +274,31 @@ export function scoreUpside(c) {
       : []),
     ...(c.pathClear != null ? [{ code: 'path', patch: { pathClear: 1 } }] : []),
   ];
+}
 
-  return levers
+export function scoreUpside(c) {
+  const base = computeSunsetScore(c).score;
+
+  return upsideLevers(c)
     .map(({ code, patch }) => {
       const target = computeSunsetScore({ ...c, ...patch }).score;
       return { code, gain: target - base, target };
     })
     .filter((l) => l.gain >= 5)
-    .sort((a, b) => b.gain - a.gain) // sort stabile: pari → ordine di dichiarazione
+    .sort((a, b) => b.gain - a.gain) // stable sort: ties keep declaration order
     .slice(0, 3);
+}
+
+/**
+ * Counterfactual ceiling: the score with ALL upside levers applied together.
+ * Because the score is a product of factors, this sits well above the sum of
+ * the single-lever gains. It is not 100 by construction: the absolute maximum
+ * also needs a ~45% mid-cloud veil, which we deliberately don't suggest.
+ *
+ * @param {SunsetConditions} c
+ * @returns {number}
+ */
+export function scoreCeiling(c) {
+  const patch = Object.assign({}, ...upsideLevers(c).map((l) => l.patch));
+  return computeSunsetScore({ ...c, ...patch }).score;
 }

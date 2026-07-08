@@ -9,6 +9,7 @@ import {
   bellReward,
   lightPathFactor,
   scoreUpside,
+  scoreCeiling,
 } from '../src/score.js';
 
 test('clamp limita ai bordi', () => {
@@ -424,5 +425,70 @@ test('scoreUpside: guadagni positivi, coerenti, ordinati e al massimo 3', () => 
   }
   for (let i = 1; i < upside.length; i++) {
     assert.ok(upside[i - 1].gain >= upside[i].gain, 'attesi guadagni decrescenti');
+  }
+});
+
+// ---------------------------------------------------------------------------
+// scoreCeiling: all upside levers applied together
+// ---------------------------------------------------------------------------
+
+test('scoreCeiling: combined levers beat every single-lever target', () => {
+  const cond = {
+    cloudCover: 55,
+    cloudCoverLow: 40,
+    cloudCoverMid: 10,
+    cloudCoverHigh: 5,
+    visibility: 8000,
+    humidity: 85,
+    aerosol: 0.15,
+    pm25: 8,
+    pathClear: 1,
+  };
+  const ceiling = scoreCeiling(cond);
+  assert.equal(ceiling, 95); // the reference scenario used in the UI verification
+  for (const l of scoreUpside(cond)) {
+    assert.ok(ceiling >= l.target, `ceiling (${ceiling}) >= target ${l.code} (${l.target})`);
+  }
+});
+
+test('scoreCeiling: ideal conditions leave the score unchanged', () => {
+  const cond = {
+    cloudCover: 50,
+    cloudCoverLow: 0,
+    cloudCoverMid: 0,
+    cloudCoverHigh: 50,
+    visibility: 24000,
+    humidity: 45,
+    aerosol: 0.2,
+    pm25: 8,
+    pathClear: 1,
+  };
+  assert.equal(scoreCeiling(cond), computeSunsetScore(cond).score);
+});
+
+test('scoreCeiling: 100 also needs the ~45% mid-cloud veil we do not suggest', () => {
+  const cond = {
+    cloudCover: 55,
+    cloudCoverLow: 40,
+    cloudCoverMid: 10,
+    cloudCoverHigh: 5,
+    visibility: 8000,
+    humidity: 85,
+    aerosol: 0.15,
+    pm25: 8,
+    pathClear: 1,
+  };
+  assert.ok(scoreCeiling(cond) < 100);
+  assert.equal(scoreCeiling({ ...cond, cloudCoverMid: 45 }), 100);
+});
+
+test('scoreCeiling: never below the current score (monotone patches)', () => {
+  const conds = [
+    { cloudCover: 0, cloudCoverLow: 0, cloudCoverMid: 0, cloudCoverHigh: 0, visibility: 24000, humidity: 40 },
+    { cloudCover: 90, cloudCoverLow: 80, cloudCoverMid: 60, cloudCoverHigh: 20, visibility: 4000, humidity: 95, aerosol: 0.8, pm25: 70, pathClear: 0.1 },
+    { cloudCover: 50, cloudCoverLow: 10, cloudCoverMid: 45, cloudCoverHigh: 55, visibility: 20000, humidity: 55 },
+  ];
+  for (const c of conds) {
+    assert.ok(scoreCeiling(c) >= computeSunsetScore(c).score);
   }
 });

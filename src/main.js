@@ -9,7 +9,7 @@ import {
   dailyList,
   coordsLabel,
 } from './api.js';
-import { computeSunsetScore, scoreLabel, explainScore, scoreUpside, WEIGHTS } from './score.js';
+import { computeSunsetScore, scoreLabel, explainScore, scoreUpside, scoreCeiling, WEIGHTS } from './score.js';
 import { fetchLightPath, lightPathClearAt } from './lightpath.js';
 import {
   sunPosition,
@@ -852,6 +852,7 @@ function whyHtml({ score, factors, notes, cond }) {
 
   // Leve controfattuali: cosa manca (da solo) per un punteggio più alto.
   const upside = scoreUpside(cond);
+  const ceiling = scoreCeiling(cond);
   const missing = upside.length
     ? `
       ${sectionHeader(t('why.missing'), { variant: 'mono', sub: true })}
@@ -869,7 +870,7 @@ function whyHtml({ score, factors, notes, cond }) {
           )
           .join('')}
       </ul>
-      <p class="sect__cap">${t('why.missingFoot')}</p>`
+      <p class="sect__cap">${t('why.missingFoot', { ceiling })}</p>`
     : '';
 
   return `
