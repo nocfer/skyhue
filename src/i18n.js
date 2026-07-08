@@ -1,7 +1,3 @@
-// i18n.js — internazionalizzazione IT/EN. Dizionario a chiavi puntate + t() con
-// interpolazione {nome}. La lingua è persistita in localStorage (skyhue.lang) e
-// di default segue quella del sistema. Le stringhe dinamiche dei moduli puri
-// (score/spots/astronomy) arrivano qui come codici e vengono risolte con t().
 
 const DICT = {
   it: {
@@ -601,12 +597,10 @@ const DICT = {
   },
 };
 
-// Esposto per i test di completezza (parità delle chiavi tra le lingue).
 export const DICTIONARIES = DICT;
 
 let lang = 'it';
 
-/** Inizializza la lingua da localStorage o dalle preferenze di sistema. */
 export function initLang() {
   try {
     const s = localStorage.getItem('skyhue.lang');
@@ -627,12 +621,10 @@ export function setLang(l) {
   try {
     localStorage.setItem('skyhue.lang', lang);
   } catch {
-    /* storage non disponibile */
   }
   return lang;
 }
 
-/** Traduce una chiave con interpolazione {nome}. Fallback: IT, poi la chiave. */
 export function t(key, params) {
   const table = DICT[lang] || DICT.it;
   let s = key in table ? table[key] : key in DICT.it ? DICT.it[key] : key;
@@ -644,15 +636,12 @@ export function t(key, params) {
   return s;
 }
 
-/** Traduce il codice fase lunare / etichetta / verdetto (helper comodi). */
 export const cardinalMap = { N: 'N', NE: 'NE', E: 'E', SE: 'SE', S: 'S', SO: 'SW', O: 'W', NO: 'NW' };
 
-/** Localizza una direzione cardinale (IT usa O/SO/NO; EN W/SW/NW). */
 export function cardinal(card) {
   return lang === 'en' ? cardinalMap[card] || card : card;
 }
 
-/** Applica le traduzioni agli elementi statici marcati nel markup. */
 export function applyStaticI18n(root = document) {
   root.querySelectorAll('[data-i18n]').forEach((el) => {
     el.textContent = t(el.getAttribute('data-i18n'));

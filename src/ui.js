@@ -1,26 +1,9 @@
-// ui.js — primitive di presentazione (§2 del COHERENCE_SPEC).
-//
-// Helper PURI che restituiscono stringhe HTML: nessun accesso al DOM, nessuno
-// stato, nessuna i18n. Chi chiama passa già i testi localizzati e i numeri.
-// Sono l'unica sorgente di markup per gli elementi che si ripetono variando coi
-// dati (numerali punteggio, swatch, stat-cell, header di sezione, chip, card,
-// bottoni). Le classi che usano vivono in styles.css e referenziano solo token.
-//
-// Regola: ogni numerale-punteggio passa da scoreNumeral(); ogni swatch da
-// skySwatch(); ogni cella statistica da statCell(); ogni titolo di sezione da
-// sectionHeader(). Così nessuna schermata può ridisegnarne una versione a mano.
-
 import { icon } from './icons.js';
-
-/** Tinta del punteggio: rampa calda monocromatica (rosso-brace → oro), niente
- *  verde. Condivisa da tutti i numerali e dai marker mappa. */
 export function scoreHue(score) {
   return Math.round(10 + (Math.max(0, Math.min(100, score)) / 100) * 36);
 }
 
 /**
- * Numerale di punteggio (§2.5 ScoreNumeral): SEMPRE font display, colorato per
- * la rampa `--hue` (o `color` fisso per i numerali su imagery, es. share card).
  * @param {number|string} value
  * @param {{size?:'xl'|'l'|'m'|'s'|'xs', score?:number, color?:string,
  *          title?:string, cls?:string}} [o]
@@ -35,8 +18,6 @@ export function scoreNumeral(value, { size = 'm', score, color, title, cls = '' 
 }
 
 /**
- * Swatch del cielo (§2.11 SkySwatch): tessera col gradiente-firma `--sky-swatch`
- * e un puntino-sole opzionale. Usata da thumbnail, place card, righe confronto.
  * @param {{size?:'sm'|'md'|'lg', sun?:boolean, tag?:string, cls?:string}} [o]
  */
 export function skySwatch({ size = 'md', sun = true, tag = '', cls = '' } = {}) {
@@ -46,8 +27,6 @@ export function skySwatch({ size = 'md', sun = true, tag = '', cls = '' } = {}) 
 }
 
 /**
- * Cella statistica (§2.9 StatCell): icona + etichetta + valore display + nota.
- * Un'unica primitiva per "Conditions" (1b) e "Atmosphere" (3d).
  * @param {{icon?:string, label:string, value:string, note?:string,
  *          noteAccent?:boolean}} o
  */
@@ -58,8 +37,6 @@ export function statCell({ icon: name, label, value, note = '', noteAccent = fal
 }
 
 /**
- * Header di sezione (§2.3 SectionHeader). Variante display (default) o mono
- * (sotto-titolo tipo "ATMOSPHERE"). `aside` è un contenuto opzionale a destra.
  * @param {string} title
  * @param {{variant?:'display'|'mono', aside?:string, sub?:boolean}} [o]
  */
@@ -72,8 +49,6 @@ export function sectionHeader(title, { variant = 'display', aside = '', sub = fa
 }
 
 /**
- * Chip (§2.6). Variante `sky` (tinta oro + testo punteggio) oppure le light-hour
- * `golden`/`blue`. `label`/`value` sono già localizzati.
  * @param {{label?:string, value?:string, variant?:'sky'|'golden'|'blue',
  *          score?:number, cls?:string}} o
  */
@@ -89,8 +64,6 @@ export function chip({ label = '', value = '', variant = 'golden', score, title 
 }
 
 /**
- * Bottone (§2.7): primary (fill accent) / outline / ghost. `icon` è un nome di
- * icona opzionale. Restituisce un <button> (usa `href` per un <a> .btn).
  * @param {string} label
  * @param {{variant?:'primary'|'outline'|'ghost', icon?:string, iconSize?:number,
  *          id?:string, type?:string, href?:string, cls?:string, attrs?:string}} [o]

@@ -1,6 +1,3 @@
-// map.js — schermata mappa dedicata: tocca un punto e valuta tramonto + affaccio.
-// Leaflet viene caricato in modo lazy (solo alla prima apertura della mappa),
-// così l'app principale resta leggera e senza dipendenze esterne.
 import { fetchForecast, fetchAirQuality, nextSunset, conditionsAtTime, airAtTime } from './api.js';
 import { computeSunsetScore, scoreLabel } from './score.js';
 import { sunPosition, azimuthToCardinal } from './astronomy.js';
@@ -21,8 +18,6 @@ import { t, cardinal, getLang } from './i18n.js';
 const LEAFLET_CSS = 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css';
 const LEAFLET_JS = 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js';
 
-// Basemap CartoDB (niente API key): Dark Matter, sempre scuro (la mappa è un
-// inset scuro fisso in entrambi i temi — vedi tileUrl()).
 const TILE_DARK = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
 const TILE_OPTS = {
   subdomains: 'abcd',
@@ -30,9 +25,6 @@ const TILE_OPTS = {
   attribution: '© OpenStreetMap © CARTO',
 };
 
-/** URL dei tile della mappa. La mappa è un inset SCURO in entrambi i temi
- *  (§1.1: --map-canvas fisso, anelli marker chiari, imagery calda sopra):
- *  usiamo sempre il basemap scuro, così identità e contrasto restano coerenti. */
 function tileUrl() {
   return TILE_DARK;
 }
@@ -47,16 +39,14 @@ const els = {
 
 let map = null;
 let marker = null;
-let visCircle = null; // cerchio di visibilità sul punto toccato
-let contextLayer = null; // overlay del punto analizzato + punti suggeriti
-let tapLayer = null; // overlay completi del punto toccato (sole, raggio, visibilità, punti)
-let legendControl = null; // legenda dei simboli (montata una sola volta)
-let bigTile = null; // layer dei tile della mappa grande (per scambio tema)
+let visCircle = null;
+let contextLayer = null;
+let tapLayer = null;
+let legendControl = null;
+let bigTile = null;
 let leafletLoading = null;
-let evalToken = 0; // per ignorare valutazioni superate da un nuovo tap
-let evalAbort = null; // annulla le richieste di una valutazione superata da un nuovo tap
-
-/** Carica Leaflet (CSS+JS) una sola volta, restituendo il global L. */
+let evalToken = 0;
+let evalAbort = null;
 export function loadLeaflet() {
   if (window.L) return Promise.resolve(window.L);
   if (leafletLoading) return leafletLoading;
@@ -68,30 +58,23 @@ export function loadLeaflet() {
     const script = document.createElement('script');
     script.src = LEAFLET_JS;
     script.onload = () => resolve(window.L);
-    script.onerror = () => reject(new Error('Impossibile caricare la mappa'));
+    script.onerror = () => reject(new Error('Unable to load map'));
     document.head.appendChild(script);
   });
   return leafletLoading;
 }
 
-/** Colore in tinta col punteggio (stessa rampa calda del resto dell'app). */
 function scoreColor(score) {
   return `hsl(${Math.round(10 + (score / 100) * 36)}, 80%, 58%)`;
 }
 
-// Imagery della mappa: mirror JS dei token §1.1. La mappa è un inset SCURO in
-// entrambi i temi (--map-canvas), quindi questi colori sono fissi. Leaflet
-// disegna su canvas/SVG via JS e non può leggere le var CSS: le rispecchiamo qui.
 const IMG = {
-  gold: '#ffce6f', // --gold-img: raggio verso il sole, glow del sole
-  accent: '#ff8a52', // --accent (dark): marker del tap
-  vis: '#6ea0ff', // anello visibilità (famiglia blue-hour, --blue-chip-bd)
+  gold: '#ffce6f',
+  accent: '#ff8a52',
+  vis: '#6ea0ff',
 };
-// Colori dei punti suggeriti per affaccio: riuso della sentiment calda dell'app
-// (--sentiment-good/bad/neutral, valori tema scuro) invece di un set a parte.
-const SENT = { good: '#ffce6f', bad: '#d85a3c', neutral: '#9c9086' };
 
-/** Popup ricco per un punto suggerito: nome, affaccio, cielo, distanza, link OSM. */
+const SENT = { good: '#ffce6f', bad: '#d85a3c', neutral: '#9c9086' };
 function spotPopupHtml(s) {
   const scores = [];
   if (s.verdict?.score != null) scores.push(`${t('mappop.view')} <strong>${s.verdict.score}</strong>`);

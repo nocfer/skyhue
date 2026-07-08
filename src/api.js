@@ -1,5 +1,3 @@
-// api.js — accesso alle API Open-Meteo (meteo + geocoding), senza API key.
-// Documentazione: https://open-meteo.com/en/docs
 import { cached, coordKey, TTL } from './cache.js';
 
 const GEOCODE_URL = 'https://geocoding-api.open-meteo.com/v1/search';
@@ -7,31 +5,24 @@ const FORECAST_URL = 'https://api.open-meteo.com/v1/forecast';
 const AIR_URL = 'https://air-quality-api.open-meteo.com/v1/air-quality';
 
 /**
- * Cerca una località per nome e restituisce fino a `count` risultati.
  * @returns {Promise<Array<{name,country,admin1,latitude,longitude,timezone}>>}
  */
 export async function geocode(query, count = 5, language = 'it') {
-  // Le coordinate di una località sono statiche: cache lunga per query+lingua.
   return cached(`geo:${query}|${language}|${count}`, TTL.GEOCODE, async () => {
     const url = `${GEOCODE_URL}?name=${encodeURIComponent(query)}&count=${count}&language=${language}&format=json`;
     const res = await fetch(url);
-    if (!res.ok) throw new Error(`Geocoding fallito (${res.status})`);
+    if (!res.ok) throw new Error(`Geocoding failed (${res.status})`);
     const data = await res.json();
     return data.results ?? [];
   });
 }
 
-/**
- * Reverse geocoding approssimato: dato lat/lon, prova a dare un'etichetta.
- * Open-Meteo non offre reverse geocoding, quindi restituiamo le coordinate.
- */
 export function coordsLabel(lat, lon) {
   return `${lat.toFixed(2)}°, ${lon.toFixed(2)}°`;
 }
 
 /**
- * Scarica le previsioni orarie e i dati astronomici giornalieri per un punto.
- * @returns {Promise<Object>} risposta grezza Open-Meteo
+ * @returns {Promise<Object>}
  */
 export async function fetchForecast(latitude, longitude, { signal } = {}) {
   return cached(coordKey('fc', latitude, longitude), TTL.FORECAST, async () => {
@@ -53,15 +44,13 @@ export async function fetchForecast(latitude, longitude, { signal } = {}) {
     });
     const url = `${FORECAST_URL}?${params.toString()}`;
     const res = await fetch(url, { signal });
-    if (!res.ok) throw new Error(`Previsioni non disponibili (${res.status})`);
+    if (!res.ok) throw new Error(`Forecast unavailable (${res.status})`);
     return res.json();
   });
 }
 
 /**
- * Scarica i dati di qualità dell'aria (aerosol + particolato) per un punto.
- * Endpoint separato di Open-Meteo, senza API key.
- * @returns {Promise<Object>} risposta grezza (o lancia in caso di errore)
+ * @returns {Promise<Object>}
  */
 export async function fetchAirQuality(latitude, longitude, { signal } = {}) {
   return cached(coordKey('air', latitude, longitude), TTL.AIR, async () => {
@@ -73,13 +62,12 @@ export async function fetchAirQuality(latitude, longitude, { signal } = {}) {
       forecast_days: '7',
     });
     const res = await fetch(`${AIR_URL}?${params.toString()}`, { signal });
-    if (!res.ok) throw new Error(`Qualità dell'aria non disponibile (${res.status})`);
+    if (!res.ok) throw new Error(`Air quality unavailable (${res.status})`);
     return res.json();
   });
 }
 
 /**
- * Valori di aerosol/particolato all'ora più vicina a un istante ISO.
  * @returns {{aerosol:?number, pm25:?number, pm10:?number}}
  */
 export function airAtTime(air, targetIso) {
@@ -102,7 +90,6 @@ export function airAtTime(air, targetIso) {
   };
 }
 
-/** Indice dell'ora più vicina a un istante ISO nelle serie orarie. */
 export function hourlyIndexOf(forecast, targetIso) {
   const times = forecast.hourly.time;
   const target = new Date(targetIso).getTime();
@@ -118,7 +105,6 @@ export function hourlyIndexOf(forecast, targetIso) {
   return bestIdx;
 }
 
-/** Condizioni meteo a un dato indice orario. */
 export function conditionsAtIndex(forecast, idx) {
   const h = forecast.hourly;
   return {
@@ -135,17 +121,14 @@ export function conditionsAtIndex(forecast, idx) {
 }
 
 /**
- * Estrae le condizioni all'ora più vicina a un dato istante ISO.
- * @param {Object} forecast risposta di fetchForecast
- * @param {string} targetIso istante ISO (es. sunset del giorno)
+ * @param {Object} forecast
+ * @param {string} targetIso ISO time
  */
 export function conditionsAtTime(forecast, targetIso) {
   return conditionsAtIndex(forecast, hourlyIndexOf(forecast, targetIso));
 }
 
 /**
- * Serie di condizioni orarie in una finestra intorno a un istante (es. le ore
- * prima e dopo il tramonto), per costruire una timeline.
  * @returns {Array<ReturnType<typeof conditionsAtIndex>>}
  */
 export function conditionsWindow(forecast, targetIso, hoursBefore = 2, hoursAfter = 2) {
@@ -161,8 +144,6 @@ export function conditionsWindow(forecast, targetIso, hoursBefore = 2, hoursAfte
 }
 
 /**
- * Sceglie il prossimo tramonto utile (oggi se non ancora passato, altrimenti
- * domani) dalla sezione daily.
  * @returns {{sunset:string, sunrise:string, dayIndex:number}}
  */
 export function nextSunset(forecast, now = new Date()) {
@@ -178,8 +159,6 @@ export function nextSunset(forecast, now = new Date()) {
 }
 
 /**
- * Elenca i giorni disponibili nella previsione, ciascuno con l'orario di alba
- * e tramonto. Utile per la vista multi-giorno.
  * @returns {Array<{dayIndex:number, date:string, sunrise:string, sunset:string}>}
  */
 export function dailyList(forecast) {

@@ -1,4 +1,3 @@
-// main.js — orchestrazione: geolocalizzazione/ricerca → previsioni → punteggio → UI.
 import {
   geocode,
   fetchForecast,
@@ -61,35 +60,25 @@ const els = {
   favorites: document.getElementById('favorites'),
 };
 
-// Stato corrente: località e previsione caricate, giorno ed evento selezionati.
 const state = {
   place: null,
   forecast: null,
   air: null, // dati qualità dell'aria (può restare null se il fetch fallisce)
   dayIndex: 0,
-  event: 'sunset', // 'sunset' | 'sunrise'
-  spots: null, // punti panoramici valutati: null=caricamento, []=nessuno, Array=trovati
+  event: 'sunset',
+  spots: null,
   spotsError: false,
-  rawSpots: null, // cache dei punti grezzi da OSM (indipendenti dall'evento)
-  rawSpotsFor: null, // riferimento alla località per cui rawSpots è valida
-  estimatedSpots: null, // punti "da coordinate" (griglia), su richiesta
+  rawSpots: null,
+  rawSpotsFor: null,
+  estimatedSpots: null,
   estimating: false,
   estimateError: false,
-  // Nuvole lungo il raggio verso il sole: null = non richiesto, altrimenti
-  // { status:'loading'|'ready'|'error', place, event, azimuth, data }.
-  // Assente/errore → il punteggio si calcola senza fattore percorso (neutro).
   lightPath: null,
 };
-
-// Quanti punti valutare (per limitare la chiamata batch sulle quote) e mostrare.
-// Con raggio ampio (~25 km) selezioniamo i candidati privilegiando la direzione
-// del tramonto, così le performance restano sotto controllo.
 const SPOTS_EVALUATE = 14;
 const SPOTS_SHOW = 6;
-const SPOTS_SKY = 3; // per quanti finalisti calcolare il punteggio-cielo nel punto
-const NEAR_KM = 6; // entro questo raggio teniamo tutti i punti, a prescindere dalla direzione
-
-/** Nome localizzato dell'evento ('Tramonto'/'Sunset' ecc.). */
+const SPOTS_SKY = 3;
+const NEAR_KM = 6;
 function eventNoun(ev) {
   return t('event.' + ev);
 }

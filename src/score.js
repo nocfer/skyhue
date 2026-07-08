@@ -1,34 +1,16 @@
-// score.js — algoritmo del Sunset Score e generazione della spiegazione.
-// Funzioni pure, indipendenti dal DOM e dalla rete: sono il cuore testabile
-// dell'applicazione.
-
-/** Limita un valore all'intervallo [min, max]. */
 export function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
 
-/**
- * Ricompensa "a campana" (gaussiana): 1 quando x è vicino al valore ideale,
- * decresce dolcemente allontanandosi. Usata per le nuvole alte e medie, che
- * danno il meglio con una copertura parziale.
- */
 export function bellReward(x, ideal, width) {
   const z = (x - ideal) / width;
   return Math.exp(-(z * z));
 }
 
 /**
- * Fattore "percorso della luce": trasparenza (0-1) dell'atmosfera LONTANA in
- * direzione del sole. La luce radente che accende le nuvole locali sta a quota
- * h(d) ≈ d²/2R andando verso il sole (~0,13 km a 40 km, ~4,9 km a 250 km):
- * le nuvole basse lontane la intercettano a ogni distanza, le medie da ~130 km,
- * i cirri restano traslucidi. I campioni lontani pesano di più (lì passa la
- * luce "utile", più bassa; quello a 40 km è in parte già contato dal lowBlock
- * locale).
- *
  * @param {Array<{distKm:number, cloudCoverLow?:number, cloudCoverMid?:number,
- *                cloudCoverHigh?:number}>} samples campioni lungo l'azimut del sole
- * @returns {number|null} 1 = via libera, 0 = muro; null con meno di 2 campioni validi
+ *                cloudCoverHigh?:number}>} samples
+ * @returns {number|null}
  */
 export function lightPathFactor(samples) {
   const valid = (samples ?? []).filter(
@@ -46,11 +28,7 @@ export function lightPathFactor(samples) {
     const low = clamp(s.cloudCoverLow ?? 0, 0, 100);
     const mid = clamp(s.cloudCoverMid ?? 0, 0, 100);
     const high = clamp(s.cloudCoverHigh ?? 0, 0, 100);
-    // Opacità del campione: basse piene, medie quasi (coerente con opaqueDeck),
-    // cirri traslucidi come nel resto dell'algoritmo.
     const block = clamp((low + 0.85 * mid + 0.25 * high) / 100, 0, 1);
-    // Occlusione massima crescente con la distanza: 0.42/0.51/0.64/0.80 a
-    // 40/90/160/250 km. Mai 1: parte della luce diffusa sopravvive comunque.
     const occlusion = clamp(0.35 + 0.0018 * s.distKm, 0, 0.85);
     clear *= 1 - occlusion * block;
   }
@@ -58,20 +36,8 @@ export function lightPathFactor(samples) {
 }
 
 /**
- * Condizioni meteo/astronomiche all'ora del tramonto.
  * @typedef {Object} SunsetConditions
- * @property {number} cloudCover       copertura nuvolosa totale (%)
- * @property {number} cloudCoverLow    nuvole basse (%)
- * @property {number} cloudCoverMid    nuvole medie (%)
- * @property {number} cloudCoverHigh   nuvole alte (%)
- * @property {number} visibility       visibilità (metri)
- * @property {number} humidity         umidità relativa (%)
- * @property {number} [aerosol]        aerosol optical depth (adimensionale, opz.)
- * @property {number} [pm25]           particolato PM2.5 (µg/m³, opz.)
- * @property {number} [pathClear]      percorso della luce libero 0-1 (da lightPathFactor, opz.)
  */
-
-// Pesi dei fattori compositi (documentati per rendere l'algoritmo trasparente).
 export const WEIGHTS = {
   base: 0.35, // un cielo terso "vale" comunque qualcosa
   drama: 0.45, // nuvole alte/medie che catturano il colore
@@ -79,9 +45,6 @@ export const WEIGHTS = {
 };
 
 /**
- * Calcola il Sunset Score (0-100) a partire dalle condizioni.
- * Restituisce anche i fattori intermedi, utili per la spiegazione.
- *
  * @param {SunsetConditions} c
  * @returns {{score:number, factors:Object}}
  */
@@ -93,11 +56,9 @@ export function computeSunsetScore(c) {
   const visibility = Math.max(0, c.visibility ?? 24000);
   const humidity = clamp(c.humidity ?? 50, 0, 100);
 
-  // Le nuvole alte (cirri) sono l'ingrediente principale: rendono al meglio
-  // con copertura parziale. Le medie contribuiscono in modo simile.
   const highReward = bellReward(high, 50, 30);
   const midReward = bellReward(mid, 45, 30);
-  const drama = 0.6 * highReward + 0.4 * midReward; // 0..1
+  const drama = 0.6 * highReward + 0.4 * midReward;
 
   // Trasparenza atmosferica: visibilità alta + umidità bassa = colori vividi.
   const visFactor = clamp(visibility / 24000, 0, 1); // 24 km = eccellente

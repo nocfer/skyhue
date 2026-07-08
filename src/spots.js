@@ -1,12 +1,6 @@
-// spots.js — suggerisce punti panoramici vicini da OpenStreetMap (Overpass API).
-// Approccio volutamente semplice: nessuna analisi del terreno o della costa.
-// Mostriamo i luoghi già mappati come "panoramici" (o fari/promontori) e la
-// distanza/direzione; la scelta finale, in base all'azimut del tramonto, è
-// lasciata alla persona.
 import { azimuthToCardinal } from './astronomy.js';
 import { cached, coordKey, TTL } from './cache.js';
 
-// Endpoint Overpass (con riserve: se il primo è occupato si prova il successivo).
 const OVERPASS_ENDPOINTS = [
   'https://overpass-api.de/api/interpreter',
   'https://overpass.kumi.systems/api/interpreter',
@@ -14,8 +8,6 @@ const OVERPASS_ENDPOINTS = [
 ];
 const EARTH_KM = 6371;
 const DEG = Math.PI / 180;
-
-/** Distanza in km tra due coordinate (formula dell'emisenoverso). */
 export function distanceKm(aLat, aLon, bLat, bLon) {
   const dLat = (bLat - aLat) * DEG;
   const dLon = (bLon - aLon) * DEG;
@@ -24,8 +16,6 @@ export function distanceKm(aLat, aLon, bLat, bLon) {
     Math.cos(aLat * DEG) * Math.cos(bLat * DEG) * Math.sin(dLon / 2) ** 2;
   return 2 * EARTH_KM * Math.asin(Math.min(1, Math.sqrt(s)));
 }
-
-/** Rilevamento iniziale (bearing) da A verso B in gradi, 0=N, 90=E. */
 export function bearing(aLat, aLon, bLat, bLon) {
   const y = Math.sin((bLon - aLon) * DEG) * Math.cos(bLat * DEG);
   const x =
@@ -33,28 +23,17 @@ export function bearing(aLat, aLon, bLat, bLon) {
     Math.sin(aLat * DEG) * Math.cos(bLat * DEG) * Math.cos((bLon - aLon) * DEG);
   return (Math.atan2(y, x) / DEG + 360) % 360;
 }
-
-/** Differenza angolare minima (0-180°) tra due rilevamenti. */
 export function angleDiff(a, b) {
   const d = Math.abs(((a - b + 540) % 360) - 180);
   return d;
 }
-
-/** Stima grossolana dei minuti in auto da una distanza in linea d'aria. */
 export function driveMinutes(distKm) {
-  // fattore strada ~1.3 sulla distanza in linea d'aria, ~50 km/h di media
   return Math.max(1, Math.round((distKm * 1.3) / 50 * 60));
 }
 
-/**
- * Distanza dell'orizzonte geometrico (km) da una quota in metri: quanto lontano
- * si spinge lo sguardo verso il mare da quell'altezza (≈ 3,57·√h).
- */
 export function horizonDistanceKm(elevM) {
   return 3.57 * Math.sqrt(Math.max(0, elevM || 0));
 }
-
-/** Punto di destinazione a `distKm` da (lat,lon) lungo un rilevamento (gradi). */
 export function destinationPoint(lat, lon, bearingDeg, distKm) {
   const d = distKm / EARTH_KM;
   const th = bearingDeg * DEG;
@@ -72,14 +51,11 @@ export function destinationPoint(lat, lon, bearingDeg, distKm) {
   return { lat: f2 / DEG, lon: (((l2 / DEG + 540) % 360) - 180) };
 }
 
-// Distanze (km) di campionamento del terreno lungo il raggio verso il sole.
-// Il primo (0) è il punto stesso; gli altri servono a valutare l'orizzonte.
 export const SAMPLE_DISTANCES = [0, 0.4, 0.8, 1.5, 3, 5];
 
 /**
- * Valuta l'orizzonte verso il sole a partire dal profilo di quote campionato.
- * @param {number} elevSpot quota del punto (m)
- * @param {Array<{distKm:number, elev:number}>} ahead campioni davanti (distKm>0)
+ * @param {number} elevSpot
+ * @param {Array<{distKm:number, elev:number}>} ahead
  * @returns {{maxAngle:number, seaFraction:number, obstructed:boolean}}
  */
 export function evaluateHorizon(elevSpot, ahead) {
@@ -88,10 +64,9 @@ export function evaluateHorizon(elevSpot, ahead) {
   for (const s of ahead) {
     const angle = Math.atan2(s.elev - elevSpot, s.distKm * 1000) / DEG;
     if (angle > maxAngle) maxAngle = angle;
-    if (s.elev <= 1) seaCount++; // ~livello del mare
+    if (s.elev <= 1) seaCount++;
   }
   const seaFraction = ahead.length ? seaCount / ahead.length : 0;
-  // Il sole al tramonto è ~0° sull'orizzonte: un rilievo oltre ~2° lo blocca.
   const obstructed = maxAngle > 2;
   return { maxAngle, seaFraction, obstructed };
 }
@@ -107,8 +82,6 @@ const KIND_BASE = {
 };
 
 /**
- * Punteggio qualitativo (0-100) e giudizio testuale di un punto, dato il tipo
- * e la valutazione dell'orizzonte verso il sole.
  * @returns {{score:number, sentiment:string, icon:string, label:string}}
  */
 export function spotVerdict(kind, horizon) {
@@ -122,7 +95,7 @@ export function spotVerdict(kind, horizon) {
     return { score, sentiment: 'bad', icon: 'mountain', code: 'obstructed' };
   }
   score += Math.round(20 * seaFraction);
-  score += Math.max(0, Math.round((2 - maxAngle) * 5)); // più l'orizzonte è basso, meglio è
+  score += Math.max(0, Math.round((2 - maxAngle) * 5));
   score = Math.max(0, Math.min(100, score));
   if (seaFraction >= 0.5) {
     return { score, sentiment: 'good', icon: 'waves', code: 'openSea' };
@@ -134,9 +107,6 @@ export function spotVerdict(kind, horizon) {
 }
 
 /**
- * Genera una griglia di punti candidati entro `radiusKm` (approssimazione in
- * gradi, sufficiente per generare candidati). Serve alla ricerca "da coordinate"
- * indipendente dai punti di interesse mappati.
  * @returns {Array<{lat:number, lon:number}>}
  */
 export function gridCandidates(lat, lon, radiusKm = 20, perSide = 9) {
