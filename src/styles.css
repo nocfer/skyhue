@@ -1757,6 +1757,15 @@ body {
   background: rgba(224, 120, 92, 0.16);
   color: var(--bad);
 }
+/* Leve "cosa manca per salire": card ipotetiche → bordo tratteggiato. */
+.driver--upside {
+  border-left-style: dashed;
+  border-left-color: var(--sentiment-good);
+}
+.driver--upside .driver__ico {
+  background: rgba(242, 180, 78, 0.16);
+  color: var(--good);
+}
 .driver strong {
   display: block;
 }

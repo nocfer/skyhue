@@ -8,6 +8,7 @@ import {
   clamp,
   bellReward,
   lightPathFactor,
+  scoreUpside,
 } from '../src/score.js';
 
 test('clamp limita ai bordi', () => {
@@ -321,4 +322,107 @@ test('senza dato di percorso non compaiono note path*', () => {
     humidity: 45,
   });
   assert.ok(!explainScore(factors).some((n) => n.code.startsWith('path')));
+});
+
+// ---------------------------------------------------------------------------
+// Leve controfattuali (scoreUpside): cosa manca per un punteggio più alto
+// ---------------------------------------------------------------------------
+
+test('scoreUpside: cielo sereno → i cirri sono la leva principale', () => {
+  const upside = scoreUpside({
+    cloudCover: 0,
+    cloudCoverLow: 0,
+    cloudCoverMid: 0,
+    cloudCoverHigh: 0,
+    visibility: 24000,
+    humidity: 40,
+  });
+  assert.ok(upside.length >= 1);
+  assert.equal(upside[0].code, 'cirrus');
+  assert.ok(upside[0].gain >= 15, `atteso gain >= 15, ottenuto ${upside[0].gain}`);
+});
+
+test('scoreUpside: nuvole basse dominanti → orizzonte libero in testa', () => {
+  const upside = scoreUpside({
+    cloudCover: 80,
+    cloudCoverLow: 70,
+    cloudCoverMid: 10,
+    cloudCoverHigh: 50,
+    visibility: 24000,
+    humidity: 45,
+  });
+  assert.equal(upside[0].code, 'horizon');
+  assert.ok(upside[0].gain >= 30);
+});
+
+test('scoreUpside: condizioni ideali → nessuna leva', () => {
+  const upside = scoreUpside({
+    cloudCover: 50,
+    cloudCoverLow: 0,
+    cloudCoverMid: 0,
+    cloudCoverHigh: 50,
+    visibility: 24000,
+    humidity: 45,
+    aerosol: 0.2,
+    pm25: 8,
+    pathClear: 1,
+  });
+  assert.deepEqual(upside, []);
+});
+
+test('scoreUpside: la leva path esiste solo col dato presente', () => {
+  const base = {
+    cloudCover: 50,
+    cloudCoverLow: 0,
+    cloudCoverMid: 0,
+    cloudCoverHigh: 50,
+    visibility: 24000,
+    humidity: 45,
+  };
+  const con = scoreUpside({ ...base, pathClear: 0.2 });
+  assert.ok(con.some((l) => l.code === 'path'), 'attesa la leva path');
+  const senza = scoreUpside(base);
+  assert.ok(!senza.some((l) => l.code === 'path'));
+});
+
+test('scoreUpside: la leva haze è monotona e richiede il dato', () => {
+  const base = {
+    cloudCover: 50,
+    cloudCoverLow: 0,
+    cloudCoverMid: 0,
+    cloudCoverHigh: 50,
+    visibility: 24000,
+    humidity: 45,
+  };
+  // Senza aerosol/pm25 la leva non esiste.
+  assert.ok(!scoreUpside(base).some((l) => l.code === 'haze'));
+  // Aria "troppo pulita": la patch min() non deve suggerire di AGGIUNGERE pulviscolo.
+  assert.ok(!scoreUpside({ ...base, aerosol: 0.02, pm25: 3 }).some((l) => l.code === 'haze'));
+  // Foschia pesante: la leva compare.
+  assert.ok(scoreUpside({ ...base, aerosol: 0.9, pm25: 80 }).some((l) => l.code === 'haze'));
+});
+
+test('scoreUpside: guadagni positivi, coerenti, ordinati e al massimo 3', () => {
+  const cond = {
+    cloudCover: 60,
+    cloudCoverLow: 45,
+    cloudCoverMid: 20,
+    cloudCoverHigh: 5,
+    visibility: 6000,
+    humidity: 90,
+    aerosol: 0.7,
+    pm25: 60,
+    pathClear: 0.3,
+  };
+  const base = computeSunsetScore(cond).score;
+  const upside = scoreUpside(cond);
+  assert.ok(upside.length >= 1 && upside.length <= 3);
+  for (const l of upside) {
+    assert.ok(l.gain >= 5);
+    assert.ok(l.target <= 100);
+    assert.equal(l.target, base + l.gain);
+  }
+  for (let i = 1; i < upside.length; i++) {
+    assert.ok(upside[i - 1].gain >= upside[i].gain, 'attesi guadagni decrescenti');
+  }
 });

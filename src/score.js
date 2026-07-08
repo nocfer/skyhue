@@ -274,3 +274,52 @@ export function explainScore(f) {
 
   return notes;
 }
+
+/**
+ * Leve controfattuali: quanto salirebbe il punteggio se, DA SOLO, un
+ * ingrediente mancante fosse ideale. Ogni leva è una patch MONOTONA delle
+ * condizioni (min/max: mai suggerire un peggioramento; input già ideali →
+ * guadagno 0 → filtrata). I guadagni sono indipendenti e NON si sommano.
+ * Niente leva sulle nuvole medie: al 45% alzano il drama ma toccano anche
+ * l'overcast (segno ambiguo) e il messaggio sarebbe confuso.
+ *
+ * @param {SunsetConditions} c
+ * @returns {Array<{code:string, gain:number, target:number}>} per guadagno
+ *          decrescente, solo guadagni ≥ 5 punti, al massimo 3 voci
+ */
+export function scoreUpside(c) {
+  const base = computeSunsetScore(c).score;
+
+  const levers = [
+    { code: 'cirrus', patch: { cloudCoverHigh: 50 } },
+    { code: 'horizon', patch: { cloudCoverLow: 0 } },
+    {
+      code: 'clearAir',
+      patch: {
+        visibility: Math.max(c.visibility ?? 24000, 24000),
+        humidity: Math.min(c.humidity ?? 50, 60),
+      },
+    },
+    ...(c.aerosol != null || c.pm25 != null
+      ? [
+          {
+            code: 'haze',
+            patch: {
+              aerosol: c.aerosol != null ? Math.min(c.aerosol, 0.2) : null,
+              pm25: c.pm25 != null ? Math.min(c.pm25, 10) : null,
+            },
+          },
+        ]
+      : []),
+    ...(c.pathClear != null ? [{ code: 'path', patch: { pathClear: 1 } }] : []),
+  ];
+
+  return levers
+    .map(({ code, patch }) => {
+      const target = computeSunsetScore({ ...c, ...patch }).score;
+      return { code, gain: target - base, target };
+    })
+    .filter((l) => l.gain >= 5)
+    .sort((a, b) => b.gain - a.gain) // sort stabile: pari → ordine di dichiarazione
+    .slice(0, 3);
+}

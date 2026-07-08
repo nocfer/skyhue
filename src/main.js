@@ -10,7 +10,7 @@ import {
   dailyList,
   coordsLabel,
 } from './api.js';
-import { computeSunsetScore, scoreLabel, explainScore, WEIGHTS } from './score.js';
+import { computeSunsetScore, scoreLabel, explainScore, scoreUpside, WEIGHTS } from './score.js';
 import { fetchLightPath, lightPathClearAt } from './lightpath.js';
 import {
   sunPosition,
@@ -816,8 +816,17 @@ function conditionsHtml(cond) {
     </section>`;
 }
 
+// Icone delle leve controfattuali "cosa manca per salire" (scoreUpside).
+const UPSIDE_ICONS = {
+  cirrus: 'cloud-sun',
+  horizon: 'sunset',
+  clearAir: 'wind',
+  haze: 'haze',
+  path: 'compass',
+};
+
 /* "Why this score": barra "come si compone" + card fattori (top 3 + mostra tutti). */
-function whyHtml({ score, factors, notes }) {
+function whyHtml({ score, factors, notes, cond }) {
   const b0 = WEIGHTS.base * 100;
   const d0 = WEIGHTS.drama * 100 * (factors.drama ?? 0);
   const c0 = WEIGHTS.clarity * 100 * (factors.clarity ?? 0);
@@ -852,6 +861,28 @@ function whyHtml({ score, factors, notes }) {
         })}" data-less="${t('why.showLess')}">${t('why.showAll', { n: notes.length })}</button>`
       : '';
 
+  // Leve controfattuali: cosa manca (da solo) per un punteggio più alto.
+  const upside = scoreUpside(cond);
+  const missing = upside.length
+    ? `
+      ${sectionHeader(t('why.missing'), { variant: 'mono', sub: true })}
+      <ul class="drivers">
+        ${upside
+          .map(
+            (u) => `
+        <li class="driver driver--upside">
+          <span class="driver__ico">${icon(UPSIDE_ICONS[u.code], { size: 20 })}</span>
+          <div>
+            <strong>${t('upside.' + u.code + '.title', { gain: u.gain })}</strong>
+            <p>${t('upside.' + u.code + '.detail', { target: u.target })}</p>
+          </div>
+        </li>`
+          )
+          .join('')}
+      </ul>
+      <p class="sect__cap">${t('why.missingFoot')}</p>`
+    : '';
+
   return `
     <section class="sect">
       ${sectionHeader(t('section.why'))}
@@ -879,6 +910,7 @@ function whyHtml({ score, factors, notes }) {
         <span class="why-legend__c why-legend__c--neutral"></span>${t('why.legendNeutral')}
         <span class="why-legend__c why-legend__c--bad"></span>${t('why.legendBad')}
       </p>
+      ${missing}
     </section>`;
 }
 
