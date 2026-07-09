@@ -18,10 +18,11 @@ export function scoreNumeral(value, { size = 'm', score, color, title, cls = '' 
 }
 
 /**
- * @param {{size?:'sm'|'md'|'lg', sun?:boolean, tag?:string, cls?:string}} [o]
+ * @param {{size?:'sm'|'md'|'lg', sun?:boolean, tag?:string, grad?:string, cls?:string}} [o]
  */
-export function skySwatch({ size = 'md', sun = true, tag = '', cls = '' } = {}) {
-  return `<span class="swatch swatch--${size}${cls ? ' ' + cls : ''}">${
+export function skySwatch({ size = 'md', sun = true, tag = '', grad = '', cls = '' } = {}) {
+  const style = grad ? ` style="background:${grad}"` : '';
+  return `<span class="swatch swatch--${size}${cls ? ' ' + cls : ''}"${style}>${
     sun ? '<span class="swatch__sun"></span>' : ''
   }${tag ? `<span class="swatch__tag mono">${tag}</span>` : ''}</span>`;
 }

@@ -12,7 +12,7 @@ import {
   kindInfo,
 } from './spots.js';
 import { icon } from './icons.js';
-import { scoreNumeral, skySwatch, button } from './ui.js';
+import { scoreNumeral, skySwatch, button, scoreHue } from './ui.js';
 import { t, cardinal, getLang } from './i18n.js';
 
 const LEAFLET_CSS = 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css';
@@ -98,28 +98,32 @@ function spotPopupHtml(s) {
 }
 
 /**
- * Disegna tutti gli overlay del "tramonto" in un gruppo Leaflet: raggio verso il
- * sole (alone + tratteggio), sole all'orizzonte, cerchio di visibilità, marker dei
- * punti suggeriti e marker del punto analizzato. Condiviso tra mini-mappa e mappa
- * grande così i due si comportano allo stesso modo.
+ * Draws all the "sunset" overlays into a Leaflet group: ray towards the sun
+ * (halo + dashes), sun at the horizon, visibility circle, markers for the
+ * suggested spots and marker for the analyzed point. Shared between the
+ * mini-map and the big map so the two behave the same way.
  * @param {*} L Leaflet
- * @param {*} group featureGroup su cui aggiungere i layer
+ * @param {*} group featureGroup to add the layers to
  * @param {{lat,lon,azimuth,score,event,visibility,spots,onSpotClick?}} o
  */
 function buildSunsetOverlays(L, group, { lat, lon, azimuth, score, event, visibility, spots, onSpotClick }) {
   const color = scoreColor(score);
-  const end = destinationPoint(lat, lon, azimuth, 12); // ~12 km verso il sole
+  const end = destinationPoint(lat, lon, azimuth, 12); // ~12 km towards the sun
   const ray = [
     [lat, lon],
     [end.lat, end.lon],
   ];
-  // Raggio verso il sole: alone caldo morbido + linea tratteggiata luminosa.
+  // Ray towards the sun: soft warm halo + amber dashes (mock 2b/3d).
   L.polyline(ray, { color: IMG.gold, weight: 9, opacity: 0.16, lineCap: 'round' }).addTo(group);
-  L.polyline(ray, { color, weight: 2.5, opacity: 0.95, dashArray: '1 8', lineCap: 'round' }).addTo(
-    group
-  );
+  L.polyline(ray, {
+    color: IMG.gold,
+    weight: 2.5,
+    opacity: 0.85,
+    dashArray: '6 6',
+    lineCap: 'round',
+  }).addTo(group);
 
-  // Cerchio di visibilità: fin dove l'atmosfera lascia vedere nitido.
+  // Visibility circle: how far the atmosphere lets you see clearly.
   if (Number.isFinite(visibility) && visibility > 0) {
     L.circle([lat, lon], {
       radius: visibility,
@@ -132,7 +136,7 @@ function buildSunsetOverlays(L, group, { lat, lon, azimuth, score, event, visibi
     }).addTo(group);
   }
 
-  // Marker dei punti suggeriti, colorati per qualità dell'affaccio.
+  // Markers for the suggested spots, colored by view quality.
   (spots || []).forEach((s) => {
     const c = SENT[s.verdict?.sentiment] || SENT.neutral;
     const m = L.marker([s.lat, s.lon], {
@@ -148,7 +152,7 @@ function buildSunsetOverlays(L, group, { lat, lon, azimuth, score, event, visibi
     if (onSpotClick) m.on('click', () => onSpotClick(s));
   });
 
-  // Il sole all'orizzonte, alla fine del raggio (glow via CSS).
+  // The sun at the horizon, at the end of the ray (glow via CSS).
   L.marker([end.lat, end.lon], {
     icon: L.divIcon({
       className: 'sunmark',
@@ -160,8 +164,8 @@ function buildSunsetOverlays(L, group, { lat, lon, azimuth, score, event, visibi
     keyboard: false,
   }).addTo(group);
 
-  // Punto analizzato: bolla del punteggio (oro, testo scuro) sopra un pallino in
-  // tinta col punteggio, con anello bianco e alone.
+  // Analyzed point: score bubble (gold, dark text) above a dot tinted by
+  // score, with a white ring and halo.
   L.marker([lat, lon], {
     icon: L.divIcon({
       className: 'skymark',
@@ -181,41 +185,41 @@ function buildSunsetOverlays(L, group, { lat, lon, azimuth, score, event, visibi
     );
 }
 
-// Mini-mappa del dettaglio: una sola istanza Leaflet, riusata finché il punto
-// non cambia (render() ricostruisce la card più volte mentre arrivano i dati).
+// Detail mini-map: a single Leaflet instance, reused as long as the point
+// doesn't change (render() rebuilds the card several times as data arrives).
 let mini = { map: null, container: null, key: null, tile: null };
 
 /**
- * Monta (o riusa) una mini-mappa Leaflet dentro `mount`: tile OSM, marker
- * colorato per punteggio e un raggio tratteggiato verso l'azimut del sole, così
- * si vede a colpo d'occhio dove guarderà il sole all'orizzonte.
- * @param {HTMLElement} mount contenitore (già dimensionato) in cui montare
+ * Mounts (or reuses) a Leaflet mini-map inside `mount`: OSM tiles, a marker
+ * colored by score and a dashed ray towards the sun's azimuth, so you can see
+ * at a glance where the sun will sit on the horizon.
+ * @param {HTMLElement} mount container (already sized) to mount into
  * @param {{lat:number, lon:number, azimuth:number, score:number, event:string}} o
  */
 export async function mountMiniMap(mount, { lat, lon, azimuth, score, event, visibility, spots, onExpand }) {
   if (!mount) return;
-  const L = await loadLeaflet(); // memoizzato: il primo await è l'unico costo di rete
+  const L = await loadLeaflet(); // memoized: the first await is the only network cost
   const spotSig = (spots || []).length;
   const key = `${lat.toFixed(4)}|${lon.toFixed(4)}|${Math.round(azimuth)}|${score}|${event}|${Math.round(
     visibility || 0
   )}|${spotSig}|${getLang()}`;
 
-  // Stesso stato di un render precedente: sposta il container esistente nel
-  // nuovo nodo (le render sono sequenziali → l'ultima, quella viva, vince).
+  // Same state as a previous render: move the existing container into the
+  // new node (renders are sequential → the last, live one wins).
   if (mini.container && mini.key === key) {
     mount.appendChild(mini.container);
     mini.map.invalidateSize();
     return;
   }
 
-  // Stato diverso (o primo montaggio): ricostruisci.
+  // Different state (or first mount): rebuild.
   if (mini.map) mini.map.remove();
   const container = document.createElement('div');
   container.className = 'map';
   mount.appendChild(container);
   const map = L.map(container, {
     zoomControl: false,
-    dragging: false, // preview statica: non intrappola lo scroll della pagina
+    dragging: false, // static preview: doesn't trap the page scroll
     scrollWheelZoom: false,
     doubleClickZoom: false,
     keyboard: false,
@@ -226,20 +230,20 @@ export async function mountMiniMap(mount, { lat, lon, azimuth, score, event, vis
 
   buildSunsetOverlays(L, overlays, { lat, lon, azimuth, score, event, visibility, spots });
 
-  // Un click sull'area della mappa (non su un marker: Leaflet non propaga i click
-  // dei marker al 'click' della mappa) espande alla mappa grande in-app.
+  // A click on the map area (not on a marker: Leaflet doesn't propagate marker
+  // clicks to the map's 'click') expands to the big in-app map.
   if (onExpand) {
     container.classList.add('map-slot--clickable');
     map.on('click', onExpand);
   }
 
-  // Inquadra tutto (punto, raggio, cerchio di visibilità, punti suggeriti).
+  // Frame everything (point, ray, visibility circle, suggested spots).
   map.fitBounds(overlays.getBounds(), { padding: [28, 28], maxZoom: 12 });
 
   mini = { map, container, key, tile };
 }
 
-/** Centro iniziale: ultima località analizzata, altrimenti centro Italia. */
+/** Initial center: last analyzed place, otherwise the center of Italy. */
 function initialCenter() {
   const p = window.skyhueLastPlace;
   if (p && Number.isFinite(p.latitude)) return { lat: p.latitude, lon: p.longitude, zoom: 12 };
@@ -247,10 +251,10 @@ function initialCenter() {
 }
 
 /**
- * Comprime l'attribuzione a un'icona "ⓘ" espandibile al tap (o su hover da
- * desktop). Il credito OSM/CARTO resta presente — è obbligatorio dalle
- * condizioni d'uso — ma non ingombra la mappa. Rimuove anche il prefisso
- * "Leaflet" di default.
+ * Collapses the attribution into an "ⓘ" icon that expands on tap (or on
+ * hover on desktop). The OSM/CARTO credit stays present — required by the
+ * terms of use — but doesn't clutter the map. Also removes the default
+ * "Leaflet" prefix.
  */
 function compactAttribution(L, m) {
   m.attributionControl.setPrefix(false);
@@ -260,11 +264,11 @@ function compactAttribution(L, m) {
   el.setAttribute('role', 'button');
   el.setAttribute('tabindex', '0');
   el.setAttribute('aria-label', t('map.attribution'));
-  // Non far propagare il tap alla mappa (eviterebbe un falso "punto scelto").
+  // Don't let the tap propagate to the map (would cause a spurious "point picked").
   L.DomEvent.disableClickPropagation(el);
   const toggle = () => el.classList.toggle('attr-open');
   L.DomEvent.on(el, 'click', (e) => {
-    if (e.target.closest('a')) return; // lascia aprire i link del credito
+    if (e.target.closest('a')) return; // let the credit links open
     toggle();
   });
   L.DomEvent.on(el, 'keydown', (e) => {
@@ -286,11 +290,11 @@ async function ensureMap() {
   addLegend(L);
 }
 
-/** Legenda dei simboli, montata una sola volta come control Leaflet. */
+/** Symbol legend, mounted once as a Leaflet control. */
 function addLegend(L) {
   if (legendControl) return;
   const Legend = L.Control.extend({
-    options: { position: 'bottomright' },
+    options: { position: 'bottomleft' },
     onAdd() {
       const el = L.DomUtil.create('details', 'maplegend');
       el.open = true;
@@ -305,7 +309,7 @@ function addLegend(L) {
           <div class="maplegend__row"><span class="maplegend__dot" style="--c:${SENT.bad}"></span> ${t('map.legend.bad')}</div>
           <div class="maplegend__row"><span class="maplegend__ico maplegend__ico--vis"></span> ${t('map.legend.visibility')}</div>
         </div>`;
-      // Non far passare click/scroll dalla legenda alla mappa sottostante.
+      // Don't let clicks/scrolls pass from the legend to the map below.
       L.DomEvent.disableClickPropagation(el);
       L.DomEvent.disableScrollPropagation(el);
       return el;
@@ -316,16 +320,16 @@ function addLegend(L) {
 }
 
 /**
- * Disegna sul canvas grande il contesto ricevuto da main.js (`skyhueMapContext`):
- * punto analizzato, raggio verso il sole, cerchio di visibilità e TUTTI i punti
- * suggeriti (cliccabili per essere valutati), poi inquadra il tutto. Ricostruito
- * ad ogni apertura così, cambiando località, non restano marker vecchi.
+ * Draws on the big canvas the context received from main.js (`skyhueMapContext`):
+ * analyzed point, ray towards the sun, visibility circle and ALL the suggested
+ * spots (clickable to be evaluated), then frames it all. Rebuilt on every open
+ * so, when the place changes, no stale markers are left behind.
  */
 function renderContext() {
   if (!map || !window.L) return;
   const L = window.L;
 
-  // Ripulisci lo stato del tap precedente e il contesto precedente.
+  // Clear the previous tap state and the previous context.
   if (contextLayer) {
     contextLayer.remove();
     contextLayer = null;
@@ -362,7 +366,7 @@ function renderContext() {
   if (bounds.isValid()) map.fitBounds(bounds, { padding: [42, 42], maxZoom: 13, animate: false });
 }
 
-/** Gestisce il tap su un punto: posiziona il marker, vola sul punto e valuta. */
+/** Handles the tap on a point: places the marker, flies to the point and evaluates it. */
 async function selectPoint(lat, lon) {
   const L = window.L;
   if (marker) marker.setLatLng([lat, lon]);
@@ -376,16 +380,16 @@ async function selectPoint(lat, lon) {
       className: 'tapmark',
     }).addTo(map);
   marker.bringToFront();
-  // Transizione morbida verso il punto scelto (senza sfilare troppo lo zoom).
+  // Smooth transition to the chosen point (without pulling the zoom out too much).
   map.flyTo([lat, lon], Math.max(map.getZoom(), 12), { duration: 0.6 });
   await evaluatePoint(lat, lon);
 }
 
-/** Valuta un punto: Sunset Score, direzione del sole e affaccio verso il sole. */
+/** Evaluates a point: Sunset Score, sun direction and view towards the sun. */
 async function evaluatePoint(lat, lon) {
-  // Annulla la valutazione precedente ancora in corso: toccando più punti in
-  // sequenza, le richieste superate (incluse le costose query Overpass) vengono
-  // interrotte invece di accumularsi e saturare la rete.
+  // Cancel the previous evaluation still in flight: tapping several points in
+  // a row, superseded requests (including the expensive Overpass queries) get
+  // aborted instead of piling up and saturating the network.
   if (evalAbort) evalAbort.abort();
   evalAbort = new AbortController();
   const { signal } = evalAbort;
@@ -403,8 +407,8 @@ async function evaluatePoint(lat, lon) {
     const sunsetDate = new Date(sunset);
     const sun = sunPosition(sunsetDate, lat, lon);
 
-    // Affaccio del punto toccato + ricerca dei punti suggeriti nei dintorni,
-    // così sulla mappa compaiono tutti gli elementi della legenda.
+    // View from the tapped point + search for suggested spots nearby,
+    // so every element of the legend shows up on the map.
     let horizon = null;
     let spots = [];
     try {
@@ -414,7 +418,7 @@ async function evaluatePoint(lat, lon) {
       const [el, near] = await Promise.all([
         fetchElevations(pts, { signal }),
         nearbySpots(lat, lon, sun.azimuth, { signal }).catch((err) => {
-          if (err?.name === 'AbortError') throw err; // valutazione superata
+          if (err?.name === 'AbortError') throw err; // evaluation superseded
           return [];
         }),
       ]);
@@ -422,15 +426,15 @@ async function evaluatePoint(lat, lon) {
       horizon = evaluateHorizon(el[0], ahead);
       spots = near;
     } catch (err) {
-      if (err?.name === 'AbortError' || signal.aborted) return; // superata da un nuovo tap
-      console.warn('Quote/punti non disponibili:', err);
+      if (err?.name === 'AbortError' || signal.aborted) return; // superseded by a new tap
+      console.warn('Elevations/spots not available:', err);
     }
     const verdict = spotVerdict('viewpoint', horizon);
 
-    if (token !== evalToken) return; // superato da un tap più recente
+    if (token !== evalToken) return; // superseded by a more recent tap
 
-    // Overlay completi del punto toccato: punto + raggio + sole + cerchio di
-    // visibilità + marker dei punti suggeriti (coerenti con la legenda).
+    // Full overlays for the tapped point: point + ray + sun + visibility
+    // circle + markers for the suggested spots (consistent with the legend).
     if (tapLayer) {
       tapLayer.remove();
       tapLayer = null;
@@ -440,7 +444,7 @@ async function evaluatePoint(lat, lon) {
       visCircle = null;
     }
     if (marker) {
-      map.removeLayer(marker); // sostituito dal pallino colorato per punteggio
+      map.removeLayer(marker); // replaced by the score-colored dot
       marker = null;
     }
     tapLayer = window.L.featureGroup().addTo(map);
@@ -489,7 +493,9 @@ function renderPanel({ lat, lon, sunsetDate, score, sun, verdict, visibility, el
         <span class="mp__label">${t('label.' + scoreLabel(score))}</span>
       </div>
     </div>
-    <p class="mp__verdict spot--${verdict.sentiment}">${icon(verdict.icon, { size: 16 })} ${t(
+    <p class="mp__verdict spot--${verdict.sentiment}" style="--hue:${scoreHue(
+    verdict.score ?? score
+  )}">${icon(verdict.icon, { size: 16 })} ${t(
     'verdict.' + verdict.code
   )} — ${t('mappop.towards', { dir })} (${Math.round(sun.azimuth)}°)</p>
     ${button(t('mp.openDetail'), { variant: 'primary', id: 'mp-open', cls: 'mp__open' })}
@@ -509,17 +515,17 @@ function renderPanel({ lat, lon, sunsetDate, score, sun, verdict, visibility, el
   });
 }
 
-// --- Routing tra le due schermate --------------------------------------------
+// --- Routing between the two screens ------------------------------------------
 
 function showMap() {
   els.appView.hidden = true;
   els.mapView.hidden = false;
-  // Nasconde il pannello del tap precedente: la mappa si apre "pulita".
+  // Hide the panel from the previous tap: the map opens "clean".
   els.panel.hidden = true;
   ensureMap()
     .then(() => {
-      // Il canvas è appena diventato visibile: ricalcola le dimensioni prima di
-      // disegnare/ inquadrare, altrimenti Leaflet parte con dimensione 0.
+      // The canvas just became visible: recompute its size before drawing/
+      // framing, otherwise Leaflet starts at size 0.
       map.invalidateSize();
       renderContext();
     })
@@ -549,16 +555,16 @@ if (els.mapView) {
   applyRoute();
 }
 
-// Cambio tema: scambia i tile chiari/scuri sulla mappa grande e sulla mini-mappa
-// (gli overlay sono in tinta calda, coerenti con entrambi i temi).
+// Theme change: swap the light/dark tiles on the big map and on the mini-map
+// (the overlays are warm-tinted, consistent with both themes).
 window.addEventListener('skyhue:themechange', () => {
   const url = tileUrl();
   if (bigTile) bigTile.setUrl(url);
   if (mini.tile) mini.tile.setUrl(url);
 });
 
-// Cambio lingua: rigenera la legenda e ridisegna il contesto (i popup e il
-// pannello si ricreano con le nuove stringhe alla prossima interazione/tap).
+// Language change: regenerate the legend and redraw the context (popups and
+// panel get recreated with the new strings on the next interaction/tap).
 window.addEventListener('skyhue:langchange', () => {
   if (!map || !window.L) return;
   if (legendControl) {

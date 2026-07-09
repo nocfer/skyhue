@@ -1,4 +1,4 @@
-/* --- Font self-hosted (variabili, sottoinsieme latin) — PWA offline-safe ---- */
+/* --- Self-hosted fonts (variable, latin subset) — PWA offline-safe ---------- */
 @font-face {
   font-family: 'Bricolage Grotesque';
   font-style: normal;
@@ -28,34 +28,34 @@
    aliases (identical resolved value) so older rules stay coherent, not forked.
    ========================================================================== */
 :root {
-  /* --- §1.1 Colore (tema scuro, default) --------------------------------- */
-  --bg: #120a16; /* sfondo schermo / contenuti */
-  --bg-deep: #0a070d; /* dietro i fogli / strato dim */
-  --surface: #171020; /* fogli, pannelli, bottom-sheet mappa */
-  --card: rgba(255, 255, 255, 0.05); /* riempimento card */
-  --card-2: rgba(255, 255, 255, 0.035); /* card più quiete */
-  --card-shadow: none; /* elevazione card (solo tema chiaro) */
-  --hairline: rgba(255, 255, 255, 0.1); /* bordi */
-  --divider: rgba(255, 255, 255, 0.08); /* righe di sezione */
+  /* --- §1.1 Color (dark theme, default) ---------------------------------- */
+  --bg: #120a16; /* screen / content background */
+  --bg-deep: #0a070d; /* behind sheets / dim layer */
+  --surface: #171020; /* sheets, panels, map bottom sheet */
+  --card: rgba(255, 255, 255, 0.05); /* card fill */
+  --card-2: rgba(255, 255, 255, 0.035); /* quieter cards */
+  --card-shadow: none; /* card elevation (light theme only) */
+  --hairline: rgba(255, 255, 255, 0.1); /* borders */
+  --divider: rgba(255, 255, 255, 0.08); /* section dividers */
 
-  --text: #f6efe8; /* testo primario */
-  --muted: #8f8189; /* testo secondario */
-  --muted-2: #c9bfc4; /* testo terziario */
-  --faint: #6f6570; /* note / caption mono */
+  --text: #f6efe8; /* primary text */
+  --muted: #8f8189; /* secondary text */
+  --muted-2: #c9bfc4; /* tertiary text */
+  --faint: #6f6570; /* mono notes / captions */
 
-  --accent: #ff8a52; /* azione primaria, icone accent */
-  --ink: #150d0a; /* testo su riempimenti accent/oro */
+  --accent: #ff8a52; /* primary action, accent icons */
+  --ink: #150d0a; /* text on accent/gold fills */
 
-  --score-text: #ffce6f; /* oro COME TESTO (numerali, etichette) */
-  --score-text-hi: #ffe4a6; /* testo punteggio top */
-  --good-text: #f2b44e; /* testo favorevole */
-  --bad-text: #e0785c; /* testo sfavorevole */
+  --score-text: #ffce6f; /* gold AS TEXT (numerals, labels) */
+  --score-text-hi: #ffe4a6; /* top-score text */
+  --good-text: #f2b44e; /* favorable text */
+  --bad-text: #e0785c; /* unfavorable text */
 
-  --sentiment-good: #ffce6f; /* barra/tile buona (superficie, sempre calda) */
-  --sentiment-neutral: #9c9086; /* barra neutra */
-  --sentiment-bad: #d85a3c; /* barra cattiva */
+  --sentiment-good: #ffce6f; /* good bar/tile (surface, always warm) */
+  --sentiment-neutral: #9c9086; /* neutral bar */
+  --sentiment-bad: #d85a3c; /* bad bar */
 
-  /* --- §1.1 Imagery (IDENTICI in entrambi i temi — mai invertiti) --------- */
+  /* --- §1.1 Imagery (IDENTICAL in both themes — never inverted) ----------- */
   --sky-hero: linear-gradient(
     to bottom,
     #160f2e,
@@ -68,27 +68,29 @@
   );
   --sky-swatch: linear-gradient(to top, #2a1633, #c4416a 55%, #ffb85e);
   --sun-glow: radial-gradient(circle, #fff4d4 0%, #ffd07a 42%, rgba(255, 170, 90, 0) 72%);
-  --gold-img: #ffce6f; /* stroke raggi-sole, glow dei dot (imagery: resta brillante) */
-  --map-canvas: #14101c; /* inset mappa (resta scuro in entrambi i temi) */
-  --marker-ring: rgba(255, 255, 255, 0.9); /* anelli marker sulla mappa scura */
+  --gold-img: #ffce6f; /* sun-ray stroke, dot glow (imagery: stays bright) */
+  --accent-img: #ff8a52; /* orange as IMAGERY (hero meter, chart fade): never darkens */
+  --arc-line: #ffb066; /* hourly chart line (imagery, identical in both themes) */
+  --map-canvas: #14101c; /* map inset (stays dark in both themes) */
+  --marker-ring: rgba(255, 255, 255, 0.9); /* marker rings on the dark map */
 
   /* Chip golden-hour / blue-hour (light-hour). */
   --golden-chip-fg: #ffc27a;
-  --golden-chip-bg: rgba(255, 179, 92, 0.1);
+  --golden-chip-bg: rgba(255, 179, 92, 0.16);
   --golden-chip-bd: #ffb35c;
   --blue-chip-fg: #9fbcff;
-  --blue-chip-bg: rgba(110, 160, 255, 0.1);
+  --blue-chip-bg: rgba(110, 160, 255, 0.16);
   --blue-chip-bd: #6ea0ff;
 
-  /* Vetro dei control mappa (sopra il canvas scuro). */
+  /* Glass for map controls (over the dark canvas). */
   --map-glass: hsl(280 20% 8% / 0.82);
 
-  /* --- §1.4 Tipografia (una famiglia per ruolo) -------------------------- */
+  /* --- §1.4 Typography (one family per role) ----------------------------- */
   --font-display: 'Bricolage Grotesque', system-ui, sans-serif;
   --font-ui: 'Space Grotesk', system-ui, -apple-system, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', monospace;
 
-  /* --- §1.2 Spaziatura — scala 8px (gli unici gap/margin/padding) -------- */
+  /* --- §1.2 Spacing — 8px scale (the only gap/margin/padding values) ----- */
   --s-1: 4px;
   --s-2: 8px;
   --s-3: 12px;
@@ -98,24 +100,24 @@
   --s-7: 32px;
   --s-8: 40px;
 
-  /* --- §1.3 Raggi — 6 valori (+ shell schermo, solo mock) --------------- */
-  --r-pill: 999px; /* chip, pill, selettori, bottoni circolari */
-  --r-tile: 12px; /* icon tile / swatch piccole */
-  --r-control: 14px; /* bottoni, input, thumbnail */
-  --r-card: 18px; /* default card e righe lista */
-  --r-feature: 20px; /* card enfasi / feature */
-  --r-sheet: 26px; /* bottom sheet (solo angoli alti) */
-  --r-screen: 42px; /* superficie schermo telefono (solo mock/device frame) */
+  /* --- §1.3 Radii — 6 values (+ screen shell, mock only) ----------------- */
+  --r-pill: 999px; /* chips, pills, selectors, circular buttons */
+  --r-tile: 12px; /* icon tiles / small swatches */
+  --r-control: 14px; /* buttons, inputs, thumbnails */
+  --r-card: 18px; /* default for cards and list rows */
+  --r-feature: 20px; /* emphasis / feature cards */
+  --r-sheet: 26px; /* bottom sheet (top corners only) */
+  --r-screen: 42px; /* phone screen surface (mock/device frame only) */
 
-  /* --- §1.5 Ombre / motion ---------------------------------------------- */
+  /* --- §1.5 Shadows / motion --------------------------------------------- */
   --shadow-sheet: 0 -8px 40px -12px rgba(0, 0, 0, 0.5); /* bottom sheet */
   --shadow-pop: 0 14px 34px -12px rgba(0, 0, 0, 0.4); /* menu / suggest / dropdown */
   --dur-fast: 0.12s;
   --dur: 0.2s;
   --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
 
-  /* Overlay "melt" dell'hero: scrim caldo in alto (leggibilità), sfuma nel
-     --bg in basso così l'hero si fonde col contenuto in entrambi i temi. */
+  /* Hero "melt" overlay: warm scrim at the top (readability), fading into
+     --bg at the bottom so the hero blends into the content in both themes. */
   --hero-melt: linear-gradient(
     to bottom,
     rgba(18, 10, 22, 0.42) 0%,
@@ -124,27 +126,27 @@
     var(--bg) 100%
   );
 
-  /* --- Alias legacy → token canonici (stesso valore, nessun fork) -------- */
+  /* --- Legacy aliases → canonical tokens (same value, no fork) ----------- */
   --elevated: var(--surface);
   --card-border: var(--hairline);
   --panel: var(--card-2);
   --panel-strong: var(--card);
-  --gold: var(--score-text); /* legacy: oro-testo */
+  --gold: var(--score-text); /* legacy: gold-as-text */
   --gold-bright: var(--score-text-hi);
-  --gold-soft: var(--gold-img); /* usato solo su imagery hero */
+  --gold-soft: var(--gold-img); /* used only on hero imagery */
   --good: var(--good-text);
   --bad: var(--bad-text);
   --neutral: var(--sentiment-neutral);
   --sun-disc: var(--sun-glow);
-  --side-pad: var(--s-5); /* gutter schermo = 20px */
-  --gap-card: var(--s-3); /* gap tra card = 12px */
+  --side-pad: var(--s-5); /* screen gutter = 20px */
+  --gap-card: var(--s-3); /* gap between cards = 12px */
 
   font-family: var(--font-ui);
 }
 
-/* Tema chiaro: SOLO i token cambiano — nessuna regola di componente è
-   theme-specific. Imagery (--sky-*, --sun-glow, --gold-img, --map-canvas,
-   --marker-ring) NON viene ridefinita: resta identica al tema scuro. */
+/* Light theme: ONLY the tokens change — no component rule is theme-specific.
+   Imagery (--sky-*, --sun-glow, --gold-img, --map-canvas, --marker-ring) is
+   NOT redefined: it stays identical to the dark theme. */
 :root[data-theme='light'] {
   --bg: #fdf7ef;
   --bg-deep: #f6ede1;
@@ -179,8 +181,8 @@
   box-sizing: border-box;
 }
 
-/* L'attributo hidden deve sempre prevalere sulle regole di display sottostanti
-   (es. .mapview usa display:flex, che altrimenti ignorerebbe [hidden]). */
+/* The hidden attribute must always win over the display rules below
+   (e.g. .mapview uses display:flex, which would otherwise ignore [hidden]). */
 [hidden] {
   display: none !important;
 }
@@ -200,7 +202,7 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-/* Display font per titoli e numerali grandi. */
+/* Display font for titles and large numerals. */
 .display,
 .verdict__headline {
   font-family: var(--font-display);
@@ -209,7 +211,7 @@ body {
   line-height: 0.96;
 }
 
-/* Etichette tecniche / coordinate / meta. */
+/* Technical labels / coordinates / meta. */
 .mono {
   font-family: var(--font-mono);
   text-transform: uppercase;
@@ -217,12 +219,12 @@ body {
 }
 
 /* ==========================================================================
-   §2 — PRIMITIVE (gli unici mattoni). Costruite una volta sui soli token;
-   ogni schermata le compone (vedi src/ui.js per gli helper di markup).
+   §2 — PRIMITIVES (the only building blocks). Built once on tokens alone;
+   every screen composes them (see src/ui.js for the markup helpers).
    ========================================================================== */
 
-/* §2.5 ScoreNumeral — OGNI numerale-punteggio passa da qui. Font display,
-   colore dalla rampa calda `--hue` (default oro). */
+/* §2.5 ScoreNumeral — EVERY score numeral goes through here. Display font,
+   color from the warm `--hue` ramp (default gold). */
 .score {
   font-family: var(--font-display);
   font-weight: 800;
@@ -246,8 +248,8 @@ body {
   font-size: 1rem;
 }
 
-/* §2.11 SkySwatch — tessera col gradiente-firma + puntino-sole. Thumbnail di
-   place card, righe punto, righe confronto, pannello mappa. */
+/* §2.11 SkySwatch — tile with the signature gradient + sun dot. Thumbnail for
+   place cards, spot rows, compare rows, the map panel. */
 .swatch {
   position: relative;
   flex-shrink: 0;
@@ -288,8 +290,8 @@ body {
   letter-spacing: 0.1em;
 }
 
-/* §2.4 Card — guscio condiviso: riempimento, bordo, raggio, elevazione. Tutte
-   le superfici "card" dell'app lo ereditano; le varianti aggiungono solo tono. */
+/* §2.4 Card — shared shell: fill, border, radius, elevation. Every "card"
+   surface in the app inherits it; variants only add tone. */
 .card,
 .stat,
 .driver,
@@ -303,8 +305,8 @@ body {
   border-radius: var(--r-card);
   box-shadow: var(--card-shadow);
 }
-/* §2.9 StatCell — icona + etichetta + valore display + nota. Unica primitiva
-   per "Conditions" (1b) e "Atmosphere" (3d). */
+/* §2.9 StatCell — icon + label + display value + note. The single primitive
+   for "Conditions" (1b) and "Atmosphere" (3d). */
 .stat {
   display: grid;
   grid-template-columns: auto 1fr;
@@ -324,7 +326,7 @@ body {
   margin-top: var(--s-1);
   font-family: var(--font-display);
   font-weight: 800;
-  font-size: 1.6rem;
+  font-size: 1.7rem;
   line-height: 1.1;
   color: var(--text);
 }
@@ -337,7 +339,7 @@ body {
   color: var(--score-text);
 }
 
-/* §2.7 Button — una altezza, un padding. primary / outline / ghost. */
+/* §2.7 Button — one height, one padding. primary / outline / ghost. */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -386,12 +388,12 @@ body {
   }
 }
 
-/* Sfondo: bagliore caldo dal basso (il sole appena sceso sotto l'orizzonte)
-   che sfuma nel quasi-nero. Stessa idea del gradiente da tramonto, ma sottile
-   e senza sbalzi: la pagina resta scura e premium. */
-/* Sfondo pagina: quasi-nero caldo pieno. I "cieli" drammatici vivono ora negli
-   hero (home / risultati), non più come alone a tutta pagina. Resta un soffio
-   di calore in basso per continuità. */
+/* Background: warm glow from below (the sun just dipped under the horizon)
+   fading into near-black. Same idea as the sunset gradient, but subtle and
+   without jumps: the page stays dark and premium. */
+/* Page background: solid warm near-black. The dramatic "skies" now live in
+   the heroes (home / results), no longer as a full-page halo. A whisper of
+   warmth remains at the bottom for continuity. */
 .sky {
   position: fixed;
   inset: 0;
@@ -407,7 +409,7 @@ body {
   padding: 0;
 }
 
-/* Schermata mappa dedicata */
+/* Dedicated map screen */
 .mapview {
   position: fixed;
   inset: 0;
@@ -430,7 +432,7 @@ body {
   overflow-y: auto;
 }
 
-/* --- Icone SVG a linea ---------------------------------------------------- */
+/* --- Line SVG icons -------------------------------------------------------- */
 .ico {
   flex-shrink: 0;
   vertical-align: -0.18em;
@@ -456,7 +458,7 @@ body {
   font-size: 0.88rem;
 }
 
-/* Barra dei preferiti */
+/* Favorites bar */
 .favorites {
   display: flex;
   flex-wrap: wrap;
@@ -484,7 +486,7 @@ body {
   transform: scale(1.12);
 }
 
-/* Preferito attivo: stella piena in oro caldo. */
+/* Active favorite: solid star in warm gold. */
 .fav-toggle--on {
   color: var(--gold);
 }
@@ -494,13 +496,13 @@ body {
   margin: 0.25rem 0 0;
 }
 
-/* Punti panoramici suggeriti */
+/* Suggested viewpoints */
 .spots__hint {
   margin-bottom: 0.75rem;
 }
 
-/* Bottone "cerca punti stimati": Button outline con tratteggio a segnalare la
-   natura esplorativa dell'azione. */
+/* "Scan for estimated spots" button: outline Button with a dashed border to
+   signal the exploratory nature of the action. */
 .scan-btn {
   border-style: dashed;
   margin-bottom: var(--s-2);
@@ -510,7 +512,7 @@ body {
   cursor: default;
 }
 
-/* Mini-mappa del punto analizzato */
+/* Mini-map of the analyzed point */
 .map-wrap {
   position: relative;
   border-radius: var(--r-card);
@@ -518,8 +520,8 @@ body {
   border: 1px solid var(--card-border);
 }
 
-/* Chip "Espandi" sovrapposto in alto a destra: solo affordance visiva
-   (decorativa) — non intercetta i click, che restano alla mappa sotto. */
+/* "Expand" chip overlaid at the top right: visual affordance only
+   (decorative) — it doesn't intercept clicks, which stay on the map below. */
 .map-slot__expand {
   position: absolute;
   top: 0.55rem;
@@ -540,7 +542,7 @@ body {
   transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
 }
 
-/* Contenitore mini-mappa cliccabile: cursore + evidenzia il chip all'hover. */
+/* Clickable mini-map container: cursor + highlights the chip on hover. */
 .map-slot--clickable {
   cursor: pointer;
 }
@@ -550,7 +552,7 @@ body {
   transform: translateY(-1px);
 }
 
-/* Pulsante "Apri la mappa grande" (Button primary): solo spaziatura sopra. */
+/* "Open the big map" button (primary Button): top spacing only. */
 .map__open {
   margin-top: var(--s-2);
 }
@@ -562,16 +564,16 @@ body {
   display: block;
 }
 
-/* Slot in cui viene montata la mini-mappa Leaflet: riserva lo spazio così non
-   c'è salto di layout nell'istante prima del montaggio. */
+/* Slot where the Leaflet mini-map mounts: reserves the space so there is no
+   layout jump in the instant before mounting. */
 .map-slot {
   min-height: 190px;
   background: hsl(var(--hue, 30) 30% 50% / 0.08);
 }
 
-/* --- Tema scuro coerente per Leaflet (mini-mappa + schermata mappa) --------- */
+/* --- Consistent dark theme for Leaflet (mini-map + map screen) -------------- */
 .leaflet-container {
-  background: var(--map-canvas) !important; /* niente flash prima dei tile */
+  background: var(--map-canvas) !important; /* no flash before the tiles */
   font: inherit;
 }
 .leaflet-control-attribution {
@@ -583,8 +585,8 @@ body {
   color: var(--accent) !important;
 }
 
-/* Attribuzione compatta: collassata a un'icona "ⓘ", espandibile al tap/hover.
-   font-size:0 nasconde testo e link; l'icona ::before ha la sua dimensione. */
+/* Compact attribution: collapsed to an "ⓘ" icon, expandable on tap/hover.
+   font-size:0 hides text and links; the ::before icon has its own size. */
 .leaflet-control-attribution.attr-collapsed {
   font-size: 0 !important;
   line-height: 1;
@@ -640,7 +642,7 @@ body {
   color: var(--muted) !important;
 }
 
-/* Popup ricco dei punti suggeriti (nome, affaccio, cielo, distanza, link). */
+/* Rich popup for suggested spots (name, view, sky, distance, link). */
 .mappop {
   min-width: 8.5rem;
   line-height: 1.35;
@@ -681,7 +683,7 @@ body {
   font-weight: 600;
 }
 
-/* Legenda dei simboli sulla mappa grande (control Leaflet, collassabile). */
+/* Symbol legend on the big map (Leaflet control, collapsible). */
 .maplegend {
   background: var(--map-glass);
   border: 1px solid var(--card-border);
@@ -762,8 +764,8 @@ body {
   background: var(--blue-chip-bg);
 }
 
-/* Marker del tap sulla mappa grande: pulsa brevemente all'apparire.
-   transform-box/origin: lo scaling avviene attorno al centro del path SVG. */
+/* Tap marker on the big map: pulses briefly when it appears.
+   transform-box/origin: scaling happens around the center of the SVG path. */
 .tapmark {
   transform-box: fill-box;
   transform-origin: center;
@@ -780,7 +782,7 @@ body {
   }
 }
 
-/* Apertura morbida della schermata mappa. */
+/* Soft opening of the map screen. */
 .mapview:not([hidden]) {
   animation: mapfade 0.28s ease-out;
 }
@@ -805,7 +807,7 @@ body {
   }
 }
 
-/* Marker come divIcon: centriamo il contenuto nel riquadro dell'icona. */
+/* Markers as divIcon: center the content within the icon box. */
 .skymark,
 .sunmark,
 .spotmark {
@@ -816,7 +818,7 @@ body {
   border: 0;
 }
 
-/* Punto suggerito sulla mappa: pallino piccolo colorato per affaccio. */
+/* Suggested spot on the map: small dot colored by its view. */
 .spotmark__dot {
   display: block;
   width: 11px;
@@ -827,7 +829,7 @@ body {
   box-shadow: 0 0 8px 1px var(--c);
 }
 
-/* Punto analizzato: pallino in tinta col punteggio, con alone. */
+/* Analyzed point: dot tinted with the score color, with a halo. */
 .skymark__dot {
   display: block;
   width: 16px;
@@ -838,7 +840,7 @@ body {
   box-shadow: 0 0 0 4px hsl(0 0% 100% / 0.05), 0 0 14px 2px var(--c);
 }
 
-/* Il sole all'orizzonte, alla fine del raggio: nucleo caldo + bagliore. */
+/* The sun at the horizon, at the end of the ray: warm core + glow. */
 .sunmark__glow {
   display: block;
   width: 16px;
@@ -865,7 +867,7 @@ body {
   }
 }
 
-/* Bussola del sole */
+/* Sun compass */
 .lookat {
   display: flex;
   align-items: center;
@@ -920,31 +922,7 @@ body {
   color: var(--accent);
 }
 
-/* Avviso "tramonto top in arrivo" */
-.topbanner {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  width: 100%;
-  text-align: left;
-  padding: 0.7rem 1rem;
-  margin-bottom: 1rem;
-  border-radius: 14px;
-  border: 1px solid var(--card-border);
-  background: linear-gradient(90deg, rgba(255, 138, 92, 0.22), rgba(255, 138, 92, 0.06));
-  color: var(--text);
-  cursor: pointer;
-  font-size: 0.92rem;
-}
-.topbanner:hover {
-  border-color: var(--accent);
-}
-.topbanner svg {
-  flex-shrink: 0;
-  color: var(--accent);
-}
-
-/* Tema chiaro: sfondo con alone caldo su avorio, coerente col tema scuro. */
+/* Light theme: background with a warm halo on ivory, consistent with the dark theme. */
 :root[data-theme='light'] .sky {
   background:
     radial-gradient(
@@ -963,10 +941,10 @@ body {
 }
 
 /* ==========================================================================
-   Redesign "Atmosphere" — componenti nuovi (home 2a + risultati 1b/3a-3d)
+   "Atmosphere" redesign — new components (home 2a + results 1b/3a-3d)
    ========================================================================== */
 
-/* --- Bottone circolare in vetro (hero, mappa, menu) --- */
+/* --- Circular glass button (hero, map, menu) --- */
 .gcircle {
   position: relative;
   width: 34px;
@@ -982,7 +960,7 @@ body {
   backdrop-filter: blur(6px);
   transition: filter 0.15s ease, transform 0.12s ease, background 0.15s ease;
 }
-/* Area tattile ≥44px senza alterare la dimensione visiva del bottone (a11y). */
+/* Touch area ≥44px without altering the button's visual size (a11y). */
 .gcircle::before {
   content: '';
   position: absolute;
@@ -999,24 +977,22 @@ body {
   transform: translateY(1px);
 }
 
-/* Link/pulsante testuale (mostra tutti, vedi tutti…). */
+/* Text link/button (show all, see all…): centered accent text,
+   no frame (mock 3a/3c). */
 .linkbtn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  margin-top: 0.8rem;
-  padding: 0.5rem 0.9rem;
-  border: 1px solid var(--hairline);
-  border-radius: var(--r-pill);
+  display: block;
+  margin: 0.9rem auto 0;
+  padding: 0.35rem 0.9rem;
+  border: 0;
   background: transparent;
-  color: var(--gold);
+  color: var(--accent);
   font: inherit;
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
 }
 .linkbtn:hover {
-  border-color: var(--gold);
+  text-decoration: underline;
 }
 
 /* ============================ HOME (2a) ============================ */
@@ -1041,8 +1017,8 @@ body {
 }
 .home__top {
   position: relative;
-  /* Sopra headline/tagline (z2) e contenuto (z3): così il menu a tendina
-     resta cliccabile e non finisce dietro al titolo. */
+  /* Above headline/tagline (z2) and content (z3): keeps the dropdown menu
+     clickable instead of ending up behind the title. */
   z-index: 5;
   display: flex;
   align-items: center;
@@ -1099,8 +1075,8 @@ body {
   font-size: clamp(3rem, 15vw, 4.2rem);
   line-height: 0.94;
   white-space: pre-line;
-  /* Ombra ampia e morbida: tiene leggibile il bianco anche dove passa
-     davanti al nucleo caldo del sole. */
+  /* Wide, soft shadow: keeps the white readable even where it passes
+     in front of the sun's warm core. */
   text-shadow:
     0 1px 3px rgba(0, 0, 0, 0.3),
     0 3px 28px rgba(0, 0, 0, 0.45);
@@ -1116,12 +1092,11 @@ body {
 }
 .home__sun {
   position: absolute;
-  left: 8%;
-  /* Più in basso e leggermente attenuato: il nucleo caldo resta
-     nella fascia sotto il testo, senza appiattirne il contrasto. */
-  bottom: 8%;
-  width: 140px;
-  height: 140px;
+  /* Bottom left, in the band below the text (mock 2a). */
+  left: 40px;
+  bottom: 44px;
+  width: 110px;
+  height: 110px;
   border-radius: 50%;
   background: var(--sun-disc);
   opacity: 0.88;
@@ -1134,7 +1109,7 @@ body {
   padding: 0 var(--side-pad) 2.4rem;
 }
 
-/* Barra di ricerca: rettangolo arrotondato in vetro (lente + input + tondo posizione). */
+/* Search bar: rounded glass rectangle (magnifier + input + round location button). */
 .search {
   position: relative;
   display: flex;
@@ -1191,7 +1166,7 @@ body {
   cursor: pointer;
   transition: filter 0.15s ease, transform 0.12s ease;
 }
-/* Area tattile ≥44px senza alterare la dimensione visiva del bottone (a11y). */
+/* Touch area ≥44px without altering the button's visual size (a11y). */
 .search__geo::before {
   content: '';
   position: absolute;
@@ -1208,7 +1183,7 @@ body {
   transform: translateY(1px);
 }
 
-/* Suggerimenti sotto la pillola. */
+/* Suggestions below the pill. */
 .suggest {
   position: absolute;
   top: calc(100% + 8px);
@@ -1219,10 +1194,12 @@ body {
   padding: 0.35rem;
   list-style: none;
   text-align: left;
-  background: var(--surface);
+  /* Same dark glass as the search card it is attached to (mock 2a). */
+  background: rgba(40, 28, 44, 0.92);
   border: 1px solid var(--hairline);
   border-radius: var(--r-control);
-  box-shadow: var(--shadow-sheet);
+  box-shadow: var(--shadow-pop);
+  backdrop-filter: blur(10px);
   max-height: 19rem;
   overflow-y: auto;
 }
@@ -1231,19 +1208,22 @@ body {
   background: var(--panel-strong);
 }
 
-/* Selettore alba/tramonto (segmented). */
+/* Sunrise/sunset selector (segmented): full-width on home with equal segments
+   (mock 2a); compact inline variant on results (mock 1b). */
 .modes {
-  display: inline-flex;
-  gap: 0.25rem;
+  display: flex;
+  gap: 0.4rem;
   margin-top: 1.1rem;
-  padding: 0.28rem;
+  padding: 0.3rem;
   border-radius: var(--r-control);
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid var(--hairline);
 }
 .mode {
+  flex: 1 1 0;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.4rem;
   border: 0;
   background: transparent;
@@ -1260,7 +1240,11 @@ body {
   font-weight: 700;
 }
 .modes--compact {
+  display: inline-flex;
   margin: 0;
+}
+.modes--compact .mode {
+  flex: 0 0 auto;
 }
 
 .status {
@@ -1273,7 +1257,7 @@ body {
   color: var(--bad);
 }
 
-/* Sezione "I tuoi luoghi" + card. */
+/* "Your places" section + cards. */
 .places {
   margin-top: 2rem;
 }
@@ -1317,12 +1301,26 @@ body {
   color: var(--muted);
   font-size: 0.82rem;
 }
-/* Placeholder finché il punteggio non è caricato; poi la rampa (.is-set). */
+/* Placeholder until the score has loaded; then the ramp (.is-set). */
 .place__score {
   color: var(--faint);
 }
 .place__score.is-set {
   color: hsl(var(--hue, 40) 80% 62%);
+}
+/* Numeral + label word stacked in a column (mock 2a: "84 / Great"). */
+.place__scorebox {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.place__word {
+  font-size: 0.66rem;
+  color: var(--muted);
+}
+.place__word:empty {
+  display: none;
 }
 .place__del {
   border: 0;
@@ -1336,26 +1334,34 @@ body {
 .place__del:hover {
   color: var(--bad);
 }
+/* "Compare" button: full-width solid card below the places (mock 2a),
+   compass icon in accent. */
 .place-compare {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 0.4rem;
-  align-self: flex-start;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
   margin-top: 0.2rem;
-  padding: 0.5rem 0.9rem;
-  border-radius: var(--r-pill);
-  border: 1px dashed var(--hairline);
-  background: transparent;
+  padding: 0.7rem;
+  border-radius: var(--r-control);
+  border: 1px solid transparent;
+  background: var(--card);
+  box-shadow: var(--card-shadow);
   color: var(--text);
   font: inherit;
-  font-size: 0.85rem;
+  font-weight: 600;
+  font-size: 0.9rem;
   cursor: pointer;
+}
+.place-compare .ico {
+  color: var(--accent);
 }
 .place-compare:hover {
   border-color: var(--accent);
 }
 
-/* CTA "Scegli un punto sulla mappa". */
+/* "Pick a point on the map" CTA. */
 .mapcta {
   display: flex;
   align-items: center;
@@ -1386,7 +1392,7 @@ body {
   color: var(--accent);
 }
 
-/* ============================ RISULTATI (1b) ============================ */
+/* ============================ RESULTS (1b) ============================ */
 .results {
   margin: 0;
   padding: 0;
@@ -1473,7 +1479,7 @@ body {
   font-size: 0.66rem;
   letter-spacing: 0.26em;
   color: rgba(255, 255, 255, 0.82);
-  /* Leggibilità sul gradiente anche ai punteggi bassi (cielo più chiaro). */
+  /* Readability on the gradient even at low scores (lighter sky). */
   text-shadow: 0 1px 12px rgba(0, 0, 0, 0.35);
 }
 .verdict__headline {
@@ -1490,7 +1496,7 @@ body {
   align-items: baseline;
   gap: 0.5rem;
 }
-/* Numerale-punteggio dell'hero: sull'imagery serve più luminoso (rampa +chiara). */
+/* Hero score numeral: needs to be brighter on the imagery (lighter ramp). */
 .rhero__score .score {
   font-size: 2.4rem;
   color: hsl(var(--hue, 40) 90% 72%);
@@ -1499,22 +1505,22 @@ body {
   color: rgba(255, 255, 255, 0.78);
   font-size: 0.9rem;
 }
-/* Barra 0–100: rende leggibile "quanto è alto" il punteggio, senza rubare la
-   scena al numerale (sottile, semitrasparente, riempita con la rampa del hue). */
+/* 0–100 bar: makes "how high" the score is readable without stealing the
+   scene from the numeral (thin, semi-transparent, filled with the hue ramp). */
 .rhero__meter {
   position: relative;
   margin: 0.85rem 0 0;
-  width: min(240px, 70%);
-  height: 4px;
+  width: 170px;
+  height: 6px;
   border-radius: var(--r-pill);
-  background: rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.28);
   overflow: hidden;
 }
 .rhero__meterfill {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: hsl(var(--hue, 40) 90% 72%);
+  background: linear-gradient(90deg, var(--gold-img), var(--accent-img));
 }
 
 .rcontent {
@@ -1529,11 +1535,15 @@ body {
   font-size: 1rem;
   line-height: 1.55;
 }
+.rintro strong {
+  color: var(--score-text);
+  font-weight: 600;
+}
 .rcontent .modes {
   margin-top: 1.4rem;
 }
 
-/* Sezioni generiche (ritmo + separatori). */
+/* Generic sections (rhythm + separators). */
 .sect {
   margin-top: 1.8rem;
   padding-top: 1.8rem;
@@ -1553,7 +1563,7 @@ body {
   margin: 0;
   font-size: 1.5rem;
 }
-/* Variante mono (sotto-header tipo "ATMOSFERA"). */
+/* Mono variant (sub-headers like "ATMOSFERA"). */
 .sect__title--mono {
   font-size: 0.66rem;
   font-weight: 500;
@@ -1570,7 +1580,7 @@ body {
   font-size: 0.9rem;
 }
 
-/* Nastro "questa settimana" (7 giorni). */
+/* "This week" ribbon (7 days). */
 .wk {
   display: flex;
   gap: 0.3rem;
@@ -1591,11 +1601,13 @@ body {
 .wk__col--active {
   background: rgba(255, 255, 255, 0.06);
 }
+/* Dot sized to the score: size (--dsz) and tint (--hue) come inline from
+   weekRibbonHtml; desaturated ramp, the best day stays radial. */
 .wk__dot {
-  width: 8px;
-  height: 8px;
+  width: var(--dsz, 8px);
+  height: var(--dsz, 8px);
   border-radius: 50%;
-  background: var(--faint);
+  background: hsl(var(--hue, 40) 45% 55%);
 }
 .wk__col--best .wk__dot {
   width: 13px;
@@ -1610,10 +1622,20 @@ body {
 }
 .wk__col--best .wk__day {
   color: var(--gold);
+  font-weight: 700;
+}
+/* Ribbon numerals: smaller than the standard numerals (mock 1b),
+   the best day slightly larger and in light gold. */
+.wk__score {
+  font-size: 0.82rem;
+}
+.wk__col--best .wk__score {
+  font-size: 0.9rem;
+  color: var(--score-text-hi);
 }
 
-/* Griglia 2×2 di StatCell (Conditions 1b + Atmosphere 3d). Se manca una cella
-   (dato assente) l'ultima dispari occupa l'intera riga: niente buchi. */
+/* 2×2 StatCell grid (Conditions 1b + Atmosphere 3d). If a cell is missing
+   (absent data) the last odd one spans the whole row: no holes. */
 .statgrid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1623,7 +1645,7 @@ body {
   grid-column: 1 / -1;
 }
 
-/* Why: "come si compone" (barra a segmenti) + card fattori. */
+/* Why: "how it adds up" (segmented bar) + factor cards. */
 .addsup {
   padding: var(--s-4);
 }
@@ -1739,6 +1761,10 @@ body {
 .driver--bad {
   border-left-color: var(--sentiment-bad);
 }
+/* Neutral cards slightly quieter (mock 3a). */
+.driver--neutral {
+  background: var(--card-2);
+}
 .driver__ico {
   display: grid;
   place-content: center;
@@ -1750,21 +1776,25 @@ body {
   color: var(--neutral);
 }
 .driver--good .driver__ico {
-  background: rgba(242, 180, 78, 0.16);
-  color: var(--good);
+  background: color-mix(in srgb, var(--gold-img) 16%, transparent);
+  color: var(--score-text);
 }
 .driver--bad .driver__ico {
   background: rgba(224, 120, 92, 0.16);
   color: var(--bad);
 }
-/* Leve "cosa manca per salire": card ipotetiche → bordo tratteggiato. */
+/* "What's missing to climb" levers: hypothetical cards → full dashed border
+   in warm gold, quieter background, orange icon (mock 3a). */
 .driver--upside {
-  border-left-style: dashed;
-  border-left-color: var(--sentiment-good);
+  border: 1px dashed color-mix(in srgb, var(--gold-img) 35%, transparent);
+  background: var(--card-2);
 }
 .driver--upside .driver__ico {
-  background: rgba(242, 180, 78, 0.16);
-  color: var(--good);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent);
+}
+.driver__gain {
+  color: var(--score-text);
 }
 .driver strong {
   display: block;
@@ -1775,7 +1805,7 @@ body {
   font-size: 0.88rem;
 }
 
-/* Hourly: grafico ad area + swatch. */
+/* Hourly: area chart + swatches. */
 .arc-card {
   padding: 0.5rem 0.4rem;
   border-radius: var(--r-card);
@@ -1791,36 +1821,41 @@ body {
   stroke: rgba(255, 255, 255, 0.06);
   stroke-width: 1;
 }
-/* Riempimento dell'area: tinta accent dal token (l'opacità resta sugli stop). */
+/* Area fill: imagery orange (opacity stays on the stops). */
 .arc stop {
-  stop-color: var(--accent);
+  stop-color: var(--accent-img);
 }
 .arc__line {
   fill: none;
-  stroke: var(--accent);
+  stroke: var(--arc-line);
   stroke-width: 3;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
+/* Hollow hour dots: ring on the line, filled with the background (mock 3b). */
 .arc__dot {
-  fill: var(--accent);
+  fill: var(--bg);
+  stroke: var(--arc-line);
+  stroke-width: 2.5;
 }
 .arc__guide {
-  stroke: var(--gold);
-  stroke-width: 1;
-  stroke-dasharray: 3 3;
-  opacity: 0.7;
+  stroke: var(--gold-img);
+  stroke-width: 1.5;
+  stroke-dasharray: 3 4;
+  opacity: 0.35;
+}
+.arc__halo {
+  fill: var(--gold-img);
+  opacity: 0.25;
 }
 .arc__mark {
-  fill: var(--gold);
-  stroke: #fff4d4;
-  stroke-width: 2;
+  fill: var(--gold-img);
 }
 .arc__val {
   fill: var(--gold-bright);
   font-family: var(--font-display);
   font-weight: 800;
-  font-size: 15px;
+  font-size: 17px;
   text-anchor: middle;
 }
 .arc__x {
@@ -1845,20 +1880,19 @@ body {
   gap: var(--s-1);
   margin-top: var(--s-1);
 }
-/* Barre-colore per ora del "trend" (NON la SkySwatch): ciascuna col gradiente
-   del cielo previsto per quell'ora. */
+/* Per-hour color bars of the "trend" (NOT the SkySwatch): each with the
+   gradient of the sky forecast for that hour. */
 .trendsw {
   flex: 1 1 0;
-  height: 40px;
+  height: 44px;
   border-radius: var(--r-tile);
-  border: 1px solid transparent;
 }
 .trendsw--center {
-  border-color: var(--score-text);
-  box-shadow: 0 0 0 1px var(--score-text);
+  outline: 2px solid var(--gold-img);
+  outline-offset: 1px;
 }
 
-/* Where to look: bussola + testo + chip. */
+/* Where to look: compass + text + chips. */
 .lookat {
   display: flex;
   align-items: center;
@@ -1869,9 +1903,8 @@ body {
 }
 .lookat__dir {
   margin: 0;
-  font-family: var(--font-display);
-  font-weight: 800;
-  font-size: 1.25rem;
+  font-weight: 600;
+  font-size: 1.05rem;
 }
 .lookat__txt {
   margin: 0.3rem 0 0;
@@ -1909,7 +1942,7 @@ body {
 .chip strong {
   color: var(--text);
 }
-/* Variante "sky": pillola compatta del punteggio-cielo di un punto (§2.6). */
+/* "sky" variant: compact pill for a spot's sky score (§2.6). */
 .chip--sky {
   flex: 0 0 auto;
   display: inline-block;
@@ -1922,7 +1955,7 @@ body {
   font-weight: 700;
 }
 
-/* Where to watch: legenda doppio punteggio + card punti. */
+/* Where to watch: dual-score legend + spot cards. */
 .dualscore {
   margin: 0 0 0.9rem;
   font-size: 0.62rem;
@@ -1949,8 +1982,9 @@ body {
   border: 1px solid var(--hairline);
   border-left: 3px solid var(--sentiment-neutral);
 }
+/* Good views: border tinted with the view score (--hue inline from the row). */
 .spot--good {
-  border-left-color: var(--sentiment-good);
+  border-left-color: hsl(var(--hue, 40) 80% 62%);
 }
 .spot--bad {
   border-left-color: var(--sentiment-bad);
@@ -1978,7 +2012,7 @@ body {
   font-size: 0.85rem;
 }
 .spot--good .spot__verdict {
-  color: var(--good);
+  color: hsl(var(--hue, 40) 80% 62%);
 }
 .spot--bad .spot__verdict {
   color: var(--bad);
@@ -1988,7 +2022,7 @@ body {
   color: var(--muted);
 }
 .spot__meta {
-  font-size: 0.6rem;
+  font-size: 0.64rem;
   letter-spacing: 0.1em;
   color: var(--faint);
 }
@@ -2000,12 +2034,12 @@ body {
   gap: var(--s-1);
 }
 
-/* Estimate button (Button outline con tratteggio) — ritocco spaziatura. */
+/* Estimate button (outline Button with dashed border) — spacing tweak. */
 .estimate {
   margin-top: 0.9rem;
 }
 
-/* The point: nota di griglia. */
+/* The point: grid note. */
 .gridnote {
   margin: 0.7rem 0 0;
   font-size: 0.6rem;
@@ -2014,7 +2048,7 @@ body {
   word-break: break-word;
 }
 
-/* Banner "tramonto top in arrivo". */
+/* "Top sunset coming up" banner. */
 .topbanner {
   display: flex;
   align-items: center;
@@ -2023,9 +2057,9 @@ body {
   margin-top: 1.1rem;
   padding: 0.75rem 1rem;
   text-align: left;
-  border: 1px solid var(--hairline);
+  border: 1px solid color-mix(in srgb, var(--gold-img) 30%, transparent);
   border-radius: var(--r-control);
-  background: linear-gradient(90deg, rgba(255, 138, 82, 0.24), rgba(255, 206, 111, 0.06));
+  background: linear-gradient(100deg, rgba(255, 138, 82, 0.22), rgba(255, 206, 111, 0.06));
   color: var(--text);
   font: inherit;
   font-size: 0.9rem;
@@ -2042,7 +2076,7 @@ body {
   color: var(--gold);
 }
 
-/* Schermata mappa (2b): barra ridisegnata. */
+/* Map screen (2b): redesigned bar. */
 .mapview__bar {
   display: flex;
   align-items: center;
@@ -2082,16 +2116,19 @@ body {
   }
 }
 
-/* ============================ MAPPA (2b) ============================ */
+/* ============================ MAP (2b) ============================ */
 .mapview__canvas {
   background: var(--map-canvas);
 }
-/* Nudge dei tile verso il warm-dark dell'identità (leggero, non distruttivo). */
-.mapview .leaflet-tile {
-  filter: saturate(1.12) brightness(0.92) contrast(1.02);
+/* Nudge the tiles toward the identity's plum-dark (mock 2b): sepia injects
+   chroma into CARTO's grays, the hue rotation shifts it to violet. An
+   approximation on raster tiles — applies to the big map and the mini-map. */
+.mapview .leaflet-tile,
+.map-slot .leaflet-tile {
+  filter: sepia(0.4) hue-rotate(235deg) saturate(1.6) brightness(0.9) contrast(1.05);
 }
 
-/* Marker del punto analizzato: bolla punteggio (oro) sopra il pallino. */
+/* Marker of the analyzed point: score bubble (gold) above the dot. */
 .skymark {
   flex-direction: column !important;
   gap: 3px;
@@ -2108,7 +2145,7 @@ body {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
 }
 
-/* Pannello inferiore (sheet). */
+/* Bottom panel (sheet). */
 .mapview__panel {
   border-radius: var(--r-sheet) var(--r-sheet) 0 0;
 }
@@ -2161,23 +2198,35 @@ body {
   font-size: 0.92rem;
 }
 .mp__verdict.spot--good {
-  border-left-color: var(--sentiment-good);
+  border-left-color: hsl(var(--hue, 40) 80% 62%);
 }
 .mp__verdict.spot--bad {
   border-left-color: var(--sentiment-bad);
 }
-/* Legenda mappa: card in vetro (usa i token nuovi). */
+/* Map legend: glass card (uses the new tokens). */
 .maplegend {
   border-radius: var(--r-control);
   border-color: var(--hairline);
 }
 
-/* ============================ CONFRONTA (2c) ============================ */
+/* ============================ COMPARE (2c) ============================ */
+/* Modal above the current screen: dark scrim + blur (mock 2c). */
 .cmp {
+  position: fixed;
+  inset: 0;
+  z-index: 25;
+  display: flex;
+  justify-content: center;
   background: rgba(8, 5, 10, 0.62);
   backdrop-filter: blur(3px);
   align-items: stretch;
   padding: 1rem;
+  animation: scrimfade 0.2s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cmp {
+    animation: none;
+  }
 }
 .cmp__box {
   width: 100%;
@@ -2197,7 +2246,7 @@ body {
   gap: 1rem;
   margin-bottom: 1.2rem;
 }
-/* Override della vecchia regola (chiusura assoluta): ora vive nell'header. */
+/* Override of the old rule (absolutely positioned close): it now lives in the header. */
 .cmp__close {
   position: static;
   font-size: 1.3rem;
@@ -2223,7 +2272,7 @@ body {
   overflow: hidden;
   padding: 0.9rem 1rem 1rem;
   border-radius: var(--r-feature);
-  border: 1px solid var(--gold);
+  border: 1px solid color-mix(in srgb, var(--gold-img) 40%, transparent);
   background: linear-gradient(150deg, rgba(255, 206, 111, 0.16), rgba(255, 138, 82, 0.05));
 }
 .cmp__winner::after {
@@ -2239,9 +2288,13 @@ body {
 }
 .cmp__best {
   position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
   font-family: var(--font-mono);
   font-size: 0.62rem;
   letter-spacing: 0.16em;
+  text-transform: uppercase;
   color: var(--gold);
 }
 .cmp__winrow {
@@ -2303,7 +2356,7 @@ body {
   font-size: 0.8rem;
 }
 
-/* ============================ CONDIVIDI (2d) ============================ */
+/* ============================ SHARE (2d) ============================ */
 .sheet-scrim {
   position: fixed;
   inset: 0;
@@ -2365,7 +2418,10 @@ body {
   color: #fff;
   overflow: hidden;
   position: relative;
+  /* Deep shadow: the card "floats" on the sheet (mock 2d). */
+  box-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.7);
 }
+/* Text shadows: readability on the light gradients of high scores. */
 .sharecard__brand {
   display: inline-flex;
   align-items: center;
@@ -2373,6 +2429,7 @@ body {
   align-self: center;
   font-weight: 600;
   font-size: 0.82rem;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
 }
 .sharecard__score {
   margin-top: auto;
@@ -2380,6 +2437,7 @@ body {
   font-size: 4.2rem;
   line-height: 0.9;
   font-weight: 800;
+  text-shadow: 0 3px 18px rgba(60, 10, 20, 0.4);
 }
 .sharecard__label {
   text-align: center;
@@ -2392,6 +2450,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0.1rem;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
 }
 .sharecard__foot strong {
   font-size: 0.92rem;
@@ -2405,7 +2464,7 @@ body {
   gap: var(--s-2);
   margin-top: var(--s-2);
 }
-/* I due Button ghost della riga condividono lo spazio equamente. */
+/* The row's two ghost Buttons share the space equally. */
 .sheet__ghost {
   flex: 1 1 0;
 }
@@ -2417,7 +2476,7 @@ body {
 }
 
 /* ============================ Polish: a11y & focus ============================ */
-/* Anello di focus visibile solo da tastiera, in tinta accent. */
+/* Focus ring visible only from the keyboard, in accent tint. */
 :focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
@@ -2429,11 +2488,11 @@ body {
 .mode:focus-visible {
   outline-offset: 3px;
 }
-/* La pillola di ricerca evidenzia il bordo quando l'input è a fuoco. */
+/* The search pill highlights its border when the input is focused. */
 .search:focus-within {
   border-color: rgba(255, 255, 255, 0.24);
 }
-/* I link dei nomi punto e i pulsanti testuali restano leggibili al focus. */
+/* Spot name links and text buttons stay readable on focus. */
 .spot__name:focus-visible,
 .linkbtn:focus-visible {
   outline-offset: 3px;

@@ -10,8 +10,8 @@
     />
     <meta name="theme-color" content="#120a16" />
     <script>
-      // Applica il tema salvato (o quello di sistema) prima del paint, così non
-      // c'è flash. Il toggle in pagina aggiorna localStorage.
+      // Apply the saved theme (or the system one) before paint so there is no
+      // flash. The in-page toggle updates localStorage.
       (function () {
         try {
           var t = localStorage.getItem('skyhue.theme');
@@ -21,7 +21,7 @@
           document.documentElement.dataset.theme = t;
         } catch (e) {}
       })();
-      // Imposta <html lang> prima del paint in base alla lingua salvata / di sistema.
+      // Set <html lang> before paint from the saved / system language.
       (function () {
         try {
           var l = localStorage.getItem('skyhue.lang');
@@ -61,7 +61,7 @@
   <body>
     <div class="sky"></div>
     <main class="app" id="app-view">
-      <!-- === Home (nessuna località scelta) === -->
+      <!-- === Home (no place chosen yet) === -->
       <section class="home" id="home">
         <header class="home__hero">
           <div class="home__top">
@@ -142,7 +142,7 @@
         </div>
       </section>
 
-      <!-- === Risultati (località scelta) — riempita da main.js === -->
+      <!-- === Results (place chosen) — filled in by main.js === -->
       <section id="results" class="results" hidden></section>
     </main>
 
@@ -163,8 +163,8 @@
     <script type="module" src="./src/main.js"></script>
     <script type="module" src="./src/map.js"></script>
     <script>
-      // Registra il service worker (offline / installazione) e aggiorna la vista
-      // in automatico quando viene pubblicata una nuova versione.
+      // Register the service worker (offline / install) and refresh the view
+      // automatically when a new version is published.
       if ('serviceWorker' in navigator) {
         let refreshing = false;
         const hadController = !!navigator.serviceWorker.controller;
@@ -177,7 +177,7 @@
           navigator.serviceWorker
             .register('./sw.js')
             .then((reg) => reg.update())
-            .catch((err) => console.warn('Service worker non registrato:', err));
+            .catch((err) => console.warn('Service worker not registered:', err));
         });
       }
     </script>

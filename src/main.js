@@ -63,7 +63,7 @@ const els = {
 const state = {
   place: null,
   forecast: null,
-  air: null, // dati qualità dell'aria (può restare null se il fetch fallisce)
+  air: null, // air-quality data (may stay null if the fetch fails)
   dayIndex: 0,
   event: 'sunset',
   spots: null,
@@ -88,12 +88,12 @@ function setStatus(msg, kind = 'info') {
   els.status.dataset.kind = kind;
 }
 
-/** Scarica i dati per una località e mostra il risultato. */
+/** Fetch data for a place and show the result. */
 async function analyze(place) {
   setStatus(t('status.fetching', { label: place.label }), 'info');
   els.results.innerHTML = '';
   try {
-    // Meteo e qualità dell'aria in parallelo; l'aria è opzionale e non blocca.
+    // Weather and air quality in parallel; air is optional and non-blocking.
     const [forecast, air] = await Promise.all([
       fetchForecast(place.latitude, place.longitude),
       fetchAirQuality(place.latitude, place.longitude).catch(() => null),
@@ -112,31 +112,31 @@ async function analyze(place) {
     state.lightPath = null;
     render();
     setStatus('', 'info');
-    loadSpots(place); // in background: non blocca la vista principale
-    loadLightPath(place); // idem: l'azimut richiede il forecast appena arrivato
+    loadSpots(place); // in background: doesn't block the main view
+    loadLightPath(place); // same: the azimuth needs the just-arrived forecast
   } catch (err) {
     console.error(err);
     setStatus(t('status.error', { msg: err.message }), 'error');
   }
 }
 
-/** Carica in background i punti panoramici (OSM) e ne valuta l'affaccio. */
+/** Load scenic viewpoints (OSM) in the background and rate their outlook. */
 async function loadSpots(place) {
   try {
     const raw = await fetchSunsetSpots(place.latitude, place.longitude);
-    if (state.place !== place) return; // l'utente ha cambiato località nel frattempo
+    if (state.place !== place) return; // the user switched place in the meantime
     state.rawSpots = raw;
     state.rawSpotsFor = place;
     await evaluateSpots();
   } catch (err) {
-    console.warn('Punti panoramici non disponibili:', err);
+    console.warn('Scenic spots not available:', err);
     if (state.place !== place) return;
     state.spotsError = true;
     render();
   }
 }
 
-/** Azimut del sole per l'evento e il giorno correntemente selezionati. */
+/** Sun azimuth for the currently selected event and day. */
 function currentAzimuth() {
   const { forecast, place, event, dayIndex } = state;
   const iso = dailyList(forecast)[dayIndex][event];
@@ -144,11 +144,11 @@ function currentAzimuth() {
 }
 
 /**
- * Carica in background le nuvole lungo il raggio verso il sole (percorso della
- * luce). Le 4 previsioni coprono 7 giorni di orari, quindi un solo giro serve
- * punteggio, timeline e striscia multi-giorno; si riusa l'azimut del giorno
- * selezionato per tutta la settimana (deriva ≤ ~3° ≈ 13 km laterali a 250 km,
- * meno di una cella del modello). Fallimento → punteggio senza fattore.
+ * Load in the background the clouds along the ray toward the sun (light
+ * path). The 4 forecasts cover 7 days of hours, so a single round serves
+ * score, timeline and multi-day strip; the selected day's azimuth is reused
+ * for the whole week (drift ≤ ~3° ≈ 13 km sideways at 250 km, less than
+ * one model cell). Failure → score without this factor.
  */
 async function loadLightPath(place) {
   const { event } = state;
@@ -156,7 +156,7 @@ async function loadLightPath(place) {
   try {
     const azimuth = currentAzimuth();
     const data = await fetchLightPath(place.latitude, place.longitude, azimuth);
-    if (state.place !== place || state.event !== event) return; // superato
+    if (state.place !== place || state.event !== event) return; // superseded
     const valid = data.points.filter((p) => p.forecast).length;
     state.lightPath =
       valid >= 2
@@ -164,15 +164,15 @@ async function loadLightPath(place) {
         : { status: 'error', place, event, azimuth, data: null };
     render();
   } catch (err) {
-    console.warn('Percorso della luce non disponibile:', err);
+    console.warn('Light path not available:', err);
     if (state.place !== place || state.event !== event) return;
     state.lightPath = { status: 'error', place, event, azimuth: null, data: null };
     render();
   }
 }
 
-/** Chiarezza del percorso della luce (0-1) all'istante ISO, o null se i
- *  campioni non sono (ancora) disponibili → punteggio senza fattore. */
+/** Light-path clearness (0-1) at the ISO instant, or null if the samples
+ *  aren't available (yet) → score without this factor. */
 function pathClearAt(iso) {
   const lp = state.lightPath;
   if (!lp || lp.status !== 'ready' || lp.place !== state.place) return null;
@@ -180,9 +180,9 @@ function pathClearAt(iso) {
 }
 
 /**
- * Valuta l'affaccio dei punti grezzi verso il sole (ostruzioni + mare aperto),
- * usando le quote del terreno campionate lungo l'azimut. Riusa rawSpots, così
- * cambiando alba/tramonto ricalcola senza re-interrogare OSM.
+ * Rate the raw spots' outlook toward the sun (obstructions + open sea),
+ * using terrain elevations sampled along the azimuth. Reuses rawSpots, so
+ * switching sunrise/sunset recomputes without re-querying OSM.
  */
 async function evaluateSpots() {
   const place = state.place;
@@ -196,14 +196,14 @@ async function evaluateSpots() {
 
   const azimuth = currentAzimuth();
 
-  // Pre-selezione ottimizzata per direzione: entro NEAR_KM teniamo tutto; oltre,
-  // paghiamo un "costo" maggiore se il punto non è verso il tramonto. Così, pur
-  // con raggio ampio, valutiamo (parte costosa: le quote) solo i più promettenti.
+  // Direction-optimized pre-selection: within NEAR_KM keep everything; beyond,
+  // we pay a higher "cost" if the point isn't toward the sunset. So, even with
+  // a wide radius, we evaluate (the costly part: elevations) only the most promising.
   const nearest = raw
     .map((s) => {
       const dist = distanceKm(place.latitude, place.longitude, s.lat, s.lon);
       const dirDiff = angleDiff(bearing(place.latitude, place.longitude, s.lat, s.lon), azimuth);
-      const offSunset = dist > NEAR_KM && dirDiff > 90 ? 2 : 1; // penalizza i lontani "dal lato sbagliato"
+      const offSunset = dist > NEAR_KM && dirDiff > 90 ? 2 : 1; // penalize far points "on the wrong side"
       return { ...s, dist, dirDiff, cost: dist * offSunset };
     })
     .sort((a, b) => a.cost - b.cost)
@@ -212,19 +212,19 @@ async function evaluateSpots() {
   const evaluated = await refineCandidates(nearest, azimuth, place);
   if (state.place !== place) return;
 
-  // Ordina per punteggio finale (affaccio − distanza), poi per vicinanza.
+  // Sort by final score (outlook − distance), then by proximity.
   evaluated.sort((a, b) => b.finalScore - a.finalScore || a.dist - b.dist);
   state.spots = evaluated;
   render();
 
-  // In background: calcola il punteggio-cielo direttamente nei punti finalisti.
+  // In background: compute the sky score directly at the finalist points.
   loadSky(state.spots, place);
 }
 
 /**
- * Rifinitura condivisa: per ogni candidato campiona il terreno lungo il raggio
- * verso il sole, valuta l'affaccio e calcola verdetto + punteggio finale.
- * Usata sia dai punti OSM sia dalla stima da coordinate.
+ * Shared refinement: for each candidate sample the terrain along the ray
+ * toward the sun, rate the outlook and compute verdict + final score.
+ * Used by both OSM spots and the coordinate-based estimate.
  */
 async function refineCandidates(candidates, azimuth, place) {
   const points = [];
@@ -237,7 +237,7 @@ async function refineCandidates(candidates, azimuth, place) {
   try {
     elevations = await fetchElevations(points);
   } catch (err) {
-    console.warn('Quote non disponibili, salto la valutazione affaccio:', err);
+    console.warn('Elevations not available, skipping the view evaluation:', err);
   }
   const n = SAMPLE_DISTANCES.length;
   return candidates.map((s, i) => {
@@ -267,9 +267,9 @@ async function refineCandidates(candidates, azimuth, place) {
 }
 
 /**
- * Ricerca "da coordinate" (su richiesta): genera una griglia di punti, pre-
- * seleziona quelli su terra vicino alla costa dalle sole quote, poi rifinisce
- * i migliori con la stessa valutazione d'affaccio dei punti mappati.
+ * "From coordinates" search (on demand): generate a grid of points, pre-
+ * select those on land near the coast from elevations alone, then refine
+ * the best with the same outlook rating used for mapped spots.
  */
 async function scanCoordinates() {
   const place = state.place;
@@ -299,7 +299,7 @@ async function scanCoordinates() {
     loadSky(state.estimatedSpots, place);
     nameEstimatedSpots(state.estimatedSpots, place);
   } catch (err) {
-    console.warn('Scansione da coordinate non riuscita:', err);
+    console.warn('Coordinate scan failed:', err);
     if (state.place !== place) return;
     state.estimating = false;
     state.estimateError = true;
@@ -308,12 +308,12 @@ async function scanCoordinates() {
 }
 
 /**
- * Per i primi finalisti di una lista scarica il meteo nel punto e ne calcola il
- * Sunset Score, così ogni meta mostra sia l'affaccio sia la qualità del cielo.
+ * For the top finalists of a list fetch the weather at the point and compute
+ * its Sunset Score, so each destination shows both outlook and sky quality.
  */
 /**
- * Dà un nome ai primi punti stimati via reverse-geocoding (Nominatim), in modo
- * sequenziale per rispettare il rate-limit. Aggiorna il nome e ridisegna.
+ * Name the first estimated points via reverse geocoding (Nominatim),
+ * sequentially to respect the rate limit. Updates the name and re-renders.
  */
 async function nameEstimatedSpots(spots, place) {
   const top = (spots || []).filter((s) => s.kind === 'estimate').slice(0, 3);
@@ -322,7 +322,7 @@ async function nameEstimatedSpots(spots, place) {
       const name = await reverseGeocode(s.lat, s.lon, getLang());
       if (name) s.name = name;
     } catch (err) {
-      /* resta "Punto stimato" */
+      /* keeps the "estimated point" name */
     }
   }
   if (state.place !== place) return;
@@ -341,7 +341,7 @@ async function loadSky(list, place) {
         const cond = { ...conditionsAtTime(f, iso), ...airAtTime(state.air, iso) };
         return computeSunsetScore(cond).score;
       } catch (err) {
-        console.warn('Punteggio-cielo del punto non disponibile:', err);
+        console.warn('Sky score for the spot not available:', err);
         return null;
       }
     })
@@ -351,11 +351,11 @@ async function loadSky(list, place) {
     s.skyScore = scores[i];
   });
 
-  // Integra i colori previsti nel ranking: un punto con affaccio ottimo ma
-  // cielo mediocre non deve restare in cima solo per la vista. Per i finalisti
-  // di cui conosciamo il cielo usiamo un punteggio combinato (affaccio pesa più
-  // del cielo, che sull'area è quasi uniforme, meno la penalità distanza);
-  // gli altri mantengono il finalScore, su scala comparabile.
+  // Fold the forecast colors into the ranking: a point with a great outlook
+  // but a mediocre sky must not stay on top for the view alone. For finalists
+  // whose sky we know we use a combined score (outlook weighs more than the
+  // sky, which is nearly uniform over the area, minus the distance penalty);
+  // the others keep finalScore, on a comparable scale.
   top.forEach((s) => {
     if (s.skyScore == null) return;
     const distPenalty = Math.max(0, s.dist - NEAR_KM) * 0.4;
@@ -369,7 +369,7 @@ async function loadSky(list, place) {
   render();
 }
 
-/** Calcola punteggio + spiegazione per l'evento (alba/tramonto) di un giorno. */
+/** Compute score + explanation for a day's event (sunrise/sunset). */
 function evaluateDay(dayIndex) {
   const { forecast, place, event } = state;
   const day = dailyList(forecast)[dayIndex];
@@ -385,8 +385,8 @@ function evaluateDay(dayIndex) {
   const sun = sunPosition(eventDate, place.latitude, place.longitude);
   const phase = moonPhase(eventDate);
 
-  // Timeline: evoluzione delle condizioni del cielo nelle ore attorno all'evento.
-  // Conserviamo anche i factors, così ogni ora può disegnare il proprio swatch.
+  // Timeline: how sky conditions evolve in the hours around the event.
+  // We keep the factors too, so each hour can draw its own swatch.
   const timeline = conditionsWindow(forecast, eventIso, 2, 2).map((c) => {
     const hourCond = { ...c, ...airAtTime(state.air, c.time), pathClear: pathClearAt(c.time) };
     const { score: s, factors: f } = computeSunsetScore(hourCond);
@@ -417,9 +417,9 @@ function fmtWeekdayLong(date) {
 }
 
 /**
- * Mini-mappa Leaflet del punto analizzato: contenitore vuoto (Leaflet vi viene
- * montato da `mountMiniMap` dopo l'inserimento nel DOM) + chip "Espandi" e
- * pulsante che aprono la mappa grande in-app con tutti i punti marcati.
+ * Leaflet mini-map of the analyzed point: an empty container (Leaflet is
+ * mounted onto it by `mountMiniMap` after DOM insertion) + "Expand" chip and
+ * button that open the in-app big map with all points marked.
  */
 function mapEmbedHtml() {
   return `
@@ -432,16 +432,22 @@ function mapEmbedHtml() {
     ${button(t('detail.openMap'), { variant: 'primary', icon: 'map', id: 'open-bigmap', cls: 'map__open' })}`;
 }
 
-/** Card di un punto suggerito (usata sia per i POI sia per i punti stimati). */
-function spotRowHtml(s) {
+/** Card for a suggested spot (used for both POIs and estimated points).
+ *  `factors` (of the analyzed point) drives the thumbnail gradient:
+ *  forecast sky over the spot's sky score; obstructed outlooks → muted
+ *  tile without sun. */
+function spotRowHtml(s, factors) {
   const info = kindInfo(s.kind);
   const dist = s.dist < 10 ? s.dist.toFixed(1) : Math.round(s.dist);
   const v = s.verdict;
   const est = s.kind === 'estimate';
+  const isBad = v.sentiment === 'bad';
+  const gradScore = isBad ? Math.min(s.skyScore ?? 30, 30) : s.skyScore ?? v.score;
+  const grad = factors ? skyGradientCss(skyGradient(factors, gradScore)) : '';
   const url = `https://www.openstreetmap.org/?mlat=${s.lat.toFixed(5)}&mlon=${s.lon.toFixed(
     5
   )}#map=15/${s.lat.toFixed(4)}/${s.lon.toFixed(4)}`;
-  // Pillola "cielo NN": il colore atteso nel punto (mostrata anche per affacci ostruiti).
+  // "sky NN" pill: the expected color at the point (shown for obstructed outlooks too).
   const skyPill =
     s.skyScore != null
       ? chip({
@@ -456,8 +462,8 @@ function spotRowHtml(s) {
   const meta = `${kindLabel} · ${dist} ${t('unit.km')} · ~${s.driveMin} ${t('unit.min')} · ${cardinal(
     s.dir
   )}${quota}`;
-  return `<li class="spot spot--${v.sentiment}">
-    ${skySwatch({ size: 'lg', tag: est ? t('spot.estTag') : '' })}
+  return `<li class="spot spot--${v.sentiment}" style="--hue:${scoreHue(v.score)}">
+    ${skySwatch({ size: 'lg', grad, sun: !isBad, tag: est ? t('spot.estTag') : '' })}
     <div class="spot__body">
       <a class="spot__name" href="${url}" target="_blank" rel="noopener">${escapeHtml(
         s.name || t(info.labelKey)
@@ -476,13 +482,15 @@ function spotRowHtml(s) {
   </li>`;
 }
 
-/** Blocco della stima "da coordinate" (pulsante + eventuale lista). */
-function estimateBlockHtml() {
+/** "From coordinates" estimate block (button + optional list). */
+function estimateBlockHtml(factors) {
   let list = '';
   if (state.estimateError) {
     list = `<p class="muted">${t('spots.estimateError')}</p>`;
   } else if (state.estimatedSpots && state.estimatedSpots.length) {
-    list = `<ul class="spots">${state.estimatedSpots.map(spotRowHtml).join('')}</ul>
+    list = `<ul class="spots">${state.estimatedSpots
+      .map((s) => spotRowHtml(s, factors))
+      .join('')}</ul>
       <p class="muted spots__hint">${t('spots.estimateHint')}</p>`;
   } else if (state.estimatedSpots && state.estimatedSpots.length === 0) {
     list = `<p class="muted">${t('spots.estimateNone')}</p>`;
@@ -497,8 +505,8 @@ function estimateBlockHtml() {
     ${list}`;
 }
 
-/** Sezione "Dove andare a guardarlo": punti panoramici vicini (doppio punteggio). */
-function spotsSectionHtml(place, sun) {
+/** "Where to go watch it" section: nearby viewpoints (dual score). */
+function spotsSectionHtml(place, sun, factors) {
   const dirNote = t('spots.dirNote', {
     verb: t(state.event === 'sunset' ? 'verb.sets' : 'verb.rises'),
     dir: cardinal(azimuthToCardinal(sun.azimuth)),
@@ -515,7 +523,9 @@ function spotsSectionHtml(place, sun) {
     body = `<p class="sect__note">${t('spots.none')}</p>`;
   } else {
     const shown = state.spots.slice(0, SPOTS_EVALUATE);
-    body = `<ul class="spots is-collapsed" id="spots-list">${shown.map(spotRowHtml).join('')}</ul>`;
+    body = `<ul class="spots is-collapsed" id="spots-list">${shown
+      .map((s) => spotRowHtml(s, factors))
+      .join('')}</ul>`;
     if (shown.length > 3) {
       more = `<button type="button" class="linkbtn" id="spots-more" data-more="${t('spots.seeAll', {
         n: shown.length,
@@ -530,11 +540,11 @@ function spotsSectionHtml(place, sun) {
       <p class="dualscore mono">${t('spot.dualLegend')}</p>
       ${body}
       ${more}
-      <div class="estimate">${estimateBlockHtml()}</div>
+      <div class="estimate">${estimateBlockHtml(factors)}</div>
     </section>`;
 }
 
-/** Bussola SVG con il sole posizionato sull'azimut (0°=N, 90°=E, …). */
+/** SVG compass with the sun placed at its azimuth (0°=N, 90°=E, …). */
 function compassSvg(azimuth) {
   const cx = 70;
   const cy = 70;
@@ -555,8 +565,8 @@ function compassSvg(azimuth) {
     </svg>`;
 }
 
-/** Mostra la home (nessuna località). Se focusSearch, porta il cursore nella
- *  barra di ricerca (usato dal pulsante "cerca" nell'hero dei risultati). */
+/** Show the home (no place). If focusSearch, move the cursor into the
+ *  search bar (used by the "search" button in the results hero). */
 function showHome(focusSearch) {
   state.forecast = null;
   state.place = null;
@@ -571,42 +581,42 @@ function showHome(focusSearch) {
   if (focusSearch === true) setTimeout(() => els.input && els.input.focus(), 50);
 }
 
-/** Mostra la schermata risultati (nasconde la home). */
+/** Show the results screen (hides the home). */
 function showResults() {
   const home = document.getElementById('home');
   if (home) home.hidden = true;
   els.results.hidden = false;
 }
 
-/** Cambia evento (alba/tramonto) e ri-renderizza mantenendo tutti i toggle sincronizzati. */
+/** Switch event (sunrise/sunset) and re-render keeping all toggles in sync. */
 function setEvent(ev) {
   if (ev !== 'sunset' && ev !== 'sunrise') return;
   state.event = ev;
   document
     .querySelectorAll('.mode')
     .forEach((b) => b.classList.toggle('mode--active', b.dataset.event === ev));
-  // L'azimut cambia molto tra alba e tramonto: rivaluta l'affaccio dei punti
-  // e ricampiona il percorso della luce (raggio quasi opposto).
+  // The azimuth changes a lot between sunrise and sunset: re-rate the spots'
+  // outlook and resample the light path (nearly opposite ray).
   if (state.rawSpots && state.rawSpotsFor === state.place) {
     state.spots = null;
     state.spotsError = false;
   }
   state.lightPath = null;
   if (state.forecast) render();
-  if (state.forecast) loadLightPath(state.place); // di solito cache hit: istantaneo
+  if (state.forecast) loadLightPath(state.place); // usually a cache hit: instant
   if (state.rawSpots && state.rawSpotsFor === state.place) evaluateSpots();
-  if (!state.forecast) renderFavorites(); // aggiorna i punteggi dei preferiti in home
+  if (!state.forecast) renderFavorites(); // refresh the favorites' scores on the home
 }
 
-/** Collega i pulsanti alba/tramonto contenuti in `root`. */
+/** Wire up the sunrise/sunset buttons contained in `root`. */
 function bindModes(root) {
   root.querySelectorAll('.mode').forEach((btn) => {
     btn.addEventListener('click', () => setEvent(btn.dataset.event));
   });
 }
 
-/** Ridisegna l'intera vista in base allo stato: home (nessuna località) o
- *  risultati (hero cielo + sezioni in un unico scroll). */
+/** Redraw the whole view from state: home (no place) or
+ *  results (sky hero + sections in a single scroll). */
 function render() {
   if (!state.forecast) {
     showHome();
@@ -628,21 +638,21 @@ function render() {
   renderResults(evaluateDay(state.dayIndex), scored);
 }
 
-/** Nome cardinale localizzato dall'azimut. */
+/** Localized cardinal name from the azimuth. */
 function dirName(azimuth) {
   return cardinal(azimuthToCardinal(azimuth));
 }
 
-/** Parola contestuale dell'occhiello ("Stasera" oggi, altrimenti il giorno). */
+/** Contextual eyebrow word ("Tonight" for today, otherwise the day). */
 function whenWord(date, event) {
   return event === 'sunset' && state.dayIndex === 0 ? t('time.tonight') : fmtWeekdayShort(date);
 }
 
-/* ---------- Hero cielo (schermata risultati 1b) ---------- */
+/* ---------- Sky hero (results screen 1b) ---------- */
 function heroHtml({ eventDate, score, event }) {
   const { place } = state;
   const label = scoreLabel(score);
-  // Punteggi bassi: cielo meno vivido (desatura + scurisce proporzionalmente).
+  // Low scores: less vivid sky (desaturate + darken proportionally).
   const satu = (0.4 + 0.6 * (score / 100)).toFixed(2);
   const bright = (0.72 + 0.28 * (score / 100)).toFixed(2);
   return `
@@ -690,13 +700,14 @@ function heroHtml({ eventDate, score, event }) {
 }
 
 function introHtml({ score, sun }) {
+  // The direction is highlighted in gold (mock 1b: "The sun sets to the <NW>").
   return `<p class="rintro">${t('intro.' + scoreLabel(score), {
-    dir: dirName(sun.azimuth),
+    dir: `<strong>${dirName(sun.azimuth)}</strong>`,
     verb: t(state.event === 'sunset' ? 'verb.sets' : 'verb.rises'),
   })}</p>`;
 }
 
-/* Toggle compatto alba/tramonto nella schermata risultati. */
+/* Compact sunrise/sunset toggle on the results screen. */
 function eventToggleHtml() {
   const mk = (ev, ico) =>
     `<button type="button" class="mode${state.event === ev ? ' mode--active' : ''}" data-event="${ev}">${icon(
@@ -708,19 +719,21 @@ function eventToggleHtml() {
   )}">${mk('sunset', 'sunset')}${mk('sunrise', 'sunrise')}</div>`;
 }
 
-/* "This week": nastro a 7 giorni con pallino + numero colorato. */
+/* "This week": 7-day ribbon with dot + colored number. */
 function weekRibbonHtml(scored, bestDayIndex = null) {
-  // Riepilogo settimanale: la didascalia usa il massimo; il bagliore evidenzia
-  // solo il giorno "da banner" (≥85 e non oggi), o nessuno se non qualifica.
+  // Weekly summary: the caption uses the maximum; the glow highlights only
+  // the "banner-worthy" day (≥85 and not today), or none if it doesn't qualify.
   const best = scored.reduce((a, b) => (b.score > a.score ? b : a), scored[0]);
   const cols = scored
     .map(({ d, score, date }) => {
       const isBest = bestDayIndex != null && d.dayIndex === bestDayIndex;
       const active = d.dayIndex === state.dayIndex;
+      // Dot sized by the score (7–11px), color from the warm ramp.
+      const dotSize = (7 + 4 * (score / 100)).toFixed(1);
       return `
       <button class="wk__col${active ? ' wk__col--active' : ''}${
         isBest ? ' wk__col--best' : ''
-      }" data-day="${d.dayIndex}">
+      }" data-day="${d.dayIndex}" style="--hue:${scoreHue(score)};--dsz:${dotSize}px">
         ${scoreNumeral(score, { size: 'xs', score, cls: 'wk__score' })}
         <span class="wk__dot"></span>
         <span class="wk__day">${fmtWeekdayShort(date)}</span>
@@ -738,7 +751,7 @@ function weekRibbonHtml(scored, bestDayIndex = null) {
     </section>`;
 }
 
-/* "Conditions": 2×2 di card meteo con descrittore breve. */
+/* "Conditions": 2×2 weather cards with a short descriptor. */
 function condDesc(type, v) {
   const key =
     type === 'high'
@@ -770,42 +783,51 @@ function condDesc(type, v) {
       : v <= 70
       ? 'okHum'
       : 'humidAir';
-  return t('desc.' + key);
+  // Amber note only for the truly favorable descriptors (mock 1b).
+  const positive = key === 'litCirrus' || key === 'clearHorizon' || key === 'pathClear';
+  return { text: t('desc.' + key), positive };
 }
 
-/** Cella "Percorso luce": stato di caricamento, errore o percentuale libera.
- *  Le soglie sono le stesse delle note esplicative (explainScore). */
+/** "Light path" cell: loading state, error, or percent clear.
+ *  The thresholds match the explanatory notes (explainScore). */
 function lightPathCell(cond) {
   const lp = state.lightPath;
   let value = '—';
   let note = t('desc.pathUnknown');
+  let noteAccent = false;
   if (lp && lp.status === 'loading') {
     value = '…';
     note = t('desc.pathLoading');
   } else if (cond.pathClear !== null && cond.pathClear !== undefined) {
     value = Math.round(cond.pathClear * 100) + '%';
-    note = condDesc('path', cond.pathClear);
+    const d = condDesc('path', cond.pathClear);
+    note = d.text;
+    noteAccent = d.positive;
   }
-  return statCell({ icon: 'compass', label: t('stat.lightPath'), value, note });
+  return statCell({ icon: 'compass', label: t('stat.lightPath'), value, note, noteAccent });
 }
 
 function conditionsHtml(cond) {
   const visKm = cond.visibility / 1000;
+  const cell = (icon, label, type, v, value) => {
+    const d = condDesc(type, v);
+    return statCell({ icon, label, value, note: d.text, noteAccent: d.positive });
+  };
   return `
     <section class="sect">
       ${sectionHeader(t('section.conditions'))}
       <div class="statgrid">
-        ${statCell({ icon: 'cloud-sun', label: t('cond.highCloud'), value: Math.round(cond.cloudCoverHigh) + '%', note: condDesc('high', cond.cloudCoverHigh) })}
-        ${statCell({ icon: 'cloud', label: t('cond.lowCloud'), value: Math.round(cond.cloudCoverLow) + '%', note: condDesc('low', cond.cloudCoverLow) })}
-        ${statCell({ icon: 'eye', label: t('stat.visibility'), value: visKm.toFixed(0) + ' km', note: condDesc('vis', visKm) })}
-        ${statCell({ icon: 'droplet', label: t('stat.humidity'), value: Math.round(cond.humidity) + '%', note: condDesc('hum', cond.humidity) })}
+        ${cell('cloud-sun', t('cond.highCloud'), 'high', cond.cloudCoverHigh, Math.round(cond.cloudCoverHigh) + '%')}
+        ${cell('cloud', t('cond.lowCloud'), 'low', cond.cloudCoverLow, Math.round(cond.cloudCoverLow) + '%')}
+        ${cell('eye', t('stat.visibility'), 'vis', visKm, visKm.toFixed(0) + ' km')}
+        ${cell('droplet', t('stat.humidity'), 'hum', cond.humidity, Math.round(cond.humidity) + '%')}
         ${lightPathCell(cond)}
       </div>
       <p class="sect__cap cond__mid">${t('cond.midNote', { mid: Math.round(cond.cloudCoverMid ?? 0) })}</p>
     </section>`;
 }
 
-// Icone delle leve controfattuali "cosa manca per salire" (scoreUpside).
+// Icons for the counterfactual "what's missing to climb" levers (scoreUpside).
 const UPSIDE_ICONS = {
   cirrus: 'cloud-sun',
   horizon: 'sunset',
@@ -814,13 +836,13 @@ const UPSIDE_ICONS = {
   path: 'compass',
 };
 
-/* "Why this score": barra "come si compone" + card fattori (top 3 + mostra tutti). */
+/* "Why this score": "how it breaks down" bar + factor cards (top 3 + show all). */
 function whyHtml({ score, factors, notes, cond }) {
   const b0 = WEIGHTS.base * 100;
   const d0 = WEIGHTS.drama * 100 * (factors.drama ?? 0);
   const c0 = WEIGHTS.clarity * 100 * (factors.clarity ?? 0);
   const rawSum = b0 + d0 + c0 || 1;
-  const k = score / rawSum; // riporta le componenti al punteggio finale (penalità incluse)
+  const k = score / rawSum; // rescale the components to the final score (penalties included)
   const base = Math.round(b0 * k);
   const drama = Math.round(d0 * k);
   const clarity = Math.max(0, score - base - drama);
@@ -850,7 +872,7 @@ function whyHtml({ score, factors, notes, cond }) {
         })}" data-less="${t('why.showLess')}">${t('why.showAll', { n: notes.length })}</button>`
       : '';
 
-  // Leve controfattuali: cosa manca (da solo) per un punteggio più alto.
+  // Counterfactual levers: what's missing (on its own) for a higher score.
   const upside = scoreUpside(cond);
   const ceiling = scoreCeiling(cond);
   const missing = upside.length
@@ -863,7 +885,9 @@ function whyHtml({ score, factors, notes, cond }) {
         <li class="driver driver--upside">
           <span class="driver__ico">${icon(UPSIDE_ICONS[u.code], { size: 20 })}</span>
           <div>
-            <strong>${t('upside.' + u.code + '.title', { gain: u.gain })}</strong>
+            <strong>${t('upside.' + u.code + '.title', {
+              gain: `<b class="driver__gain">+${u.gain}</b>`,
+            })}</strong>
             <p>${t('upside.' + u.code + '.detail', { target: u.target })}</p>
           </div>
         </li>`
@@ -873,9 +897,16 @@ function whyHtml({ score, factors, notes, cond }) {
       <p class="sect__cap">${t('why.missingFoot', { ceiling })}</p>`
     : '';
 
+  // Subtitle: how many factors play in our favor tonight (mock 3a).
+  const goodCount = notes.filter((n) => n.sentiment === 'good').length;
+  const sub = goodCount
+    ? `<p class="sect__cap">${t(goodCount === 1 ? 'why.subOne' : 'why.sub', { n: goodCount })}</p>`
+    : '';
+
   return `
     <section class="sect">
       ${sectionHeader(t('section.why'))}
+      ${sub}
       <div class="addsup">
         <div class="addsup__head"><span class="mono">${t('why.addsUp')}</span>${scoreNumeral(
           score,
@@ -904,7 +935,7 @@ function whyHtml({ score, factors, notes, cond }) {
     </section>`;
 }
 
-/* "Tonight's arc": grafico ad area SVG + swatch di colore previsto per ora. */
+/* "Tonight's arc": SVG area chart + forecast color swatch per hour. */
 function areaChartSvg(timeline) {
   const W = 320;
   const H = 132;
@@ -916,7 +947,7 @@ function areaChartSvg(timeline) {
   const y = (s) => padTop + (1 - s / 100) * (H - padTop - padBot);
   const pts = timeline.map((c, i) => [x(i), y(c.score)]);
 
-  // Path liscio (quadratiche per punti medi).
+  // Smooth path (quadratics through midpoints).
   let d = `M ${pts[0][0]} ${pts[0][1]}`;
   for (let i = 1; i < pts.length; i++) {
     const [px, py] = pts[i - 1];
@@ -933,7 +964,7 @@ function areaChartSvg(timeline) {
   const dots = timeline
     .map((c, i) => {
       if (c.isCenter) return '';
-      return `<circle cx="${pts[i][0]}" cy="${pts[i][1]}" r="3.2" class="arc__dot"/>`;
+      return `<circle cx="${pts[i][0]}" cy="${pts[i][1]}" r="4" class="arc__dot"/>`;
     })
     .join('');
 
@@ -943,8 +974,9 @@ function areaChartSvg(timeline) {
     ? `<line x1="${center[0]}" x2="${center[0]}" y1="${y(timeline[ci].score)}" y2="${
         H - padBot
       }" class="arc__guide"/>
+       <circle cx="${center[0]}" cy="${center[1]}" r="10" class="arc__halo"/>
        <circle cx="${center[0]}" cy="${center[1]}" r="6" class="arc__mark"/>
-       <text x="${center[0]}" y="${center[1] - 12}" class="arc__val">${timeline[ci].score}</text>`
+       <text x="${center[0]}" y="${center[1] - 14}" class="arc__val">${timeline[ci].score}</text>`
     : '';
 
   const labels = timeline
@@ -994,7 +1026,7 @@ function hourlyHtml({ timeline }, tw, event) {
     </section>`;
 }
 
-/* Chip golden/blue hour (riusate in "Where to look" e nel trend orario). */
+/* Golden/blue hour chips (reused in "Where to look" and the hourly trend). */
 function lightChipsHtml(tw, event) {
   const fmtRange = (a, b) => (a && b ? `${fmtTime(a)}–${fmtTime(b)}` : '—');
   const goldenRange =
@@ -1006,7 +1038,7 @@ function lightChipsHtml(tw, event) {
       </div>`;
 }
 
-/* "Where to look": bussola + testo direzione + chip golden/blue hour. */
+/* "Where to look": compass + direction text + golden/blue hour chips. */
 function lookAtHtml(sun, tw, event) {
   return `
     <section class="sect">
@@ -1026,7 +1058,7 @@ function lookAtHtml(sun, tw, event) {
     </section>`;
 }
 
-/* "The point" (3d): mini-mappa + nota di griglia + griglia Atmosfera 2×2. */
+/* "The point" (3d): mini-map + grid note + 2×2 Atmosphere grid. */
 function pointHtml({ cond, phase }) {
   const { place } = state;
   const grid = state.forecast;
@@ -1076,13 +1108,13 @@ function pointHtml({ cond, phase }) {
     </section>`;
 }
 
-/** Assembla la schermata risultati e collega gli handler. */
+/** Assemble the results screen and wire up the handlers. */
 function renderResults(data, scored) {
   const { place, event } = data;
   const { eventDate, score, factors, sun } = data;
   const tw = twilightTimes(eventDate, place.latitude, place.longitude);
 
-  // Banner "tramonto top in arrivo" (miglior giorno ≥85 e non oggi).
+  // "Top sunset incoming" banner (best day ≥85 and not today).
   const best = scored.reduce((a, b) => (b.score > a.score ? b : a), scored[0]);
   const bannerBest = best && best.score >= 85 && best.d.dayIndex >= 1 ? best : null;
   const bannerHtml =
@@ -1107,18 +1139,18 @@ function renderResults(data, scored) {
       ${hourlyHtml(data, tw, event)}
       ${conditionsHtml(data.cond)}
       ${lookAtHtml(sun, tw, event)}
-      ${spotsSectionHtml(place, sun)}
+      ${spotsSectionHtml(place, sun, data.factors)}
       ${pointHtml(data)}
       <footer class="rfoot"><p data-i18n-html="foot.credits">${t('foot.credits')}</p></footer>
     </div>`;
 
   // --- Handler ---
-  // Torna alla home (nuova ricerca / cambia località).
+  // Back to the home (new search / change place).
   els.results.querySelector('#rhero-loc')?.addEventListener('click', showHome);
   els.results.querySelector('#rhero-search')?.addEventListener('click', () => showHome(true));
   els.results.querySelector('#rhero-share')?.addEventListener('click', () => openShareSheet(data));
 
-  // Preferito (stella nell'hero).
+  // Favorite (star in the hero).
   const favBtn = els.results.querySelector('.fav-toggle');
   if (favBtn) {
     favBtn.classList.toggle('fav-toggle--on', isFavorite(place));
@@ -1131,16 +1163,16 @@ function renderResults(data, scored) {
     });
   }
 
-  // Toggle alba/tramonto (variante compatta nei risultati).
+  // Sunrise/sunset toggle (compact variant in the results).
   bindModes(els.results);
 
-  // Banner → salta al miglior giorno.
+  // Banner → jump to the best day.
   els.results.querySelector('#topbanner')?.addEventListener('click', () => {
     state.dayIndex = best.d.dayIndex;
     render();
   });
 
-  // Nastro settimana → cambia giorno.
+  // Week ribbon → switch day.
   els.results.querySelectorAll('.wk__col').forEach((btn) => {
     btn.addEventListener('click', () => {
       state.dayIndex = Number(btn.dataset.day);
@@ -1148,7 +1180,7 @@ function renderResults(data, scored) {
     });
   });
 
-  // "Mostra tutti" i fattori.
+  // "Show all" factors.
   const whyMore = els.results.querySelector('#why-more');
   const drivers = els.results.querySelector('#drivers');
   if (whyMore && drivers) {
@@ -1158,11 +1190,11 @@ function renderResults(data, scored) {
     });
   }
 
-  // "Cerca anche punti non mappati".
+  // "Search unmapped points too".
   const scanBtn = els.results.querySelector('.scan-btn');
   if (scanBtn) scanBtn.addEventListener('click', scanCoordinates);
 
-  // "Vedi tutti i punti".
+  // "See all points".
   const spotsMore = els.results.querySelector('#spots-more');
   const spotsList = els.results.querySelector('#spots-list');
   if (spotsMore && spotsList) {
@@ -1172,7 +1204,7 @@ function renderResults(data, scored) {
     });
   }
 
-  // Contesto per la mappa grande (aggiornato ad ogni render).
+  // Context for the big map (refreshed on every render).
   const mapCtx = {
     lat: place.latitude,
     lon: place.longitude,
@@ -1188,22 +1220,22 @@ function renderResults(data, scored) {
   mountMiniMap(els.results.querySelector('#detail-map'), {
     ...mapCtx,
     onExpand: openBigMap,
-  }).catch((err) => console.warn('Mini-mappa non disponibile:', err));
+  }).catch((err) => console.warn('Mini-map not available:', err));
 
   els.results.scrollTop = 0;
 }
 
-// Ultimo contesto mappa noto (località/evento/giorno correnti): la mappa grande
-// lo legge da window.skyhueMapContext all'apertura.
+// Last known map context (current place/event/day): the big map
+// reads it from window.skyhueMapContext when opened.
 let lastMapContext = null;
 
-/** Apre la mappa grande in-app con il contesto corrente (tutti i punti marcati). */
+/** Open the in-app big map with the current context (all points marked). */
 function openBigMap() {
   if (lastMapContext) window.skyhueMapContext = lastMapContext;
   location.hash = '#map';
 }
 
-/** Costruisce un link condivisibile allo stato corrente (località + evento). */
+/** Build a shareable link to the current state (place + event). */
 function buildShareUrl() {
   const { place, event } = state;
   const url = new URL(location.origin + location.pathname);
@@ -1214,7 +1246,7 @@ function buildShareUrl() {
   return url.toString();
 }
 
-/** Condivide via Web Share API, con fallback alla copia negli appunti. */
+/** Share via the Web Share API, falling back to clipboard copy. */
 async function shareCurrent(score) {
   const url = buildShareUrl();
   const text = t('share.text', { noun: eventNoun(state.event), score, label: state.place.label });
@@ -1226,19 +1258,19 @@ async function shareCurrent(score) {
     await navigator.clipboard.writeText(url);
     setStatus(t('status.linkCopied'), 'info');
   } catch {
-    // Ultima spiaggia: mostra l'URL nella barra di stato.
+    // Last resort: show the URL in the status bar.
     setStatus(url, 'info');
   }
 }
 
-/** Font per il canvas della condivisione: stesse famiglie dell'app (con
- *  fallback di sistema), così il PNG rispecchia l'identità del brand. */
+/** Fonts for the share canvas: same families as the app (with
+ *  system fallbacks), so the PNG mirrors the brand identity. */
 const IMG_DISPLAY = "'Bricolage Grotesque', system-ui, sans-serif";
 const IMG_UI = "'Space Grotesk', system-ui, -apple-system, sans-serif";
 const IMG_MONO = "'JetBrains Mono', ui-monospace, monospace";
 
-/** Disegna un'icona di `icons.js` sul canvas (stroke, come nell'app): niente
- *  emoji di sistema, resa identica ovunque. */
+/** Draw an `icons.js` icon on the canvas (stroke, like in the app): no
+ *  system emoji, identical rendering everywhere. */
 function drawCanvasIcon(ctx, name, x, y, size, color) {
   const body = ICONS[name] || ICONS.help;
   const ds = [...body.matchAll(/d="([^"]+)"/g)].map((m) => m[1]);
@@ -1254,9 +1286,9 @@ function drawCanvasIcon(ctx, name, x, y, size, color) {
 }
 
 /**
- * Genera un'immagine (canvas) con il Sunset Score, località, orario e direzione
- * del sole, sul gradiente atteso del cielo, e la condivide (Web Share API con
- * file) o la scarica come fallback. Nessuna dipendenza esterna.
+ * Generate an image (canvas) with the Sunset Score, place, time and sun
+ * direction, over the expected sky gradient, and share it (Web Share API
+ * with a file) or download it as a fallback. No external dependencies.
  */
 async function shareImage({ place, score, factors, eventDate, event, sun, download = false }) {
   const W = 1080;
@@ -1266,7 +1298,7 @@ async function shareImage({ place, score, factors, eventDate, event, sun, downlo
   canvas.height = H;
   const ctx = canvas.getContext('2d');
 
-  // Sfondo: gradiente del cielo atteso (stessi stop della preview).
+  // Background: expected sky gradient (same stops as the preview).
   const stops = skyGradient(factors, score);
   const hsl = (s) => `hsl(${s.h} ${s.s}% ${s.l}%)`;
   const g = ctx.createLinearGradient(0, 0, 0, H);
@@ -1279,8 +1311,8 @@ async function shareImage({ place, score, factors, eventDate, event, sun, downlo
 
   const noun = eventNoun(event);
 
-  // Assicura i webfont prima di disegnare, così il PNG usa Bricolage/Space
-  // Grotesk come l'app (fallback ai font di sistema se il caricamento fallisce).
+  // Ensure the webfonts before drawing, so the PNG uses Bricolage/Space
+  // Grotesk like the app (falls back to system fonts if loading fails).
   try {
     if (document.fonts) {
       await Promise.all([
@@ -1293,11 +1325,11 @@ async function shareImage({ place, score, factors, eventDate, event, sun, downlo
       ]);
     }
   } catch {
-    /* si prosegue con i font di sistema */
+    /* continue with system fonts */
   }
 
-  // Brand: icona "sunset" + wordmark SkyHue (nessuna emoji di sistema),
-  // centrati come nell'anteprima.
+  // Brand: "sunset" icon + SkyHue wordmark (no system emoji),
+  // centered as in the preview.
   ctx.textAlign = 'left';
   ctx.textBaseline = 'alphabetic';
   ctx.fillStyle = 'rgba(255,255,255,0.92)';
@@ -1311,14 +1343,20 @@ async function shareImage({ place, score, factors, eventDate, event, sun, downlo
   ctx.fillText(brand, brandX + brandIco + brandGap, 96);
   ctx.textAlign = 'center';
 
+  // Same soft shadow as the preview: numeral readable on light gradients.
+  ctx.save();
+  ctx.shadowColor = 'rgba(60,10,20,0.4)';
+  ctx.shadowBlur = 54;
+  ctx.shadowOffsetY = 9;
   ctx.fillStyle = '#fff';
   ctx.font = `800 330px ${IMG_DISPLAY}`;
   ctx.fillText(String(score), W / 2, H / 2 + 30);
+  ctx.restore();
 
   ctx.font = `700 66px ${IMG_DISPLAY}`;
   ctx.fillText(t('label.' + scoreLabel(score)), W / 2, H / 2 + 150);
 
-  // Località (riduci il font se troppo larga).
+  // Place (shrink the font if too wide).
   let labelSize = 54;
   ctx.font = `600 ${labelSize}px ${IMG_UI}`;
   while (ctx.measureText(place.label).width > W - 120 && labelSize > 28) {
@@ -1358,7 +1396,7 @@ async function shareImage({ place, score, factors, eventDate, event, sun, downlo
       return;
     }
   } catch {
-    /* condivisione annullata o non riuscita: si passa al download */
+    /* share canceled or failed: fall back to the download */
   }
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -1370,7 +1408,7 @@ async function shareImage({ place, score, factors, eventDate, event, sun, downlo
   setStatus(t('status.imgSaved'), 'info');
 }
 
-/** Foglio "Condividi" (2d): anteprima 4:5 del cielo + azioni condividi/salva/link. */
+/** "Share" sheet (2d): 4:5 sky preview + share/save/link actions. */
 function openShareSheet(data) {
   const { place, score, factors, eventDate, event, sun } = data;
   const noun = eventNoun(event);
@@ -1428,8 +1466,8 @@ function openShareSheet(data) {
   });
 }
 
-/** Disegna le card dei luoghi preferiti (home): swatch + nome + orario + punteggio.
- *  I punteggi/orari vengono riempiti in modo asincrono per non bloccare il render. */
+/** Draw the favorite place cards (home): swatch + name + time + score.
+ *  Scores/times are filled in asynchronously so they don't block the render. */
 function renderFavorites() {
   const favs = getFavorites();
   const places = document.getElementById('places');
@@ -1445,7 +1483,10 @@ function renderFavorites() {
           <span class="place__name">${escapeHtml(f.label)}</span>
           <span class="place__when" data-when>${t('cmp.calc')}</span>
         </span>
-        <span class="score score--m place__score" data-score>—</span>
+        <span class="place__scorebox">
+          <span class="score score--m place__score" data-score>—</span>
+          <span class="place__word" data-word></span>
+        </span>
         <button class="place__del" data-del="${f.id}" title="${t('fav.remove')}" aria-label="${t(
           'fav.remove'
         )}">×</button>
@@ -1487,7 +1528,7 @@ function renderFavorites() {
   enrichFavoriteCards(favs);
 }
 
-/** Riempie le card dei preferiti con punteggio + orario dell'evento corrente. */
+/** Fill the favorite cards with score + time of the current event. */
 async function enrichFavoriteCards(favs) {
   await Promise.all(
     favs.map(async (f) => {
@@ -1496,7 +1537,7 @@ async function enrichFavoriteCards(favs) {
         const ne = nextSunset(fc, new Date());
         const iso = state.event === 'sunset' ? ne.sunset : ne.sunrise;
         const cond = conditionsAtTime(fc, iso);
-        const score = computeSunsetScore(cond).score;
+        const { score, factors } = computeSunsetScore(cond);
         const el = els.favorites.querySelector(`.place[data-id="${CSS.escape(f.id)}"]`);
         if (!el) return;
         const sc = el.querySelector('[data-score]');
@@ -1507,22 +1548,27 @@ async function enrichFavoriteCards(favs) {
           sc.classList.add('is-set');
           sc.title = t('label.' + scoreLabel(score));
         }
+        // Swatch with the place's forecast sky gradient + label word.
+        const sw = el.querySelector('.swatch');
+        if (sw) sw.style.background = skyGradientCss(skyGradient(factors, score));
+        const word = el.querySelector('[data-word]');
+        if (word) word.textContent = t('label.' + scoreLabel(score));
         if (wh) {
           const d = new Date(iso);
           const when = state.event === 'sunset' ? t('time.tonight') : fmtWeekdayShort(d);
           wh.textContent = `${when} · ${eventNoun(state.event)} ${fmtTime(d)}`;
         }
       } catch {
-        /* lascia il placeholder */
+        /* leave the placeholder */
       }
     })
   );
 }
 
 /**
- * Confronta i preferiti per l'evento corrente (prossimo tramonto/alba): scarica
- * il meteo di ciascuno, calcola il Sunset Score e li mostra ordinati in un
- * modale. Nessun aerosol per punto (meno chiamate): confronto puramente meteo.
+ * Compare the favorites for the current event (next sunset/sunrise): fetch
+ * each one's weather, compute the Sunset Score and show them sorted in a
+ * modal. No per-point aerosol (fewer calls): a purely weather comparison.
  */
 async function compareFavorites() {
   const favs = getFavorites();
@@ -1555,7 +1601,8 @@ async function compareFavorites() {
         const ne = nextSunset(fc, new Date());
         const iso = state.event === 'sunset' ? ne.sunset : ne.sunrise;
         const cond = conditionsAtTime(fc, iso);
-        return { label: f.label, score: computeSunsetScore(cond).score, time: new Date(iso) };
+        const { score, factors } = computeSunsetScore(cond);
+        return { label: f.label, score, factors, time: new Date(iso) };
       } catch (err) {
         return { label: f.label, score: null, time: null };
       }
@@ -1564,6 +1611,9 @@ async function compareFavorites() {
   rows.sort((a, b) => (b.score ?? -1) - (a.score ?? -1));
 
   const when = (r) => (r.time ? `${noun} ${fmtTime(r.time)}` : t('cmp.na'));
+  // Swatch with each place's forecast sky (mock 2c).
+  const rowGrad = (r) =>
+    r.factors && r.score != null ? skyGradientCss(skyGradient(r.factors, r.score)) : '';
 
   const list = overlay.querySelector('.cmp__list');
   if (!list) return;
@@ -1572,9 +1622,9 @@ async function compareFavorites() {
   const winnerHtml =
     winner && winner.score != null
       ? `<div class="cmp__winner" style="--hue:${scoreHue(winner.score)}">
-          <span class="cmp__best">★ ${t('cmp.best')}</span>
+          <span class="cmp__best">${icon('star', { size: 13, fill: true })} ${t('cmp.best')}</span>
           <div class="cmp__winrow">
-            ${skySwatch({ size: 'lg' })}
+            ${skySwatch({ size: 'lg', grad: rowGrad(winner) })}
             <div class="cmp__wininfo">
               <strong>${escapeHtml(winner.label)}</strong>
               <span class="cmp__time">${when(winner)}</span>
@@ -1592,7 +1642,7 @@ async function compareFavorites() {
       (r, i) => `
       <div class="cmp__row">
         <span class="cmp__rank mono">${i + 2}</span>
-        ${skySwatch({ size: 'sm' })}
+        ${skySwatch({ size: 'sm', grad: rowGrad(r) })}
         <div class="cmp__rowinfo">
           <strong>${escapeHtml(r.label)}</strong>
           <span class="cmp__time">${when(r)}</span>
@@ -1605,9 +1655,9 @@ async function compareFavorites() {
   list.innerHTML = `${winnerHtml}${rowsHtml}<p class="cmp__foot">${t('cmp.foot.' + state.event)}</p>`;
 }
 
-// --- Eventi UI -------------------------------------------------------------
+// --- UI events -------------------------------------------------------------
 
-/** Etichetta leggibile ("Città, Regione, Paese") da un match del geocoder. */
+/** Readable label ("City, Region, Country") from a geocoder match. */
 function matchLabel(m) {
   return [m.name, m.admin1, m.country].filter(Boolean).join(', ');
 }
@@ -1616,9 +1666,9 @@ function matchToPlace(m) {
   return { latitude: m.latitude, longitude: m.longitude, label: matchLabel(m) };
 }
 
-// Località scelta da un suggerimento: l'etichetta mostrata nell'input
-// ("Città, Regione, Paese") non è ri-geocodificabile, quindi al submit
-// riusiamo direttamente le sue coordinate finché l'utente non modifica il testo.
+// Place chosen from a suggestion: the label shown in the input
+// ("City, Region, Country") can't be re-geocoded, so on submit we
+// reuse its coordinates directly until the user edits the text.
 let chosenPlace = null;
 
 els.form.addEventListener('submit', async (e) => {
@@ -1626,7 +1676,7 @@ els.form.addEventListener('submit', async (e) => {
   const query = els.input.value.trim();
   if (!query) return;
   closeSuggest();
-  // Se il testo corrisponde ancora al suggerimento scelto, usalo così com'è.
+  // If the text still matches the chosen suggestion, use it as is.
   if (chosenPlace && chosenPlace.label === query) {
     await analyze(chosenPlace);
     return;
@@ -1644,15 +1694,15 @@ els.form.addEventListener('submit', async (e) => {
   }
 });
 
-// --- Autocompletamento della barra di ricerca -----------------------------
-// Man mano che si digita, interroghiamo il geocoder (con debounce) e mostriamo
-// i risultati in un elenco navigabile con mouse e tastiera. Il submit continua
-// a funzionare (primo risultato) anche senza toccare i suggerimenti.
+// --- Search-bar autocomplete --------------------------------------------
+// As the user types, we query the geocoder (debounced) and show the
+// results in a list navigable by mouse and keyboard. Submit keeps
+// working (first result) even without touching the suggestions.
 
 const suggest = { matches: [], active: -1, seq: 0, open: false };
 let suggestTimer = null;
 
-/** Escape minimale: i nomi arrivano da un'API esterna e finiscono in innerHTML. */
+/** Minimal escape: names come from an external API and end up in innerHTML. */
 function escapeHtml(s) {
   return String(s).replace(
     /[&<>"']/g,
@@ -1715,7 +1765,7 @@ function chooseSuggest(i) {
   if (!m) return;
   const place = matchToPlace(m);
   els.input.value = place.label;
-  chosenPlace = place; // così il submit successivo non ri-geocodifica l'etichetta
+  chosenPlace = place; // so the next submit doesn't re-geocode the label
   closeSuggest();
   analyze(place);
 }
@@ -1724,7 +1774,7 @@ async function querySuggest(query) {
   const seq = ++suggest.seq;
   try {
     const matches = await geocode(query, 6, getLang());
-    if (seq !== suggest.seq) return; // è arrivata una richiesta più recente
+    if (seq !== suggest.seq) return; // a newer request has arrived
     showSuggest(matches);
   } catch {
     if (seq === suggest.seq) closeSuggest();
@@ -1733,10 +1783,10 @@ async function querySuggest(query) {
 
 els.input.addEventListener('input', () => {
   const q = els.input.value.trim();
-  chosenPlace = null; // l'utente sta modificando: la selezione precedente non vale più
+  chosenPlace = null; // the user is editing: the previous selection no longer applies
   clearTimeout(suggestTimer);
   if (q.length < 2) {
-    suggest.seq++; // invalida eventuali richieste in volo
+    suggest.seq++; // invalidate any in-flight requests
     closeSuggest();
     return;
   }
@@ -1752,14 +1802,14 @@ els.input.addEventListener('keydown', (e) => {
     e.preventDefault();
     moveActive(-1);
   } else if (e.key === 'Enter' && suggest.active >= 0) {
-    e.preventDefault(); // scegli il suggerimento invece di inviare il form
+    e.preventDefault(); // pick the suggestion instead of submitting the form
     chooseSuggest(suggest.active);
   } else if (e.key === 'Escape') {
     closeSuggest();
   }
 });
 
-// mousedown (non click) così la scelta parte prima che l'input perda il focus.
+// mousedown (not click) so the pick fires before the input loses focus.
 els.suggest.addEventListener('mousedown', (e) => {
   const li = e.target.closest('.suggest__item');
   if (!li) return;
@@ -1791,12 +1841,12 @@ els.geoBtn.addEventListener('click', () => {
   );
 });
 
-// Selettore alba / tramonto della home. I toggle compatti nei risultati sono
-// collegati in renderResults() ad ogni render.
+// Home sunrise / sunset selector. The compact toggles in the results are
+// wired in renderResults() on every render.
 const homeEl = document.getElementById('home');
 if (homeEl) bindModes(homeEl);
 
-// Menu "tre puntini" (tema + lingua) in home.
+// "Three dots" menu (theme + language) on the home.
 const moreBtn = document.getElementById('more-btn');
 const moreMenu = document.getElementById('more-menu');
 if (moreBtn && moreMenu) {
@@ -1810,8 +1860,8 @@ if (moreBtn && moreMenu) {
     moreMenu.hidden = !willOpen;
     moreBtn.setAttribute('aria-expanded', String(willOpen));
   });
-  // Scegliere una voce (tema/lingua) chiude il menu: altrimenti resta aperto e
-  // sembra che il click non abbia avuto effetto.
+  // Picking an entry (theme/language) closes the menu: otherwise it stays
+  // open and the click seems to have had no effect.
   moreMenu.querySelectorAll('.menu__item').forEach((item) => {
     item.addEventListener('click', closeMenu);
   });
@@ -1823,7 +1873,7 @@ if (moreBtn && moreMenu) {
   });
 }
 
-/** All'avvio, se l'URL contiene una località condivisa, la apre. */
+/** On startup, if the URL contains a shared place, open it. */
 function initFromUrl() {
   const p = new URLSearchParams(location.search);
   const lat = parseFloat(p.get('lat'));
@@ -1839,10 +1889,10 @@ function initFromUrl() {
   }
 }
 
-// Un punto scelto sulla mappa chiede l'analisi completa: la eseguiamo qui.
+// A point picked on the map requests the full analysis: we run it here.
 window.addEventListener('skyhue:analyze', (e) => analyze(e.detail));
 
-// Toggle tema chiaro/scuro (il tema è già applicato in <head> prima del paint).
+// Light/dark theme toggle (the theme is already applied in <head> before paint).
 function updateThemeToggle() {
   const b = document.getElementById('theme-toggle');
   if (!b) return;
@@ -1857,16 +1907,16 @@ if (themeBtn) {
     try {
       localStorage.setItem('skyhue.theme', next);
     } catch (e) {
-      /* storage non disponibile */
+      /* storage unavailable */
     }
     updateThemeToggle();
-    // Notifica la mappa così può scambiare i tile chiari/scuri col tema.
+    // Notify the map so it can swap the light/dark tiles with the theme.
     window.dispatchEvent(new CustomEvent('skyhue:themechange', { detail: next }));
   });
   updateThemeToggle();
 }
 
-// Toggle lingua IT/EN: aggiorna il dizionario, i testi statici e ri-renderizza.
+// IT/EN language toggle: update the dictionary, the static texts and re-render.
 function updateLangToggle() {
   const b = document.getElementById('lang-toggle');
   if (b) b.textContent = `${getLang() === 'en' ? 'IT' : 'EN'}  ${t('menu.lang')}`;
@@ -1878,28 +1928,28 @@ if (langBtn) {
     document.documentElement.lang = getLang();
     applyStaticI18n();
     updateLangToggle();
-    updateThemeToggle(); // l'etichetta "Tema/Theme" deve seguire la lingua
+    updateThemeToggle(); // the "Tema/Theme" label must follow the language
     updateSuggestAria();
     renderFavorites();
-    // Il testo "La tua posizione" era stato tradotto una volta sola al momento
-    // della geolocalizzazione: va rigenerato nella lingua nuova prima di ri-renderizzare.
+    // The "your position" text was translated only once, at geolocation
+    // time: it must be regenerated in the new language before re-rendering.
     if (state.place?.isGeo) {
       state.place.label = `${t('geo.here')} (${coordsLabel(state.place.latitude, state.place.longitude)})`;
     }
-    // Ri-renderizza il risultato corrente, se presente.
+    // Re-render the current result, if any.
     if (state.forecast && state.place) render();
-    // Aggiorna il pannello mappa se aperto.
+    // Refresh the map panel if open.
     window.dispatchEvent(new CustomEvent('skyhue:langchange', { detail: getLang() }));
   });
 }
 
-// Avvio: lingua, testi statici, preferiti salvati e link condiviso.
+// Startup: language, static texts, saved favorites and shared link.
 initLang();
 document.documentElement.lang = getLang();
 applyStaticI18n();
 updateLangToggle();
-// initLang() può aver cambiato la lingua rispetto al render iniziale del toggle
-// tema (eseguito prima): risincronizza l'etichetta "Tema/Theme".
+// initLang() may have changed the language since the theme toggle's initial
+// render (run earlier): resync the "Tema/Theme" label.
 updateThemeToggle();
 updateSuggestAria();
 renderFavorites();
