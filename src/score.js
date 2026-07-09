@@ -21,7 +21,7 @@ export function lightPathFactor(samples) {
         Number.isFinite(s.cloudCoverMid) ||
         Number.isFinite(s.cloudCoverHigh))
   );
-  if (valid.length < 2) return null; // dati parziali → neutro, non un falso segnale
+  if (valid.length < 2) return null; // partial data → neutral, not a false signal
 
   let clear = 1;
   for (const s of valid) {
@@ -39,9 +39,9 @@ export function lightPathFactor(samples) {
  * @typedef {Object} SunsetConditions
  */
 export const WEIGHTS = {
-  base: 0.35, // un cielo terso "vale" comunque qualcosa
-  drama: 0.45, // nuvole alte/medie che catturano il colore
-  clarity: 0.2, // trasparenza dell'atmosfera
+  base: 0.35, // a clear sky is still "worth" something
+  drama: 0.45, // high/mid clouds that catch the color
+  clarity: 0.2, // transparency of the atmosphere
 };
 
 /**
@@ -60,45 +60,45 @@ export function computeSunsetScore(c) {
   const midReward = bellReward(mid, 45, 30);
   const drama = 0.6 * highReward + 0.4 * midReward;
 
-  // Trasparenza atmosferica: visibilità alta + umidità bassa = colori vividi.
-  const visFactor = clamp(visibility / 24000, 0, 1); // 24 km = eccellente
+  // Atmospheric transparency: high visibility + low humidity = vivid colors.
+  const visFactor = clamp(visibility / 24000, 0, 1); // 24 km = excellent
   const humidityPenalty = clamp((humidity - 60) / 40, 0, 1);
   const clarity = clamp(0.7 * visFactor + 0.3 * (1 - humidityPenalty), 0, 1);
 
-  // Le nuvole basse bloccano il sole sull'orizzonte: penalità moltiplicativa.
-  const lowBlock = clamp(low / 70, 0, 1); // ~70% di nuvole basse = orizzonte chiuso
-  // "Overcast": il cielo lascia passare poca luce diretta. Conta solo il deck
-  // OPACO (nuvole basse + medie): i cirri alti, anche fitti, restano traslucidi
-  // e lasciano filtrare la luce radente — usarli per l'overcast penalizzerebbe
-  // proprio lo scenario migliore (cielo pieno di cirri accesi). Stimiamo la
-  // copertura combinata basse/medie come unione con overlap indipendente.
+  // Low clouds block the sun at the horizon: multiplicative penalty.
+  const lowBlock = clamp(low / 70, 0, 1); // ~70% low clouds = closed horizon
+  // "Overcast": the sky lets little direct light through. Only the OPAQUE
+  // deck counts (low + mid clouds): high cirrus, even dense, stays translucent
+  // and lets the grazing light filter through — using it for overcast would
+  // penalize precisely the best scenario (a sky full of lit-up cirrus). We
+  // estimate the combined low/mid cover as a union with independent overlap.
   const opaqueDeck = clamp(low + mid - (low * mid) / 100, 0, 100);
   const overcast = clamp((opaqueDeck - 70) / 30, 0, 1);
 
-  // Aerosol: un pulviscolo moderato (AOD ~0.2) accende i rossi diffondendo la
-  // luce; troppo (foschia/particolato) attenua i colori. Opzionale: se assente
-  // non modifica il punteggio (retrocompatibile).
+  // Aerosol: moderate dust (AOD ~0.2) fires up the reds by scattering the
+  // light; too much (haze/particulates) mutes the colors. Optional: if absent
+  // it doesn't change the score (backwards compatible).
   const aod = c.aerosol ?? null;
   const pm25 = c.pm25 ?? null;
   let aerosolEnhance = 0;
   let aerosolHaze = 0;
   let aerosolMult = 1;
   if (aod !== null) {
-    aerosolEnhance = bellReward(aod, 0.2, 0.18); // massimo attorno a 0.2
-    aerosolHaze = clamp((aod - 0.45) / 0.55, 0, 1); // foschia oltre ~0.45
+    aerosolEnhance = bellReward(aod, 0.2, 0.18); // peaks around 0.2
+    aerosolHaze = clamp((aod - 0.45) / 0.55, 0, 1); // haze beyond ~0.45
     aerosolMult *= 1 + 0.1 * aerosolEnhance - 0.3 * aerosolHaze;
   }
   if (pm25 !== null) {
-    const pmHaze = clamp((pm25 - 35) / 65, 0, 1); // >35 µg/m³ inizia a velare
+    const pmHaze = clamp((pm25 - 35) / 65, 0, 1); // >35 µg/m³ starts to veil
     aerosolHaze = Math.max(aerosolHaze, pmHaze);
     aerosolMult *= 1 - 0.25 * pmHaze;
   }
 
-  // Percorso della luce: quanto è sgombra l'atmosfera LONTANA verso il sole
-  // (vedi lightPathFactor). Un muro di nubi a 40-250 km spegne la luce radente
-  // prima che arrivi. K=0.45: più della foschia (0.3), meno del lowBlock locale
-  // (0.85) — la previsione a quelle distanze ha skill minore e la luce
-  // crepuscolare di base sopravvive. Opzionale: assente → punteggio invariato.
+  // Light path: how clear the FAR atmosphere is towards the sun
+  // (see lightPathFactor). A wall of clouds 40-250 km away kills the grazing
+  // light before it arrives. K=0.45: more than haze (0.3), less than the local
+  // lowBlock (0.85) — the forecast at those distances has less skill and the
+  // baseline twilight light survives. Optional: absent → score unchanged.
   const pathClear = c.pathClear ?? null;
   const pathMult =
     pathClear === null ? 1 : 1 - 0.45 * (1 - clamp(pathClear, 0, 1));
@@ -140,7 +140,7 @@ export function computeSunsetScore(c) {
 }
 
 /**
- * Codice qualitativo per un punteggio (risolto in testo dalla UI via i18n).
+ * Qualitative code for a score (resolved to text by the UI via i18n).
  * @returns {'exceptional'|'great'|'good'|'fair'|'mediocre'|'poor'}
  */
 export function scoreLabel(score) {
@@ -153,9 +153,9 @@ export function scoreLabel(score) {
 }
 
 /**
- * Genera le note esplicative dai fattori del punteggio, in forma NEUTRA rispetto
- * alla lingua: ogni voce ha { code, sentiment, icon, params }. Il testo (titolo +
- * dettaglio) viene risolto dalla UI via i18n con la chiave `explain.<code>`.
+ * Generates the explanatory notes from the score factors, in a language-
+ * NEUTRAL form: each entry has { code, sentiment, icon, params }. The text
+ * (title + detail) is resolved by the UI via i18n with the `explain.<code>` key.
  *
  * @param {ReturnType<typeof computeSunsetScore>['factors']} f
  * @returns {Array<{code:string, sentiment:string, icon:string, params:Object}>}
@@ -164,7 +164,7 @@ export function explainScore(f) {
   const notes = [];
   const visKm = Math.round(f.visibility / 1000);
 
-  // Nuvole alte
+  // High clouds
   if (f.high >= 20 && f.high <= 75) {
     notes.push({ code: 'highGood', sentiment: 'good', icon: 'cloud', params: { high: Math.round(f.high) } });
   } else if (f.high > 75) {
@@ -173,12 +173,12 @@ export function explainScore(f) {
     notes.push({ code: 'highFew', sentiment: 'neutral', icon: 'cloud-sun', params: {} });
   }
 
-  // Nuvole medie
+  // Mid clouds
   if (f.mid >= 20 && f.mid <= 65) {
     notes.push({ code: 'midGood', sentiment: 'good', icon: 'cloud-sun', params: { mid: Math.round(f.mid) } });
   }
 
-  // Nuvole basse (fattore critico)
+  // Low clouds (critical factor)
   if (f.low >= 40) {
     notes.push({ code: 'lowBad', sentiment: 'bad', icon: 'haze', params: { low: Math.round(f.low) } });
   } else if (f.low >= 15) {
@@ -187,19 +187,19 @@ export function explainScore(f) {
     notes.push({ code: 'lowClear', sentiment: 'good', icon: 'sunset', params: {} });
   }
 
-  // Copertura totale
+  // Total cover
   if (f.overcast > 0.5) {
     notes.push({ code: 'overcast', sentiment: 'bad', icon: 'cloud', params: { total: Math.round(f.total) } });
   }
 
-  // Visibilità
+  // Visibility
   if (f.visFactor >= 0.85) {
     notes.push({ code: 'visGood', sentiment: 'good', icon: 'eye', params: { visKm } });
   } else if (f.visFactor < 0.4) {
     notes.push({ code: 'visBad', sentiment: 'bad', icon: 'cloud-fog', params: { visKm } });
   }
 
-  // Aerosol / particolato
+  // Aerosol / particulates
   if (f.aerosol !== null && f.aerosol !== undefined) {
     if (f.aerosolHaze >= 0.5) {
       notes.push({
@@ -213,7 +213,7 @@ export function explainScore(f) {
     }
   }
 
-  // Percorso della luce (solo se i campioni lontani sono disponibili)
+  // Light path (only if the far samples are available)
   if (f.pathClear !== null && f.pathClear !== undefined) {
     const clear = Math.round(f.pathClear * 100);
     if (f.pathClear < 0.45) {
@@ -221,12 +221,12 @@ export function explainScore(f) {
     } else if (f.pathClear < 0.8) {
       notes.push({ code: 'pathPartial', sentiment: 'neutral', icon: 'compass', params: { clear } });
     } else if (f.drama >= 0.4) {
-      // Via libera + nuvole "sceniche" locali: il deck può accendersi da sotto.
+      // Clear path + local "scenic" clouds: the deck can light up from below.
       notes.push({ code: 'pathClear', sentiment: 'good', icon: 'sunset', params: { clear } });
     }
   }
 
-  // Umidità
+  // Humidity
   if (f.humidityPenalty >= 0.6) {
     notes.push({ code: 'humidHigh', sentiment: 'bad', icon: 'droplet', params: { humidity: Math.round(f.humidity) } });
   } else if (f.humidityPenalty <= 0.1) {
@@ -237,16 +237,16 @@ export function explainScore(f) {
 }
 
 /**
- * Leve controfattuali: quanto salirebbe il punteggio se, DA SOLO, un
- * ingrediente mancante fosse ideale. Ogni leva è una patch MONOTONA delle
- * condizioni (min/max: mai suggerire un peggioramento; input già ideali →
- * guadagno 0 → filtrata). I guadagni sono indipendenti e NON si sommano.
- * Niente leva sulle nuvole medie: al 45% alzano il drama ma toccano anche
- * l'overcast (segno ambiguo) e il messaggio sarebbe confuso.
+ * Counterfactual levers: how much the score would rise if, ON ITS OWN, one
+ * missing ingredient were ideal. Each lever is a MONOTONE patch of the
+ * conditions (min/max: never suggest a worsening; already-ideal inputs →
+ * zero gain → filtered out). Gains are independent and do NOT add up.
+ * No lever on mid clouds: at 45% they raise drama but also touch the
+ * overcast (ambiguous sign) and the message would be confusing.
  *
  * @param {SunsetConditions} c
- * @returns {Array<{code:string, gain:number, target:number}>} per guadagno
- *          decrescente, solo guadagni ≥ 5 punti, al massimo 3 voci
+ * @returns {Array<{code:string, gain:number, target:number}>} by decreasing
+ *          gain, only gains ≥ 5 points, at most 3 entries
  */
 // Counterfactual levers as monotone condition patches (min/max: never suggest
 // a worsening; already-ideal inputs yield zero gain and get filtered out).

@@ -1,11 +1,11 @@
 const store = new Map();
 export const TTL = {
-  FORECAST: 30 * 60 * 1000, // meteo: serie oraria, refresh ~ogni ora
-  AIR: 30 * 60 * 1000, // qualità dell'aria: stessa volatilità
-  ELEVATION: 365 * 24 * 60 * 60 * 1000, // quota del terreno: immutabile
-  SPOTS: 6 * 60 * 60 * 1000, // POI OSM: quasi statici
-  GEOCODE: 30 * 24 * 60 * 60 * 1000, // coordinate di una località: statiche
-  REVERSE: 30 * 24 * 60 * 60 * 1000, // toponimo da coordinate: statico
+  FORECAST: 30 * 60 * 1000, // weather: hourly series, refreshes ~every hour
+  AIR: 30 * 60 * 1000, // air quality: same volatility
+  ELEVATION: 365 * 24 * 60 * 60 * 1000, // terrain elevation: immutable
+  SPOTS: 6 * 60 * 60 * 1000, // OSM POIs: nearly static
+  GEOCODE: 30 * 24 * 60 * 60 * 1000, // coordinates of a place: static
+  REVERSE: 30 * 24 * 60 * 60 * 1000, // place name from coordinates: static
 };
 
 export function coordKey(prefix, lat, lon, decimals = 3, extra = '') {

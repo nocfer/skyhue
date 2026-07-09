@@ -1,9 +1,9 @@
-// Test della cache in memoria (TTL + deduplica). Esegui con: node --test
+// Tests for the in-memory cache (TTL + dedup). Run with: node --test
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { cached, coordKey, clearCache, TTL, _setCacheBackend } from '../src/cache.js';
 
-/** Backend persistente fittizio (Map) per esercitare il livello L2. */
+/** Fake persistent backend (Map) to exercise the L2 layer. */
 function fakeBackend() {
   const m = new Map();
   return {
@@ -17,12 +17,12 @@ function fakeBackend() {
   };
 }
 
-test('coordKey arrotonda le coordinate e applica prefisso/suffisso', () => {
+test('coordKey rounds the coordinates and applies prefix/suffix', () => {
   assert.equal(coordKey('fc', 45.12345, 9.98765), 'fc:45.123,9.988');
   assert.equal(coordKey('spots', 45.12345, 9.98765, 2, '|25'), 'spots:45.12,9.99|25');
 });
 
-test('cached riusa il valore per la stessa chiave (producer chiamato una volta)', async () => {
+test('cached reuses the value for the same key (producer called once)', async () => {
   clearCache();
   let calls = 0;
   const producer = async () => ++calls;
@@ -33,7 +33,7 @@ test('cached riusa il valore per la stessa chiave (producer chiamato una volta)'
   assert.equal(calls, 1);
 });
 
-test('cached distingue chiavi diverse', async () => {
+test('cached distinguishes different keys', async () => {
   clearCache();
   let calls = 0;
   const producer = async () => ++calls;
@@ -42,7 +42,7 @@ test('cached distingue chiavi diverse', async () => {
   assert.equal(calls, 2);
 });
 
-test('ttl=0 fa scadere subito la voce (nessun riuso)', async () => {
+test('ttl=0 expires the entry immediately (no reuse)', async () => {
   clearCache();
   let calls = 0;
   const producer = async () => ++calls;
@@ -51,7 +51,7 @@ test('ttl=0 fa scadere subito la voce (nessun riuso)', async () => {
   assert.equal(calls, 2);
 });
 
-test('gli errori non vengono messi in cache: la chiamata successiva ritenta', async () => {
+test('errors are not cached: the next call retries', async () => {
   clearCache();
   let calls = 0;
   const producer = async () => {
@@ -65,15 +65,15 @@ test('gli errori non vengono messi in cache: la chiamata successiva ritenta', as
   assert.equal(calls, 2);
 });
 
-test('IndexedDB (L2): serve il valore dopo lo svuotamento della memoria', async () => {
+test('IndexedDB (L2): serves the value after the memory is cleared', async () => {
   clearCache();
   const be = fakeBackend();
   _setCacheBackend(be);
   let calls = 0;
   const producer = async () => ++calls;
   const a = await cached('k', TTL.FORECAST, producer); // producer → L1 + L2
-  clearCache(); // svuota solo la memoria (L1)
-  const b = await cached('k', TTL.FORECAST, producer); // hit da L2
+  clearCache(); // clears only the memory (L1)
+  const b = await cached('k', TTL.FORECAST, producer); // hit from L2
   assert.equal(a, 1);
   assert.equal(b, 1);
   assert.equal(calls, 1);
@@ -81,7 +81,7 @@ test('IndexedDB (L2): serve il valore dopo lo svuotamento della memoria', async 
   _setCacheBackend(null);
 });
 
-test('IndexedDB (L2): una voce scaduta non viene servita', async () => {
+test('IndexedDB (L2): an expired entry is not served', async () => {
   clearCache();
   const be = fakeBackend();
   be._m.set('k', { value: 'vecchio', expires: Date.now() - 1000 });
@@ -96,7 +96,7 @@ test('IndexedDB (L2): una voce scaduta non viene servita', async () => {
   _setCacheBackend(null);
 });
 
-test('IndexedDB (L2): un errore di lettura ricade sul producer', async () => {
+test('IndexedDB (L2): a read error falls back to the producer', async () => {
   clearCache();
   _setCacheBackend({
     get: async () => {

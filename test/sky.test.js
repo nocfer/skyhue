@@ -1,4 +1,4 @@
-// Test della generazione della palette del cielo. Esegui con: node --test
+// Tests for the sky palette generation. Run with: node --test
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { skyGradient, skyGradientCss } from '../src/sky.js';
@@ -22,7 +22,7 @@ const overcast = computeSunsetScore({
   humidity: 90,
 });
 
-test('skyGradient restituisce 4 stop', () => {
+test('skyGradient returns 4 stops', () => {
   const stops = skyGradient(vivid.factors, vivid.score);
   assert.equal(stops.length, 4);
   for (const s of stops) {
@@ -32,7 +32,7 @@ test('skyGradient restituisce 4 stop', () => {
   }
 });
 
-test('un cielo coperto è meno saturo di uno vivido', () => {
+test('an overcast sky is less saturated than a vivid one', () => {
   const avgSat = (r) =>
     skyGradient(r.factors, r.score).reduce((a, s) => a + s.s, 0) / 4;
   assert.ok(
@@ -41,7 +41,7 @@ test('un cielo coperto è meno saturo di uno vivido', () => {
   );
 });
 
-test('skyGradientCss produce un linear-gradient valido', () => {
+test('skyGradientCss produces a valid linear-gradient', () => {
   const css = skyGradientCss(skyGradient(vivid.factors, vivid.score));
   assert.match(css, /^linear-gradient\(180deg, hsl\(/);
   assert.ok(css.includes('0%') && css.includes('100%'));

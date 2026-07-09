@@ -7,7 +7,10 @@ from a CDN at runtime.
 
 - Run locally: `python3 -m http.server 8000` (or any static server), open the page.
 - Test: `npm test` (Node's built-in test runner).
-- Commit messages: **English** (code and comments are Italian — keep them Italian).
+- **Everything in the codebase is English** — code, comments, commit messages,
+  test descriptions. The only Italian allowed is user-facing content: the `it`
+  dictionary values in `src/i18n.js` and the IT fallback copy in `index.html`.
+  Never add Italian comments.
 
 ## Architecture (read before editing UI)
 

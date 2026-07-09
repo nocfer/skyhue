@@ -1,4 +1,4 @@
-// Test dell'algoritmo del Sunset Score. Esegui con: node --test
+// Tests for the Sunset Score algorithm. Run with: node --test
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
@@ -12,19 +12,19 @@ import {
   scoreCeiling,
 } from '../src/score.js';
 
-test('clamp limita ai bordi', () => {
+test('clamp limits to the bounds', () => {
   assert.equal(clamp(5, 0, 10), 5);
   assert.equal(clamp(-1, 0, 10), 0);
   assert.equal(clamp(99, 0, 10), 10);
 });
 
-test('bellReward è massima al valore ideale', () => {
+test('bellReward is maximal at the ideal value', () => {
   assert.equal(bellReward(50, 50, 30), 1);
   assert.ok(bellReward(50, 50, 30) > bellReward(90, 50, 30));
   assert.ok(bellReward(10, 50, 30) > 0);
 });
 
-test('cielo terso e limpido dà un punteggio decente ma non eccezionale', () => {
+test('a crisp, clear sky gives a decent but not exceptional score', () => {
   const { score } = computeSunsetScore({
     cloudCover: 0,
     cloudCoverLow: 0,
@@ -36,7 +36,7 @@ test('cielo terso e limpido dà un punteggio decente ma non eccezionale', () => 
   assert.ok(score >= 45 && score <= 65, `atteso ~55, ottenuto ${score}`);
 });
 
-test('cirri parziali con orizzonte libero danno un ottimo punteggio', () => {
+test('partial cirrus with a free horizon gives an excellent score', () => {
   const { score } = computeSunsetScore({
     cloudCover: 45,
     cloudCoverLow: 5,
@@ -48,7 +48,7 @@ test('cirri parziali con orizzonte libero danno un ottimo punteggio', () => {
   assert.ok(score >= 75, `atteso alto, ottenuto ${score}`);
 });
 
-test('nuvole basse fitte affossano il punteggio', () => {
+test('thick low clouds sink the score', () => {
   const { score } = computeSunsetScore({
     cloudCover: 95,
     cloudCoverLow: 95,
@@ -60,7 +60,7 @@ test('nuvole basse fitte affossano il punteggio', () => {
   assert.ok(score < 25, `atteso basso, ottenuto ${score}`);
 });
 
-test('cielo completamente coperto penalizza fortemente', () => {
+test('a fully overcast sky penalizes heavily', () => {
   const { score } = computeSunsetScore({
     cloudCover: 100,
     cloudCoverLow: 20,
@@ -72,9 +72,9 @@ test('cielo completamente coperto penalizza fortemente', () => {
   assert.ok(score < 30, `atteso basso per overcast, ottenuto ${score}`);
 });
 
-test('i cirri alti, anche fitti, non contano come overcast', () => {
-  // Cielo pieno di cirri alti (90%) ma senza deck basso/medio: è lo scenario
-  // migliore, NON deve subire la penalità "cielo coperto".
+test('high cirrus, even thick, does not count as overcast', () => {
+  // Sky full of high cirrus (90%) but no low/mid deck: this is the best
+  // scenario and must NOT take the "overcast sky" penalty.
   const { factors, score } = computeSunsetScore({
     cloudCover: 90,
     cloudCoverLow: 0,
@@ -84,7 +84,7 @@ test('i cirri alti, anche fitti, non contano come overcast', () => {
     humidity: 45,
   });
   assert.equal(factors.overcast, 0, `overcast atteso 0, ottenuto ${factors.overcast}`);
-  // Deve battere nettamente lo stesso cielo ma con un deck medio opaco.
+  // It must clearly beat the same sky but with an opaque mid deck.
   const conDeck = computeSunsetScore({
     cloudCover: 90,
     cloudCoverLow: 10,
@@ -97,7 +97,7 @@ test('i cirri alti, anche fitti, non contano come overcast', () => {
   assert.ok(score > conDeck.score, `cirri (${score}) devono battere deck (${conDeck.score})`);
 });
 
-test('il punteggio resta sempre in [0,100]', () => {
+test('the score always stays in [0,100]', () => {
   for (const v of [0, 50, 100]) {
     const { score } = computeSunsetScore({
       cloudCover: v,
@@ -111,13 +111,13 @@ test('il punteggio resta sempre in [0,100]', () => {
   }
 });
 
-test('scoreLabel restituisce i codici della scala', () => {
+test('scoreLabel returns the scale codes', () => {
   assert.equal(scoreLabel(90), 'exceptional');
   assert.equal(scoreLabel(60), 'good');
   assert.equal(scoreLabel(10), 'poor');
 });
 
-test('l’aerosol è opzionale e non cambia il punteggio se assente', () => {
+test('aerosol is optional and does not change the score when absent', () => {
   const base = {
     cloudCover: 45,
     cloudCoverLow: 5,
@@ -126,12 +126,12 @@ test('l’aerosol è opzionale e non cambia il punteggio se assente', () => {
     visibility: 22000,
     humidity: 45,
   };
-  const senza = computeSunsetScore(base).score;
-  const conNeutro = computeSunsetScore({ ...base, aerosol: null, pm25: null }).score;
-  assert.equal(senza, conNeutro);
+  const without = computeSunsetScore(base).score;
+  const withNeutral = computeSunsetScore({ ...base, aerosol: null, pm25: null }).score;
+  assert.equal(without, withNeutral);
 });
 
-test('foschia da particolato elevato abbassa il punteggio', () => {
+test('haze from high particulate lowers the score', () => {
   const base = {
     cloudCover: 45,
     cloudCoverLow: 5,
@@ -145,7 +145,7 @@ test('foschia da particolato elevato abbassa il punteggio', () => {
   assert.ok(foschia < pulito, `foschia (${foschia}) dovrebbe essere < pulito (${pulito})`);
 });
 
-test('aerosol moderato dà un piccolo bonus rispetto ad aria quasi assente', () => {
+test('moderate aerosol gives a small bonus over nearly absent air', () => {
   const base = {
     cloudCover: 40,
     cloudCoverLow: 5,
@@ -159,7 +159,7 @@ test('aerosol moderato dà un piccolo bonus rispetto ad aria quasi assente', () 
   assert.ok(moderato >= quasiZero, `moderato (${moderato}) >= quasiZero (${quasiZero})`);
 });
 
-test('explainScore segnala le nuvole basse come negative', () => {
+test('explainScore flags low clouds as negative', () => {
   const { factors } = computeSunsetScore({
     cloudCover: 80,
     cloudCoverLow: 70,
@@ -176,38 +176,38 @@ test('explainScore segnala le nuvole basse come negative', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Percorso della luce (lightPathFactor + gate pathClear)
+// Light path (lightPathFactor + pathClear gate)
 // ---------------------------------------------------------------------------
 
-/** Campione sereno a una data distanza. */
+/** Clear sample at a given distance. */
 const sereno = (distKm) => ({ distKm, cloudCoverLow: 0, cloudCoverMid: 0, cloudCoverHigh: 0 });
-/** Muro di nuvole basse a una data distanza. */
+/** Wall of low clouds at a given distance. */
 const muro = (distKm) => ({ distKm, cloudCoverLow: 100, cloudCoverMid: 0, cloudCoverHigh: 0 });
 
-test('lightPathFactor è null con meno di 2 campioni validi', () => {
+test('lightPathFactor is null with fewer than 2 valid samples', () => {
   assert.equal(lightPathFactor([]), null);
   assert.equal(lightPathFactor([sereno(90)]), null);
-  assert.equal(lightPathFactor([sereno(90), { distKm: 160 }]), null); // senza coperture
+  assert.equal(lightPathFactor([sereno(90), { distKm: 160 }]), null); // no cover data
   assert.equal(lightPathFactor(null), null);
 });
 
-test('lightPathFactor con cielo sereno lungo tutto il raggio è ~1', () => {
+test('lightPathFactor with a clear sky along the whole ray is ~1', () => {
   const clear = lightPathFactor([sereno(40), sereno(90), sereno(160), sereno(250)]);
   assert.ok(clear > 0.95, `atteso > 0.95, ottenuto ${clear}`);
 });
 
-test('un muro di nuvole basse a 90 km abbassa molto la trasparenza', () => {
+test('a wall of low clouds at 90 km lowers the transparency a lot', () => {
   const clear = lightPathFactor([sereno(40), muro(90), sereno(160), sereno(250)]);
   assert.ok(clear < 0.6, `atteso < 0.6, ottenuto ${clear}`);
 });
 
-test('un muro lontano (250 km) pesa più di uno vicino (90 km)', () => {
+test('a far wall (250 km) weighs more than a near one (90 km)', () => {
   const vicino = lightPathFactor([sereno(40), muro(90), sereno(160), sereno(250)]);
   const lontano = lightPathFactor([sereno(40), sereno(90), sereno(160), muro(250)]);
   assert.ok(lontano < vicino, `lontano (${lontano}) dovrebbe essere < vicino (${vicino})`);
 });
 
-test('i cirri lontani sono traslucidi: penalità lieve', () => {
+test('far cirrus is translucent: mild penalty', () => {
   const clear = lightPathFactor([
     sereno(40),
     sereno(90),
@@ -217,7 +217,7 @@ test('i cirri lontani sono traslucidi: penalità lieve', () => {
   assert.ok(clear >= 0.75, `atteso >= 0.75, ottenuto ${clear}`);
 });
 
-test('lightPathFactor è monotono nella copertura', () => {
+test('lightPathFactor is monotone in the cover', () => {
   const mk = (low) => [
     sereno(40),
     { distKm: 90, cloudCoverLow: low, cloudCoverMid: 0, cloudCoverHigh: 0 },
@@ -228,7 +228,7 @@ test('lightPathFactor è monotono nella copertura', () => {
   assert.ok(lightPathFactor(mk(40)) < lightPathFactor(mk(10)));
 });
 
-test('pathClear è opzionale: null o 1 non cambiano il punteggio', () => {
+test('pathClear is optional: null or 1 do not change the score', () => {
   const base = {
     cloudCover: 45,
     cloudCoverLow: 5,
@@ -237,12 +237,12 @@ test('pathClear è opzionale: null o 1 non cambiano il punteggio', () => {
     visibility: 22000,
     humidity: 45,
   };
-  const senza = computeSunsetScore(base).score;
-  assert.equal(computeSunsetScore({ ...base, pathClear: null }).score, senza);
-  assert.equal(computeSunsetScore({ ...base, pathClear: 1 }).score, senza);
+  const without = computeSunsetScore(base).score;
+  assert.equal(computeSunsetScore({ ...base, pathClear: null }).score, without);
+  assert.equal(computeSunsetScore({ ...base, pathClear: 1 }).score, without);
 });
 
-test('un percorso della luce bloccato abbassa il punteggio', () => {
+test('a blocked light path lowers the score', () => {
   const base = {
     cloudCover: 45,
     cloudCoverLow: 5,
@@ -258,7 +258,7 @@ test('un percorso della luce bloccato abbassa il punteggio', () => {
   assert.ok(muroTotale > 0 && muroTotale <= 100);
 });
 
-test('explainScore segnala il percorso bloccato come negativo', () => {
+test('explainScore flags the blocked path as negative', () => {
   const { factors } = computeSunsetScore({
     cloudCover: 45,
     cloudCoverLow: 5,
@@ -274,7 +274,7 @@ test('explainScore segnala il percorso bloccato come negativo', () => {
   assert.equal(nota.params.clear, 20);
 });
 
-test('explainScore: via libera è una nota positiva solo con drama locale', () => {
+test('explainScore: a clear path is a positive note only with local drama', () => {
   const conDrama = computeSunsetScore({
     cloudCover: 45,
     cloudCoverLow: 5,
@@ -298,7 +298,7 @@ test('explainScore: via libera è una nota positiva solo con drama locale', () =
   assert.ok(!explainScore(senzaDrama).some((n) => n.code.startsWith('path')));
 });
 
-test('explainScore: trasparenza intermedia dà una nota neutra', () => {
+test('explainScore: intermediate transparency gives a neutral note', () => {
   const { factors } = computeSunsetScore({
     cloudCover: 45,
     cloudCoverLow: 5,
@@ -313,7 +313,7 @@ test('explainScore: trasparenza intermedia dà una nota neutra', () => {
   assert.equal(nota.sentiment, 'neutral');
 });
 
-test('senza dato di percorso non compaiono note path*', () => {
+test('without path data no path* notes appear', () => {
   const { factors } = computeSunsetScore({
     cloudCover: 45,
     cloudCoverLow: 5,
@@ -326,10 +326,10 @@ test('senza dato di percorso non compaiono note path*', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Leve controfattuali (scoreUpside): cosa manca per un punteggio più alto
+// Counterfactual levers (scoreUpside): what's missing for a higher score
 // ---------------------------------------------------------------------------
 
-test('scoreUpside: cielo sereno → i cirri sono la leva principale', () => {
+test('scoreUpside: clear sky → cirrus is the main lever', () => {
   const upside = scoreUpside({
     cloudCover: 0,
     cloudCoverLow: 0,
@@ -343,7 +343,7 @@ test('scoreUpside: cielo sereno → i cirri sono la leva principale', () => {
   assert.ok(upside[0].gain >= 15, `atteso gain >= 15, ottenuto ${upside[0].gain}`);
 });
 
-test('scoreUpside: nuvole basse dominanti → orizzonte libero in testa', () => {
+test('scoreUpside: dominant low clouds → free horizon on top', () => {
   const upside = scoreUpside({
     cloudCover: 80,
     cloudCoverLow: 70,
@@ -356,7 +356,7 @@ test('scoreUpside: nuvole basse dominanti → orizzonte libero in testa', () => 
   assert.ok(upside[0].gain >= 30);
 });
 
-test('scoreUpside: condizioni ideali → nessuna leva', () => {
+test('scoreUpside: ideal conditions → no levers', () => {
   const upside = scoreUpside({
     cloudCover: 50,
     cloudCoverLow: 0,
@@ -371,7 +371,7 @@ test('scoreUpside: condizioni ideali → nessuna leva', () => {
   assert.deepEqual(upside, []);
 });
 
-test('scoreUpside: la leva path esiste solo col dato presente', () => {
+test('scoreUpside: the path lever only exists when the datum is present', () => {
   const base = {
     cloudCover: 50,
     cloudCoverLow: 0,
@@ -380,13 +380,13 @@ test('scoreUpside: la leva path esiste solo col dato presente', () => {
     visibility: 24000,
     humidity: 45,
   };
-  const con = scoreUpside({ ...base, pathClear: 0.2 });
-  assert.ok(con.some((l) => l.code === 'path'), 'attesa la leva path');
-  const senza = scoreUpside(base);
-  assert.ok(!senza.some((l) => l.code === 'path'));
+  const withPath = scoreUpside({ ...base, pathClear: 0.2 });
+  assert.ok(withPath.some((l) => l.code === 'path'), 'path lever expected');
+  const without = scoreUpside(base);
+  assert.ok(!without.some((l) => l.code === 'path'));
 });
 
-test('scoreUpside: la leva haze è monotona e richiede il dato', () => {
+test('scoreUpside: the haze lever is monotone and requires the datum', () => {
   const base = {
     cloudCover: 50,
     cloudCoverLow: 0,
@@ -395,15 +395,15 @@ test('scoreUpside: la leva haze è monotona e richiede il dato', () => {
     visibility: 24000,
     humidity: 45,
   };
-  // Senza aerosol/pm25 la leva non esiste.
+  // Without aerosol/pm25 the lever does not exist.
   assert.ok(!scoreUpside(base).some((l) => l.code === 'haze'));
-  // Aria "troppo pulita": la patch min() non deve suggerire di AGGIUNGERE pulviscolo.
+  // "Too clean" air: the min() patch must not suggest ADDING particulate.
   assert.ok(!scoreUpside({ ...base, aerosol: 0.02, pm25: 3 }).some((l) => l.code === 'haze'));
-  // Foschia pesante: la leva compare.
+  // Heavy haze: the lever appears.
   assert.ok(scoreUpside({ ...base, aerosol: 0.9, pm25: 80 }).some((l) => l.code === 'haze'));
 });
 
-test('scoreUpside: guadagni positivi, coerenti, ordinati e al massimo 3', () => {
+test('scoreUpside: gains positive, consistent, sorted and at most 3', () => {
   const cond = {
     cloudCover: 60,
     cloudCoverLow: 45,

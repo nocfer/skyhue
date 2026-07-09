@@ -110,7 +110,7 @@ export function spotVerdict(kind, horizon) {
  * @returns {Array<{lat:number, lon:number}>}
  */
 export function gridCandidates(lat, lon, radiusKm = 20, perSide = 9) {
-  const step = (2 * radiusKm) / (perSide - 1); // km tra i punti
+  const step = (2 * radiusKm) / (perSide - 1); // km between points
   const half = (perSide - 1) / 2;
   const cosLat = Math.max(0.2, Math.cos(lat * DEG));
   const pts = [];
@@ -126,15 +126,15 @@ export function gridCandidates(lat, lon, radiusKm = 20, perSide = 9) {
 }
 
 /**
- * Pre-selezione dei candidati della griglia dalle sole quote: esclude i punti
- * in mare, premia quelli su terra vicino alla costa (un vicino è a livello del
- * mare) e leggermente quelli più elevati. Restituisce i punti con `prescore`.
+ * Pre-selects the grid candidates from elevations alone: excludes points at
+ * sea, rewards those on land near the coast (a neighbor is at sea level) and
+ * slightly the higher ones. Returns the points with a `prescore`.
  * @param {Array<{lat,lon}>} points
- * @param {number[]} elevations quote allineate ai punti
- * @param {number} stepKm passo della griglia
+ * @param {number[]} elevations elevations aligned with the points
+ * @param {number} stepKm grid step
  */
 export function prescoreGrid(points, elevations, stepKm) {
-  const sea = 1; // m: soglia "mare / livello del mare"
+  const sea = 1; // m: "sea / sea level" threshold
   const pts = points.map((p, i) => ({ ...p, elev: elevations[i] ?? null }));
   return pts.map((p) => {
     if (p.elev == null || p.elev <= sea) return { ...p, coastal: false, prescore: -Infinity };
@@ -152,15 +152,15 @@ export function prescoreGrid(points, elevations, stepKm) {
 }
 
 /**
- * Scarica le quote (m) per una lista di punti, in un'unica chiamata batch.
+ * Fetches the elevations (m) for a list of points, in a single batch call.
  * @param {Array<{lat:number, lon:number}>} points
- * @returns {Promise<number[]>} quote allineate ai punti
+ * @returns {Promise<number[]>} elevations aligned with the points
  */
 export async function fetchElevations(points, { signal } = {}) {
   if (!points.length) return [];
   const lats = points.map((p) => p.lat.toFixed(5)).join(',');
   const lons = points.map((p) => p.lon.toFixed(5)).join(',');
-  // La quota del terreno è immutabile: la lista di punti è già una chiave stabile.
+  // Terrain elevation is immutable: the point list is already a stable key.
   return cached(`elev:${lats}|${lons}`, TTL.ELEVATION, async () => {
     const url = `https://api.open-meteo.com/v1/elevation?latitude=${lats}&longitude=${lons}`;
     const res = await fetch(url, { signal });
@@ -170,7 +170,7 @@ export async function fetchElevations(points, { signal } = {}) {
   });
 }
 
-// Tipi di punto che consideriamo, con etichetta e icona.
+// Spot kinds we consider, with label and icon.
 const KINDS = {
   viewpoint: { labelKey: 'kind.viewpoint', icon: 'eye' },
   lighthouse: { labelKey: 'kind.lighthouse', icon: 'lighthouse' },
@@ -188,7 +188,7 @@ function classify(tags = {}) {
   if (tags.natural === 'cliff') return 'cliff';
   if (tags.natural === 'peak') return 'peak';
   if (tags.natural === 'beach') return 'beach';
-  // Punti nominati (es. "Punta Ferro") spesso mappati solo come place=locality.
+  // Named points (e.g. "Punta Ferro") often mapped only as place=locality.
   const n = (tags.name || '').toLowerCase();
   if (/^(punta|capo|cabo)\b/.test(n)) return 'cape';
   if (/^(faro|torre)\b/.test(n)) return 'lighthouse';
@@ -202,17 +202,17 @@ export function kindInfo(kind) {
 }
 
 /**
- * Scarica i punti panoramici entro `radiusKm` da una posizione.
+ * Fetches the scenic spots within `radiusKm` of a position.
  * @returns {Promise<Array<{id,lat,lon,name,kind}>>}
  */
 export async function fetchSunsetSpots(lat, lon, radiusKm = 25, { signal } = {}) {
   const r = Math.round(radiusKm * 1000);
-  // I POI sono quasi statici: chiave su coordinate arrotondate (~1 km) + raggio,
-  // così tap ravvicinati riusano la stessa risposta Overpass (query costosa).
+  // POIs are nearly static: key on rounded coordinates (~1 km) + radius, so
+  // taps close together reuse the same Overpass response (expensive query).
   const key = coordKey('spots', lat, lon, 2, `|${radiusKm}`);
   return cached(key, TTL.SPOTS, async () => {
-    // `nwr` + `out center` includono anche punti mappati come aree (spiagge,
-    // promontori), non solo come nodi.
+    // `nwr` + `out center` also include points mapped as areas (beaches,
+    // headlands), not just as nodes.
     const q = `[out:json][timeout:25];
 (
   nwr["tourism"="viewpoint"](around:${r},${lat},${lon});
@@ -236,7 +236,7 @@ out center 90;`;
           id: e.id,
           lat: lat2,
           lon: lon2,
-          name: e.tags?.name || null, // se manca il nome OSM, la UI usa l'etichetta del tipo
+          name: e.tags?.name || null, // if the OSM name is missing, the UI uses the kind label
           kind,
         };
       })
@@ -245,10 +245,11 @@ out center 90;`;
 }
 
 /**
- * Pipeline completa "punti suggeriti attorno a un punto": scarica i punti OSM,
- * pre-seleziona per vicinanza/direzione al sole, ne valuta l'affaccio campionando
- * le quote lungo il raggio, e restituisce i migliori ordinati per qualità.
- * Autonoma (origine = lat/lon passati), così è riusabile dalla schermata mappa.
+ * Full "suggested spots around a point" pipeline: fetches the OSM points,
+ * pre-selects by distance/direction to the sun, evaluates their view by
+ * sampling elevations along the ray, and returns the best ones sorted by
+ * quality. Self-contained (origin = the given lat/lon), so it's reusable
+ * from the map screen.
  * @returns {Promise<Array<{lat,lon,name,kind,dist,dir,driveMin,elev,verdict,finalScore}>>}
  */
 export async function nearbySpots(
@@ -260,7 +261,7 @@ export async function nearbySpots(
   const raw = await fetchSunsetSpots(lat, lon, radiusKm, { signal });
   if (!raw.length) return [];
 
-  // Pre-selezione per costo: vicinanza, con penalità ai lontani "dal lato sbagliato".
+  // Pre-selection by cost: distance, penalizing far-away ones "on the wrong side".
   const nearest = raw
     .map((s) => {
       const dist = distanceKm(lat, lon, s.lat, s.lon);
@@ -271,7 +272,7 @@ export async function nearbySpots(
     .sort((a, b) => a.cost - b.cost)
     .slice(0, evaluate);
 
-  // Campiona il terreno lungo il raggio verso il sole (una sola chiamata batch).
+  // Sample the terrain along the ray towards the sun (a single batch call).
   const points = [];
   for (const s of nearest) {
     for (const d of SAMPLE_DISTANCES) {
@@ -282,8 +283,8 @@ export async function nearbySpots(
   try {
     elevations = await fetchElevations(points, { signal });
   } catch (err) {
-    if (err?.name === 'AbortError') throw err; // valutazione superata: propaga
-    console.warn('Quote non disponibili per i punti vicini:', err);
+    if (err?.name === 'AbortError') throw err; // evaluation superseded: propagate
+    console.warn('Elevations not available for nearby spots:', err);
   }
 
   const n = SAMPLE_DISTANCES.length;
@@ -315,12 +316,12 @@ export async function nearbySpots(
 }
 
 /**
- * Reverse geocoding via Nominatim: dato lat/lon restituisce un toponimo breve
- * (frazione/paese/quartiere o elemento naturale), o null se non disponibile.
- * Usare con parsimonia (policy ~1 req/s): solo per pochi punti.
+ * Reverse geocoding via Nominatim: given lat/lon returns a short place name
+ * (hamlet/village/neighbourhood or natural feature), or null if unavailable.
+ * Use sparingly (~1 req/s policy): only for a handful of points.
  */
 export async function reverseGeocode(lat, lon, lang = 'it') {
-  // Toponimo statico + Nominatim ha policy ~1 req/s: cache lunga, persistente.
+  // Place names are static + Nominatim has a ~1 req/s policy: long, persistent cache.
   return cached(coordKey('rev', lat, lon, 5, `|${lang}`), TTL.REVERSE, async () => {
     const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat.toFixed(
       5
@@ -344,7 +345,7 @@ export async function reverseGeocode(lat, lon, lang = 'it') {
   });
 }
 
-/** Esegue una query Overpass provando gli endpoint in sequenza (form-urlencoded). */
+/** Runs an Overpass query trying the endpoints in sequence (form-urlencoded). */
 async function overpassQuery(q, signal) {
   let lastErr;
   for (const endpoint of OVERPASS_ENDPOINTS) {
@@ -358,8 +359,8 @@ async function overpassQuery(q, signal) {
       if (!res.ok) throw new Error(`Overpass ${res.status}`);
       return await res.json();
     } catch (err) {
-      // Valutazione annullata (nuovo tap): interrompi subito, non ripiegare
-      // sull'endpoint successivo.
+      // Evaluation cancelled (new tap): stop right away, don't fall back
+      // to the next endpoint.
       if (err?.name === 'AbortError' || signal?.aborted) throw err;
       lastErr = err;
     }
