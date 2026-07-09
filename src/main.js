@@ -658,6 +658,7 @@ function heroHtml({ eventDate, score, event }) {
   return `
     <header class="rhero" style="--hue:${scoreHue(score)}">
       <div class="rhero__sky" style="filter:saturate(${satu}) brightness(${bright})"></div>
+      <div class="grain" aria-hidden="true"></div>
       <div class="rhero__melt"></div>
       <span class="rhero__sun" aria-hidden="true"></span>
       <div class="rhero__top">
@@ -1135,12 +1136,16 @@ function renderResults(data, scored) {
       ${introHtml(data)}
       ${eventToggleHtml()}
       ${weekRibbonHtml(scored, bannerBest ? bannerBest.d.dayIndex : null)}
-      ${whyHtml(data)}
-      ${hourlyHtml(data, tw, event)}
-      ${conditionsHtml(data.cond)}
-      ${lookAtHtml(sun, tw, event)}
-      ${spotsSectionHtml(place, sun, data.factors)}
-      ${pointHtml(data)}
+      <div class="rcol rcol--a">
+        ${whyHtml(data)}
+        ${lookAtHtml(sun, tw, event)}
+        ${pointHtml(data)}
+      </div>
+      <div class="rcol rcol--b">
+        ${hourlyHtml(data, tw, event)}
+        ${conditionsHtml(data.cond)}
+        ${spotsSectionHtml(place, sun, data.factors)}
+      </div>
       <footer class="rfoot"><p data-i18n-html="foot.credits">${t('foot.credits')}</p></footer>
     </div>`;
 
@@ -1422,6 +1427,7 @@ function openShareSheet(data) {
       <span class="sheet__handle" aria-hidden="true"></span>
       <h2 class="sheet__title display">${t('share.title.' + event)}</h2>
       <div class="sharecard" style="background:${skyCss}">
+        <div class="grain" aria-hidden="true"></div>
         <span class="sharecard__brand">${icon('sunset', { size: 15 })} SkyHue</span>
         ${scoreNumeral(score, { size: 'xl', color: '#fff', cls: 'sharecard__score' })}
         <span class="sharecard__label display">${label}</span>

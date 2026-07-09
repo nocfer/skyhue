@@ -35,15 +35,17 @@
   --card: rgba(255, 255, 255, 0.05); /* card fill */
   --card-2: rgba(255, 255, 255, 0.035); /* quieter cards */
   --card-shadow: none; /* card elevation (light theme only) */
-  --hairline: rgba(255, 255, 255, 0.1); /* borders */
+  --card-shadow-dim: none; /* quieter-card elevation (light theme only) */
+  --hairline: rgba(255, 255, 255, 0.06); /* borders (v3 hairline) */
   --divider: rgba(255, 255, 255, 0.08); /* section dividers */
 
   --text: #f6efe8; /* primary text */
   --muted: #8f8189; /* secondary text */
   --muted-2: #c9bfc4; /* tertiary text */
-  --faint: #6f6570; /* mono notes / captions */
+  --faint: #837784; /* mono notes / captions (v3 contrast fix, was #6f6570) */
 
   --accent: #ff8a52; /* primary action, accent icons */
+  --link-text: var(--accent); /* orange AS TEXT links (darkens in light theme) */
   --ink: #150d0a; /* text on accent/gold fills */
 
   --score-text: #ffce6f; /* gold AS TEXT (numerals, labels) */
@@ -54,6 +56,8 @@
   --sentiment-good: #ffce6f; /* good bar/tile (surface, always warm) */
   --sentiment-neutral: #9c9086; /* neutral bar */
   --sentiment-bad: #d85a3c; /* bad bar */
+  --graphite: #6f6570; /* baseline bar segment — GRAPHIC use of the old dim hex */
+  --bar-track: rgba(255, 255, 255, 0.06); /* segment/meter bar background */
 
   /* --- §1.1 Imagery (IDENTICAL in both themes — never inverted) ----------- */
   --sky-hero: linear-gradient(
@@ -82,8 +86,24 @@
   --blue-chip-bg: rgba(110, 160, 255, 0.16);
   --blue-chip-bd: #6ea0ff;
 
-  /* Glass for map controls (over the dark canvas). */
-  --map-glass: hsl(280 20% 8% / 0.82);
+  /* Glass for map controls: IMAGERY — sits on the theme-invariant dark map
+     canvas, so it stays dark (with light text) in BOTH themes (v3 TOKENS). */
+  --map-glass: hsl(280 18% 9% / 0.82);
+  --map-glass-text: #f6efe8;
+  --map-glass-muted: rgba(246, 239, 232, 0.7);
+
+  /* Floating search card over the home hero seam (mock 2a). */
+  --search-glass: rgba(40, 28, 44, 0.92);
+  --search-border: rgba(255, 255, 255, 0.1);
+
+  /* Primary CTA depth (v3 premium pass): vertical gradient + inset top
+     highlight + soft colored drop shadow. */
+  --cta-grad: linear-gradient(180deg, #ffa06b 0%, #ff8a52 55%, #f8763c 100%);
+  --cta-inset: rgba(255, 255, 255, 0.35);
+  --cta-shadow: 0 10px 24px -10px rgba(255, 138, 82, 0.55);
+
+  /* Modal scrim behind compare/share (dimmed + blurred results). */
+  --scrim: rgba(8, 5, 10, 0.62);
 
   /* --- §1.4 Typography (one family per role) ----------------------------- */
   --font-display: 'Bricolage Grotesque', system-ui, sans-serif;
@@ -153,28 +173,43 @@
   --surface: #ffffff;
   --card: #ffffff;
   --card-2: #fbf7f2;
-  --card-shadow: 0 6px 22px -12px rgba(90, 45, 20, 0.22);
-  --hairline: rgba(0, 0, 0, 0.1);
+  --card-shadow: 0 4px 14px -8px rgba(90, 45, 20, 0.12);
+  --card-shadow-dim: 0 3px 10px -8px rgba(90, 45, 20, 0.08);
+  --hairline: rgba(42, 31, 38, 0.05);
   --divider: rgba(0, 0, 0, 0.08);
 
   --text: #2a1f26;
-  --muted: #8a7c82;
+  --muted: #796d72; /* v3 contrast fix, was #8a7c82 */
   --muted-2: #7c6e74;
-  --faint: #9b8f88;
+  --faint: #827872; /* v3 contrast fix, was #9b8f88 */
 
   --accent: #ee6d3a;
+  --link-text: #be572e; /* orange AS TEXT (4.6:1) — buttons/icons keep --accent */
   --ink: #150d0a;
 
-  --score-text: #c0801a;
+  --score-text: #9d6915; /* v3 amber-ramp consolidation, was #c0801a */
   --score-text-hi: #b8791a;
-  --good-text: #b57a15;
+  --good-text: #9d6915; /* merged into the consolidated amber (was #b57a15) */
   --bad-text: #c0472a;
 
   --sentiment-good: #f2b44e;
   --sentiment-neutral: #9c9086;
-  --sentiment-bad: #d85a3c;
+  --sentiment-bad: #c14f2e; /* v3 TOKENS light "bad" */
+  --graphite: #9b8f88;
+  --bar-track: rgba(0, 0, 0, 0.05);
 
-  --map-glass: hsl(38 50% 98% / 0.85);
+  /* Light-hour chip TEXT darkens for contrast (borders/bg tints stay). */
+  --golden-chip-fg: #a75d1b;
+  --blue-chip-fg: #3f6fd6;
+
+  --search-glass: rgba(255, 255, 255, 0.92);
+  --search-border: rgba(0, 0, 0, 0.1);
+
+  --cta-grad: linear-gradient(180deg, #f68a58 0%, #ee6d3a 55%, #e25f2b 100%);
+  --cta-inset: rgba(255, 255, 255, 0.4);
+  --cta-shadow: 0 10px 24px -10px rgba(238, 109, 58, 0.5);
+
+  --scrim: rgba(52, 32, 30, 0.3);
 }
 
 * {
@@ -283,11 +318,25 @@ body {
   left: var(--s-1);
   top: var(--s-1);
   padding: 1px 5px;
-  border-radius: var(--r-pill);
+  border-radius: 5px;
   background: rgba(0, 0, 0, 0.4);
   color: #fff;
-  font-size: 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.52rem;
   letter-spacing: 0.1em;
+}
+
+/* §2.10 Grain — SVG noise overlay for every sky-gradient surface (results
+   hero, home hero, share preview). Kills gradient banding (v3 premium pass).
+   Parent must be position:relative + overflow:hidden. */
+.grain {
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 160px 160px;
+  opacity: 0.06;
+  mix-blend-mode: overlay;
+  pointer-events: none;
 }
 
 /* §2.4 Card — shared shell: fill, border, radius, elevation. Every "card"
@@ -324,10 +373,12 @@ body {
 .stat__v {
   grid-column: 1 / -1;
   margin-top: var(--s-1);
-  font-family: var(--font-display);
-  font-weight: 800;
-  font-size: 1.7rem;
-  line-height: 1.1;
+  /* v3: data values are mono — SCORES stay Bricolage (the brand numeral). */
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: 1.15rem;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
   color: var(--text);
 }
 .stat__d {
@@ -357,8 +408,9 @@ body {
     border-color var(--dur) var(--ease);
 }
 .btn--primary {
-  background: var(--accent);
+  background: var(--cta-grad);
   color: var(--ink);
+  box-shadow: inset 0 1px 0 var(--cta-inset), var(--cta-shadow);
 }
 .btn--primary:hover {
   filter: brightness(1.06);
@@ -458,15 +510,6 @@ body {
   font-size: 0.88rem;
 }
 
-/* Favorites bar */
-.favorites {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-  justify-content: center;
-  margin-top: 1rem;
-}
-
 .fav-toggle {
   border: none;
   background: transparent;
@@ -534,9 +577,9 @@ body {
   border-radius: var(--r-pill);
   font-size: 0.78rem;
   font-weight: 600;
-  color: var(--text);
+  color: var(--map-glass-text);
   background: var(--map-glass);
-  border: 1px solid var(--card-border);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(4px);
   pointer-events: none;
   transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
@@ -578,7 +621,7 @@ body {
 }
 .leaflet-control-attribution {
   background: var(--map-glass) !important;
-  color: var(--muted) !important;
+  color: var(--map-glass-muted) !important;
   backdrop-filter: blur(4px);
 }
 .leaflet-control-attribution a {
@@ -679,17 +722,17 @@ body {
 .mappop a {
   display: inline-block;
   margin-top: 0.35rem;
-  color: var(--accent);
+  color: var(--link-text);
   font-weight: 600;
 }
 
 /* Symbol legend on the big map (Leaflet control, collapsible). */
 .maplegend {
   background: var(--map-glass);
-  border: 1px solid var(--card-border);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 12px;
   padding: 0.35rem 0.6rem 0.5rem;
-  color: var(--text);
+  color: var(--map-glass-text);
   font-size: 0.78rem;
   line-height: 1.5;
   backdrop-filter: blur(6px);
@@ -699,7 +742,7 @@ body {
 .maplegend__title {
   cursor: pointer;
   font-weight: 700;
-  color: var(--gold);
+  color: var(--gold-img); /* on the fixed dark glass: stays bright, both themes */
   list-style: none;
   padding: 0.1rem 0;
 }
@@ -710,7 +753,7 @@ body {
   content: '−';
   float: right;
   margin-left: 0.6rem;
-  color: var(--muted);
+  color: var(--map-glass-muted);
 }
 .maplegend:not([open]) .maplegend__title::after {
   content: '+';
@@ -919,7 +962,7 @@ body {
 }
 
 .foot a {
-  color: var(--accent);
+  color: var(--link-text);
 }
 
 /* Light theme: background with a warm halo on ivory, consistent with the dark theme. */
@@ -985,7 +1028,7 @@ body {
   padding: 0.35rem 0.9rem;
   border: 0;
   background: transparent;
-  color: var(--accent);
+  color: var(--link-text);
   font: inherit;
   font-size: 0.9rem;
   font-weight: 600;
@@ -1117,10 +1160,10 @@ body {
   gap: 0.5rem;
   padding: 0.45rem 0.5rem 0.45rem 0.9rem;
   border-radius: var(--r-control);
-  background: rgba(40, 28, 44, 0.92);
-  border: 1px solid var(--hairline);
-  box-shadow: var(--shadow-sheet);
-  backdrop-filter: blur(10px);
+  background: var(--search-glass);
+  border: 1px solid var(--search-border);
+  box-shadow: 0 16px 40px -12px rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
   flex-wrap: nowrap;
 }
 .search__ico {
@@ -1194,18 +1237,18 @@ body {
   padding: 0.35rem;
   list-style: none;
   text-align: left;
-  /* Same dark glass as the search card it is attached to (mock 2a). */
-  background: rgba(40, 28, 44, 0.92);
-  border: 1px solid var(--hairline);
+  /* Same glass as the search card it is attached to (mock 2a). */
+  background: var(--search-glass);
+  border: 1px solid var(--search-border);
   border-radius: var(--r-control);
   box-shadow: var(--shadow-pop);
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(8px);
   max-height: 19rem;
   overflow-y: auto;
 }
 .suggest__item--active,
 .suggest__item:hover {
-  background: var(--panel-strong);
+  background: var(--bar-track);
 }
 
 /* Sunrise/sunset selector (segmented): full-width on home with equal segments
@@ -1216,8 +1259,9 @@ body {
   margin-top: 1.1rem;
   padding: 0.3rem;
   border-radius: var(--r-control);
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--card);
   border: 1px solid var(--hairline);
+  box-shadow: var(--card-shadow);
 }
 .mode {
   flex: 1 1 0;
@@ -1242,6 +1286,9 @@ body {
 .modes--compact {
   display: inline-flex;
   margin: 0;
+  /* Inline pill (mock 1b): don't stretch to the content column. */
+  align-self: flex-start;
+  width: fit-content;
 }
 .modes--compact .mode {
   flex: 0 0 auto;
@@ -1423,12 +1470,13 @@ body {
 }
 .rhero__sun {
   position: absolute;
-  right: 8%;
-  bottom: 26%;
+  right: 52px;
+  bottom: 74px;
   width: 120px;
   height: 120px;
   border-radius: 50%;
   background: var(--sun-disc);
+  filter: blur(1px); /* soft radial glow, no hard edge (mock 1b) */
   z-index: 1;
   animation: sunpulse 2.8s ease-in-out infinite;
 }
@@ -1528,6 +1576,36 @@ body {
   z-index: 3;
   padding: 0.6rem var(--side-pad) 2.5rem;
   background: var(--bg);
+  /* Flex column so the desktop column wrappers (.rcol, display:contents on
+     mobile) can re-interleave their sections into the mock's mobile order. */
+  display: flex;
+  flex-direction: column;
+}
+.rcol {
+  display: contents;
+}
+/* Mobile order (mock 1b): why → arc → conditions → look → spots → point.
+   Unwrapped children (banner, intro, toggle, week) keep order 0 and lead. */
+.rcol--a > .sect:nth-of-type(1) {
+  order: 1;
+}
+.rcol--b > .sect:nth-of-type(1) {
+  order: 2;
+}
+.rcol--b > .sect:nth-of-type(2) {
+  order: 3;
+}
+.rcol--a > .sect:nth-of-type(2) {
+  order: 4;
+}
+.rcol--b > .sect:nth-of-type(3) {
+  order: 5;
+}
+.rcol--a > .sect:nth-of-type(3) {
+  order: 6;
+}
+.rfoot {
+  order: 99;
 }
 .rintro {
   margin: 0.6rem 0 0;
@@ -1599,7 +1677,7 @@ body {
   transition: background 0.15s ease;
 }
 .wk__col--active {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--bar-track);
 }
 /* Dot sized to the score: size (--dsz) and tint (--hue) come inline from
    weekRibbonHtml; desaturated ramp, the best day stays radial. */
@@ -1662,21 +1740,21 @@ body {
 .addsup__bar {
   display: flex;
   height: 14px;
-  border-radius: var(--r-pill);
+  border-radius: 7px;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--bar-track);
 }
 .addsup__seg {
   height: 100%;
 }
 .addsup__seg--base {
-  background: var(--faint);
+  background: var(--graphite);
 }
 .addsup__seg--drama {
   background: var(--accent);
 }
 .addsup__seg--clarity {
-  background: var(--gold);
+  background: var(--gold-img);
 }
 .addsup__legend {
   display: flex;
@@ -1694,16 +1772,16 @@ body {
 .dotc {
   width: 9px;
   height: 9px;
-  border-radius: 2px;
+  border-radius: 3px;
 }
 .dotc--base {
-  background: var(--faint);
+  background: var(--graphite);
 }
 .dotc--drama {
   background: var(--accent);
 }
 .dotc--clarity {
-  background: var(--gold);
+  background: var(--gold-img);
 }
 .addsup__foot {
   margin: 0.7rem 0 0;
@@ -1764,6 +1842,7 @@ body {
 /* Neutral cards slightly quieter (mock 3a). */
 .driver--neutral {
   background: var(--card-2);
+  box-shadow: var(--card-shadow-dim);
 }
 .driver__ico {
   display: grid;
@@ -1788,6 +1867,7 @@ body {
 .driver--upside {
   border: 1px dashed color-mix(in srgb, var(--gold-img) 35%, transparent);
   background: var(--card-2);
+  box-shadow: var(--card-shadow-dim);
 }
 .driver--upside .driver__ico {
   background: color-mix(in srgb, var(--accent) 12%, transparent);
@@ -1818,7 +1898,7 @@ body {
   height: auto;
 }
 .arc__grid {
-  stroke: rgba(255, 255, 255, 0.06);
+  stroke: var(--bar-track);
   stroke-width: 1;
 }
 /* Area fill: imagery orange (opacity stays on the stops). */
@@ -1922,7 +2002,7 @@ body {
   flex-direction: column;
   gap: 0.15rem;
   padding: 0.6rem 0.8rem;
-  border-radius: var(--r-pill);
+  border-radius: var(--r-control);
   border: 1px solid var(--hairline);
   border-left-width: 3px;
 }
@@ -1941,6 +2021,10 @@ body {
 }
 .chip strong {
   color: var(--text);
+  /* v3: golden/blue hour times are data values → mono. */
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  font-weight: 600;
 }
 /* "sky" variant: compact pill for a spot's sky score (§2.6). */
 .chip--sky {
@@ -2217,7 +2301,7 @@ body {
   z-index: 25;
   display: flex;
   justify-content: center;
-  background: rgba(8, 5, 10, 0.62);
+  background: var(--scrim);
   backdrop-filter: blur(3px);
   align-items: stretch;
   padding: 1rem;
@@ -2364,7 +2448,7 @@ body {
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  background: rgba(8, 5, 10, 0.62);
+  background: var(--scrim);
   backdrop-filter: blur(3px);
   animation: scrimfade 0.2s ease-out;
 }
@@ -2472,6 +2556,180 @@ body {
   .sheet-scrim,
   .sheet {
     animation: none;
+  }
+}
+
+/* ============================ DESKTOP (v3) ============================
+   Responsive layer on the SAME DOM, mobile-first (handoff PROMPT rule 8).
+   Results/home/map switch layout ≥1100px; compare/share become centered
+   modals ≥900px (rules live with their components). Content is capped at
+   1352px (the 1440px mock minus its 44px gutters) via a fluid gutter. */
+@media (min-width: 1100px) {
+  .app {
+    max-width: none;
+  }
+
+  /* --- Results (desktop 2a/2b): full-width hero band + 2-col sections --- */
+  .rhero {
+    min-height: 330px;
+    height: 330px;
+    justify-content: space-between;
+    padding: 1.5rem max(44px, calc((100% - 1352px) / 2)) 2.1rem;
+  }
+  /* Desktop hero: text block left, score+meter right (mock 2a). The
+     multi-line mobile headline collapses to a single line. */
+  .rhero__verdict {
+    margin-top: 0;
+    display: grid;
+    grid-template-areas:
+      'eyebrow score'
+      'headline meter';
+    grid-template-columns: minmax(0, 42rem) auto;
+    align-items: end;
+    column-gap: 2rem;
+  }
+  .rhero__eyebrow {
+    grid-area: eyebrow;
+  }
+  .verdict__headline {
+    grid-area: headline;
+    white-space: normal;
+    font-size: 3.8rem;
+    line-height: 1;
+  }
+  .rhero__score {
+    grid-area: score;
+    justify-content: flex-end;
+    margin: 0;
+  }
+  .rhero__score .score {
+    font-size: 3.4rem;
+  }
+  .rhero__meter {
+    grid-area: meter;
+    width: 220px;
+    justify-self: end;
+    align-self: start;
+    margin-top: 0.9rem;
+  }
+  .rhero__sun {
+    right: 170px;
+    bottom: -40px;
+    width: 160px;
+    height: 160px;
+  }
+
+  .rcontent {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 40px;
+    align-items: start;
+    padding: 30px max(44px, calc((100% - 1352px) / 2)) 42px;
+  }
+  /* Full-width rows above/below the two columns. */
+  .rcontent > .topbanner,
+  .rcontent > .rintro,
+  .rcontent > .modes,
+  .rcontent > .sect--week,
+  .rcontent > .rfoot {
+    grid-column: 1 / -1;
+  }
+  .rcol {
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* --- Home (desktop 1c/1d): taller hero, wide search, 3-up places --- */
+  .home__hero {
+    min-height: 520px;
+    padding: 2.2rem max(44px, calc((100% - 1352px) / 2)) 3.4rem;
+  }
+  .home__headline {
+    font-size: 6.4rem;
+    margin-top: 3.2rem;
+  }
+  .home__tagline {
+    max-width: 34rem;
+    font-size: 1.05rem;
+  }
+  .home__sun {
+    left: 170px;
+    width: 170px;
+    height: 170px;
+  }
+  .home__content {
+    padding: 0 max(44px, calc((100% - 1352px) / 2)) 2.4rem;
+  }
+  .search {
+    max-width: 640px;
+  }
+  .suggest {
+    max-width: 640px;
+  }
+  #home .modes {
+    max-width: 640px;
+  }
+  .favorites {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.8rem;
+    align-items: stretch;
+  }
+  .favorites .place-compare {
+    grid-column: 1 / -1;
+  }
+  .mapcta {
+    max-width: 640px;
+  }
+
+  /* --- Map (desktop 1e/1f): floating side detail panel over the canvas --- */
+  .mapview__panel {
+    position: absolute;
+    z-index: 1001; /* above the Leaflet panes/controls */
+    right: 24px;
+    top: 84px; /* below the top bar */
+    bottom: 24px;
+    width: 380px;
+    max-height: none;
+    overflow-y: auto;
+    border: 1px solid var(--hairline);
+    border-radius: var(--r-feature);
+    box-shadow: var(--shadow-pop);
+    display: flex;
+    flex-direction: column;
+  }
+  .mp__handle {
+    display: none;
+  }
+  .mp__open {
+    margin-top: auto;
+  }
+}
+
+/* Compare/Share become centered modals ≥900px (desktop 1g–1j);
+   below they stay a bottom sheet / stretch modal. */
+@media (min-width: 900px) {
+  .cmp__box {
+    max-width: 580px;
+    border-radius: var(--r-feature);
+    box-shadow: 0 40px 90px -20px rgba(0, 0, 0, 0.7);
+  }
+  .sheet-scrim {
+    align-items: center;
+  }
+  .sheet {
+    max-width: 500px;
+    border: 1px solid var(--hairline);
+    border-radius: var(--r-feature);
+    padding-bottom: 1.4rem;
+    box-shadow: 0 40px 90px -20px rgba(0, 0, 0, 0.7);
+    animation: none;
+  }
+  .sheet__handle {
+    display: none;
+  }
+  .sharecard {
+    width: 264px;
   }
 }
 

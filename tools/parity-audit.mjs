@@ -1,8 +1,10 @@
 // Geometry/parity audit: asserts mock-derived layout values against the live
-// app over CDP. usage: node audit.mjs <url> [--settle=ms] [--seed]
+// app over CDP. usage: node audit.mjs <url> [--settle=ms] [--seed] [--w=390]
 const [url, ...rest] = process.argv.slice(2);
 const opt = Object.fromEntries(rest.map((a) => a.replace(/^--/, '').split('=')));
 const settle = Number(opt.settle || 8000);
+const W = Number(opt.w || 390);
+const H = W >= 1100 ? 900 : 844;
 
 const tab = await (await fetch('http://localhost:9222/json/new?about:blank', { method: 'PUT' })).json();
 const ws = new WebSocket(tab.webSocketDebuggerUrl);
@@ -21,7 +23,9 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 await send('Page.enable');
 await send('Network.enable');
 await send('Network.setCacheDisabled', { cacheDisabled: true });
-await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
+// The SW is cache-first for the shell: purge it or we audit stale CSS.
+await send('Storage.clearDataForOrigin', { origin: 'http://localhost:8000', storageTypes: 'service_workers,cache_storage' });
+await send('Emulation.setDeviceMetricsOverride', { width: W, height: H, deviceScaleFactor: 2, mobile: W < 800 });
 await send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: 'dark' }] });
 await send('Page.navigate', { url: 'http://localhost:8000/favicon.ico' });
 await sleep(300);
@@ -53,7 +57,7 @@ const CHECKS = `(() => {
       if (ms.length === 2) add('2a mode segments equal width', near(w(ms[0]), w(ms[1]), 3), w(ms[0]) + '/' + w(ms[1]), 'equal');
     }
     const sun = $('.home__sun');
-    if (sun) { add('2a sun glow 110px', near(w(sun), 110), w(sun), 110); }
+    if (sun) { const wantSun = innerWidth >= 1100 ? 170 : 110; add('2a sun glow ' + wantSun + 'px', near(w(sun), wantSun), w(sun), wantSun); }
     const sw = $('#home .place .swatch');
     if (sw) add('2a favourite swatch 56px', near(w(sw), 56), w(sw), 56);
     const pc = $('.place-compare'); const fav = $('#favorites');
@@ -66,7 +70,10 @@ const CHECKS = `(() => {
   if ($('#results') && $('#results').offsetParent !== null) {
     // 1b hero. Mock: meter 170x6 (line 861), toggle inline (868).
     const meter = $('.rhero__meter');
-    if (meter) add('1b meter 170x6', near(w(meter), 170) && near(h(meter), 6), w(meter) + 'x' + h(meter), '170x6');
+    if (meter) {
+      const want = innerWidth >= 1100 ? 220 : 170; // v3 desktop meter is 220px
+      add('1b meter ' + want + 'x6', near(w(meter), want) && near(h(meter), 6), w(meter) + 'x' + h(meter), want + 'x6');
+    }
     const fill = $('.rhero__meterfill');
     if (fill) add('1b meter fill is gradient', cs(fill, 'backgroundImage').includes('linear-gradient'), cs(fill, 'backgroundImage').slice(0, 40), 'linear-gradient');
     const tog = $('.rcontent .modes--compact');
@@ -76,9 +83,9 @@ const CHECKS = `(() => {
     if (dots.length) add('1b week dots scale with score', new Set(dots).size > 1 && Math.min(...dots) >= 6.5 && Math.max(...dots) <= 11.5, dots.join(','), '7-11px, varied');
     const wkScore = $('.wk__score');
     if (wkScore) add('1b week numeral 0.82rem', near(parseFloat(cs(wkScore, 'fontSize')), 13.1, 0.5), cs(wkScore, 'fontSize'), '13.12px');
-    // stats
+    // stats — v3: data values are JetBrains Mono 600 ~1.15rem (scores stay Bricolage)
     const statV = $('.stat__v');
-    if (statV) add('1b stat value 1.7rem', near(parseFloat(cs(statV, 'fontSize')), 27.2, 0.5), cs(statV, 'fontSize'), '27.2px');
+    if (statV) add('1b stat value mono 1.15rem (v3)', near(parseFloat(cs(statV, 'fontSize')), 18.4, 0.5) && cs(statV, 'fontFamily').includes('JetBrains'), cs(statV, 'fontSize') + ' ' + cs(statV, 'fontFamily').slice(0, 16), '18.4px JetBrains');
     const grid = $('.statgrid');
     if (grid) add('1b statgrid 2 cols', cs(grid, 'gridTemplateColumns').split(' ').length === 2, cs(grid, 'gridTemplateColumns'), '2 cols');
     // intro strong gold
@@ -109,6 +116,38 @@ const CHECKS = `(() => {
     if (meta) add('3c meta uppercase mono', cs(meta, 'textTransform') === 'uppercase', cs(meta, 'textTransform'), 'uppercase');
     const scan = $('.scan-btn');
     if (scan) add('3c scan button dashed', cs(scan, 'borderTopStyle') === 'dashed', cs(scan, 'borderTopStyle'), 'dashed');
+    // v3 premium pass
+    add('v3 grain on results hero', !!$('.rhero .grain'), !!$('.rhero .grain'), true);
+    const sunDisc = $('.rhero__sun');
+    if (sunDisc) add('v3 hero sun disc blurred', cs(sunDisc, 'filter').includes('blur'), cs(sunDisc, 'filter'), 'blur(1px)');
+    const chipV = $('.chip strong');
+    if (chipV) add('v3 chip times mono', cs(chipV, 'fontFamily').includes('JetBrains'), cs(chipV, 'fontFamily').slice(0, 20), 'JetBrains Mono');
+    const prim = $('.btn--primary');
+    if (prim) add('v3 CTA gradient + inset', cs(prim, 'backgroundImage').includes('linear-gradient') && cs(prim, 'boxShadow').includes('inset'), 'grad=' + cs(prim, 'backgroundImage').includes('linear-gradient') + ' inset=' + cs(prim, 'boxShadow').includes('inset'), 'true true');
+    const bar = $('.addsup__bar');
+    if (bar) add('3a segment bar 14px/7px', near(h(bar), 14) && cs(bar, 'borderTopLeftRadius') === '7px', h(bar) + '/' + cs(bar, 'borderTopLeftRadius'), '14/7px');
+    // v3 desktop (≥1100px)
+    if (innerWidth >= 1100) {
+      const rh = $('.rhero');
+      if (rh) add('desk hero band 330px', near(h(rh), 330), h(rh), 330);
+      const rc = $('.rcontent');
+      if (rc) add('desk 2-col grid + 40px gap', cs(rc, 'display') === 'grid' && cs(rc, 'gridTemplateColumns').split(' ').length === 2 && cs(rc, 'columnGap') === '40px', cs(rc, 'display') + ' ' + cs(rc, 'columnGap'), 'grid 40px');
+      const hl = $('.verdict__headline');
+      if (hl) add('desk headline single-line 3.8rem', cs(hl, 'whiteSpace') === 'normal' && near(parseFloat(cs(hl, 'fontSize')), 60.8, 1), cs(hl, 'whiteSpace') + ' ' + cs(hl, 'fontSize'), 'normal 60.8px');
+      const mt = $('.rhero__meter');
+      if (mt) add('desk meter 220px', near(w(mt), 220), w(mt), 220);
+      const wkSect = $('.sect--week');
+      if (wkSect && rc) add('desk week ribbon full-width', near(w(wkSect), w(rc) - parseFloat(cs(rc, 'paddingLeft')) - parseFloat(cs(rc, 'paddingRight')), 6), w(wkSect), 'content width');
+    }
+  }
+  if ($('#home') && $('#home').offsetParent !== null) {
+    add('v3 grain on home hero', !!$('.home__hero .grain'), !!$('.home__hero .grain'), true);
+    if (innerWidth >= 1100) {
+      const fv = $('#favorites');
+      if (fv && fv.children.length >= 3) add('desk favourites 3-up grid', cs(fv, 'display') === 'grid' && cs(fv, 'gridTemplateColumns').split(' ').length === 3, cs(fv, 'display') + ' ' + cs(fv, 'gridTemplateColumns').split(' ').length, 'grid 3');
+      const hh = $('.home__headline');
+      if (hh) add('desk home headline 6.4rem', near(parseFloat(cs(hh, 'fontSize')), 102.4, 1), cs(hh, 'fontSize'), '102.4px');
+    }
   }
   return out;
 })()`;
