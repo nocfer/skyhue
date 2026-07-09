@@ -6,7 +6,7 @@
     <title>SkyHue · Sunset Score</title>
     <meta
       name="description"
-      content="Calcola il Sunset Score della tua località combinando meteo in tempo reale e dati astronomici."
+      content="Quanto sarà bello il prossimo tramonto? Un punteggio da meteo reale e dati astronomici."
     />
     <meta name="theme-color" content="#120a16" />
     <script>
@@ -70,15 +70,8 @@
               <svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 10V2"/><path d="m4.93 10.93 1.41 1.41"/><path d="M2 18h2"/><path d="M20 18h2"/><path d="m19.07 10.93-1.41 1.41"/><path d="M22 22H2"/><path d="m16 6-4 4-4-4"/><path d="M16 18a4 4 0 0 0-8 0"/></svg>
               <span class="wordmark__text">SkyHue</span>
             </div>
-            <div class="menu">
-              <button id="more-btn" class="gcircle" type="button" aria-haspopup="true" aria-expanded="false" data-i18n-aria="menu.aria">
-                <svg class="ico" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
-              </button>
-              <div class="menu__pop" id="more-menu" role="menu" hidden>
-                <button id="lang-toggle" class="menu__item" type="button" role="menuitem" data-i18n-aria="lang.aria"></button>
-                <button id="theme-toggle" class="menu__item" type="button" role="menuitem" data-i18n-aria="theme.aria"></button>
-              </div>
-            </div>
+            <!-- Filled by main.js (moreMenuHtml); mirrored in the results hero. -->
+            <div class="menu" id="home-menu"></div>
           </div>
           <h1 class="home__headline display" data-i18n-html="home.headline">Chase<br />the light.</h1>
           <p class="home__tagline" data-i18n="app.tagline">
@@ -113,11 +106,11 @@
           <div class="modes" role="group" aria-label="Momento della giornata" data-i18n-aria="mode.groupAria">
             <button type="button" class="mode mode--active" data-event="sunset">
               <svg class="ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 10V2"/><path d="m4.93 10.93 1.41 1.41"/><path d="M2 18h2"/><path d="M20 18h2"/><path d="m19.07 10.93-1.41 1.41"/><path d="M22 22H2"/><path d="m16 6-4 4-4-4"/><path d="M16 18a4 4 0 0 0-8 0"/></svg>
-              <span data-i18n="mode.sunset">Tramonto</span>
+              <span data-i18n="event.sunset">Tramonto</span>
             </button>
             <button type="button" class="mode" data-event="sunrise">
               <svg class="ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2v8"/><path d="m4.93 10.93 1.41 1.41"/><path d="M2 18h2"/><path d="M20 18h2"/><path d="m19.07 10.93-1.41 1.41"/><path d="M22 22H2"/><path d="m8 6 4-4 4 4"/><path d="M16 18a4 4 0 0 0-8 0"/></svg>
-              <span data-i18n="mode.sunrise">Alba</span>
+              <span data-i18n="event.sunrise">Alba</span>
             </button>
           </div>
 
@@ -137,7 +130,7 @@
             <p data-i18n-html="foot.credits">
               Dati meteo &amp; astronomici da
               <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a>.
-              Posizione solare calcolata con l'algoritmo NOAA.
+              Posizione solare con algoritmo NOAA.
             </p>
           </footer>
         </div>
