@@ -366,26 +366,48 @@ function renderContext() {
   if (bounds.isValid()) map.fitBounds(bounds, { padding: [42, 42], maxZoom: 13, animate: false });
 }
 
+/**
+ * Removes every layer left by a previous tap: the pick marker, the visibility
+ * circle and the full sunset overlays (ray, score bubble, suggested spots).
+ * Called before each new tap so points don't pile up on the map while the new
+ * evaluation is still in flight.
+ */
+function clearTap() {
+  if (marker) {
+    map.removeLayer(marker);
+    marker = null;
+  }
+  if (visCircle) {
+    map.removeLayer(visCircle);
+    visCircle = null;
+  }
+  if (tapLayer) {
+    tapLayer.remove();
+    tapLayer = null;
+  }
+}
+
 /** Handles the tap on a point: places the marker, flies to the point and evaluates it. */
 async function selectPoint(lat, lon) {
   const L = window.L;
-  if (marker) marker.setLatLng([lat, lon]);
-  else
-    marker = L.circleMarker([lat, lon], {
-      radius: 9,
-      color: IMG.accent,
-      weight: 3,
-      fillColor: IMG.accent,
-      fillOpacity: 0.5,
-      className: 'tapmark',
-    }).addTo(map);
+  // Wipe the previous tap up front: tapping a second point must not leave the
+  // old ray/score/spots hanging around until the (async) new evaluation lands.
+  clearTap();
+  marker = L.circleMarker([lat, lon], {
+    radius: 9,
+    color: IMG.accent,
+    weight: 3,
+    fillColor: IMG.accent,
+    fillOpacity: 0.5,
+    className: 'tapmark',
+  }).addTo(map);
   marker.bringToFront();
   // Smooth transition to the chosen point (without pulling the zoom out too much).
   map.flyTo([lat, lon], Math.max(map.getZoom(), 12), { duration: 0.6 });
   await evaluatePoint(lat, lon);
 }
 
-/** Evaluates a point: Sunset Score, sun direction and view towards the sun. */
+/** Evaluates a point: score for the current event, sun direction and view towards the sun. */
 async function evaluatePoint(lat, lon) {
   // Cancel the previous evaluation still in flight: tapping several points in
   // a row, superseded requests (including the expensive Overpass queries) get
@@ -401,11 +423,14 @@ async function evaluatePoint(lat, lon) {
       fetchForecast(lat, lon, { signal }),
       fetchAirQuality(lat, lon, { signal }).catch(() => null),
     ]);
-    const { sunset } = nextSunset(forecast, new Date());
-    const cond = { ...conditionsAtTime(forecast, sunset), ...airAtTime(air, sunset) };
+    // Score the event the app is currently in (sunrise/sunset); a direct
+    // #map deep-link has no context and defaults to sunset.
+    const event = window.skyhueMapContext?.event === 'sunrise' ? 'sunrise' : 'sunset';
+    const iso = nextSunset(forecast, new Date())[event];
+    const cond = { ...conditionsAtTime(forecast, iso), ...airAtTime(air, iso) };
     const { score } = computeSunsetScore(cond);
-    const sunsetDate = new Date(sunset);
-    const sun = sunPosition(sunsetDate, lat, lon);
+    const eventDate = new Date(iso);
+    const sun = sunPosition(eventDate, lat, lon);
 
     // View from the tapped point + search for suggested spots nearby,
     // so every element of the legend shows up on the map.
@@ -435,25 +460,14 @@ async function evaluatePoint(lat, lon) {
 
     // Full overlays for the tapped point: point + ray + sun + visibility
     // circle + markers for the suggested spots (consistent with the legend).
-    if (tapLayer) {
-      tapLayer.remove();
-      tapLayer = null;
-    }
-    if (visCircle) {
-      map.removeLayer(visCircle);
-      visCircle = null;
-    }
-    if (marker) {
-      map.removeLayer(marker); // replaced by the score-colored dot
-      marker = null;
-    }
+    clearTap(); // the pick marker is replaced by the score-colored dot below
     tapLayer = window.L.featureGroup().addTo(map);
     buildSunsetOverlays(window.L, tapLayer, {
       lat,
       lon,
       azimuth: sun.azimuth,
       score,
-      event: 'sunset',
+      event,
       visibility: cond.visibility,
       spots,
       onSpotClick: (s) => selectPoint(s.lat, s.lon),
@@ -462,7 +476,7 @@ async function evaluatePoint(lat, lon) {
     renderPanel({
       lat,
       lon,
-      sunsetDate,
+      eventDate,
       score,
       sun,
       verdict,
@@ -475,7 +489,7 @@ async function evaluatePoint(lat, lon) {
   }
 }
 
-function renderPanel({ lat, lon, sunsetDate, score, sun, verdict, visibility, elevation }) {
+function renderPanel({ lat, lon, eventDate, score, sun, verdict, visibility, elevation }) {
   const coords = `${Math.abs(lat).toFixed(2)}°${lat >= 0 ? 'N' : 'S'} · ${Math.abs(lon).toFixed(
     2
   )}°${lon >= 0 ? 'E' : 'W'}`;

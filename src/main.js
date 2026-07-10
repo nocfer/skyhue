@@ -2038,8 +2038,10 @@ els.input.addEventListener("keydown", (e) => {
   }
 });
 
-// mousedown (not click) so the pick fires before the input loses focus.
-els.suggest.addEventListener("mousedown", (e) => {
+// pointerdown (not click) so the pick fires before the input loses focus, and
+// on touch too: `mousedown` is only synthesized inconsistently from a tap, so
+// on mobile the suggestion often never registered.
+els.suggest.addEventListener("pointerdown", (e) => {
   const li = e.target.closest(".suggest__item");
   if (!li) return;
   e.preventDefault();
