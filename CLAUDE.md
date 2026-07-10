@@ -1,12 +1,28 @@
 # CLAUDE.md — working notes for agents on SkyHue
 
-SkyHue is a **dependency-free, no-build vanilla-JS PWA**. Screens are rendered
-from template strings in `src/main.js` (+ `src/map.js`) against `src/styles.css`.
-There is no framework, no bundler, no `node_modules`. Leaflet is loaded lazily
-from a CDN at runtime.
+SkyHue is a **no-build vanilla-JS PWA** with no framework, no bundler, and no
+committed `node_modules`. Screens are rendered from template strings in
+`src/main.js` (+ `src/map.js`) against `src/styles.css`. Runtime dependencies are
+loaded lazily from a CDN, never bundled: **Leaflet** (map) and **lit-html** (the
+new render layer — see below). Dev tooling (Biome, TypeScript for `checkJs`) runs
+via `npx` on demand and is never installed into the repo.
 
 - Run locally: `python3 -m http.server 8000` (or any static server), open the page.
 - Test: `npm test` (Node's built-in test runner).
+- Lint + format: `npm run lint` / `npm run format` (Biome, config in `biome.json`;
+  scoped to JS/JSON — CSS, HTML and SVG are excluded on purpose).
+- Type-check: `npm run typecheck` (`checkJs` via `jsconfig.json`; lenient — it
+  catches typos / wrong arity / bad payload access, not full typing). Globals the
+  app stashes on `window` are declared in `src/globals.d.ts`.
+- **Rendering is migrating from `innerHTML` template strings to lit-html.**
+  Import `html`, `render`, `unsafeHTML` from `src/render.js` (the single choke
+  point pinning the CDN URL — esm.sh, NOT jsdelivr, so directives share one core).
+  In a lit template, user-controlled text (geocoder labels, place names) is a bare
+  `${…}` interpolation and is auto-escaped — no more `escapeHtml`. Trusted
+  HTML-string helpers (`icon`, `scoreNumeral`, `button`) must be wrapped in
+  `unsafeHTML(...)`. The **share-sheet overlay** (`openShareSheet` in `main.js`) is
+  the migrated reference pattern; copy it for the other screens. Canvas/PNG share
+  (`shareImage`) is NOT DOM — it stays hand-drawn.
 - **Everything in the codebase is English** — code, comments, commit messages,
   test descriptions. The only Italian allowed is user-facing content: the `it`
   dictionary values in `src/i18n.js` and the IT fallback copy in `index.html`.
@@ -39,18 +55,19 @@ from a CDN at runtime.
 
 ## Gotchas that cost time here → do this instead
 
-1. **Service worker (`sw.js`) is cache-first for the shell** (html/css/js). After
-   the first load it serves a **stale `styles.css`/`main.js`**, so your edits look
-   like they had no effect (this session: a phantom "circle score" that was really
-   old cached CSS). → When visually verifying CSS/JS changes, **use a throwaway
-   Chrome profile** (`--user-data-dir` you `rm -rf` first) or unregister the SW +
-   clear Cache Storage. Don't trust a screenshot from a profile that already
-   loaded the app.
+1. **Service worker (`sw.js`) caches the shell** (html/css/js). It now serves the
+   shell **stale-while-revalidate**: a returning visitor gets the cached copy
+   instantly and the cache is refreshed in the background, so the *next* load is
+   fresh. When visually verifying CSS/JS changes, still **use a throwaway Chrome
+   profile** (`--user-data-dir` you `rm -rf` first) or unregister the SW + clear
+   Cache Storage — the first load of an already-primed profile is still stale.
+   Don't trust a screenshot from a profile that already loaded the app.
    Two corollaries for the *user's* browser (not just test profiles):
-   - **Clients only update when `sw.js` itself changes** — a hard refresh does
-     NOT re-fetch the module scripts. Any change to shell files must come with a
-     **`CACHE = 'skyhue-vNN'` bump in `sw.js`**, or returning visitors keep the
-     old code forever.
+   - **The cache version is now content-hashed, not hand-bumped.** Run
+     **`npm run stamp`** after any shell change; it rewrites `CACHE` in `sw.js`
+     from a hash of the SHELL files. CI runs `npm run stamp:check` and **fails if
+     you forgot**, so the old "remember to bump `skyhue-vNN`" footgun is gone. If
+     you add/remove a shell file, update the `SHELL` array in `sw.js` then stamp.
    - **With the local server down, the app still renders** — the SW serves the
      whole shell from cache, so it looks alive but is frozen, and the updated
      `sw.js` can never be fetched. If edits "don't show up" even after a cache
