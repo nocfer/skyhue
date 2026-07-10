@@ -152,6 +152,171 @@ export function scoreLabel(score) {
   return "poor";
 }
 
+// Per-factor explanatory notes. Each returns a single language-neutral note
+// { code, sentiment, icon, params } or null when the factor has nothing to
+// say. explainScore() runs them in order and drops the nulls, so this reads as
+// a rules table rather than a long branch chain. The UI resolves the text via
+// the `explain.<code>` i18n key.
+
+function highNote(f) {
+  if (f.high >= 20 && f.high <= 75)
+    return {
+      code: "highGood",
+      sentiment: "good",
+      icon: "cloud",
+      params: { high: Math.round(f.high) },
+    };
+  if (f.high > 75)
+    return {
+      code: "highMuch",
+      sentiment: "neutral",
+      icon: "cloud",
+      params: { high: Math.round(f.high) },
+    };
+  return {
+    code: "highFew",
+    sentiment: "neutral",
+    icon: "cloud-sun",
+    params: {},
+  };
+}
+
+function midNote(f) {
+  if (f.mid >= 20 && f.mid <= 65)
+    return {
+      code: "midGood",
+      sentiment: "good",
+      icon: "cloud-sun",
+      params: { mid: Math.round(f.mid) },
+    };
+  return null;
+}
+
+function lowNote(f) {
+  if (f.low >= 40)
+    return {
+      code: "lowBad",
+      sentiment: "bad",
+      icon: "haze",
+      params: { low: Math.round(f.low) },
+    };
+  if (f.low >= 15)
+    return {
+      code: "lowSome",
+      sentiment: "neutral",
+      icon: "haze",
+      params: { low: Math.round(f.low) },
+    };
+  return { code: "lowClear", sentiment: "good", icon: "sunset", params: {} };
+}
+
+function overcastNote(f) {
+  return f.overcast > 0.5
+    ? {
+        code: "overcast",
+        sentiment: "bad",
+        icon: "cloud",
+        params: { total: Math.round(f.total) },
+      }
+    : null;
+}
+
+function visNote(f) {
+  const visKm = Math.round(f.visibility / 1000);
+  if (f.visFactor >= 0.85)
+    return {
+      code: "visGood",
+      sentiment: "good",
+      icon: "eye",
+      params: { visKm },
+    };
+  if (f.visFactor < 0.4)
+    return {
+      code: "visBad",
+      sentiment: "bad",
+      icon: "cloud-fog",
+      params: { visKm },
+    };
+  return null;
+}
+
+function aerosolNote(f) {
+  if (f.aerosol == null) return null;
+  if (f.aerosolHaze >= 0.5)
+    return {
+      code: "hazeBad",
+      sentiment: "bad",
+      icon: "haze",
+      params: { pm25: f.pm25 != null ? Math.round(f.pm25) : null },
+    };
+  if (f.aerosolEnhance >= 0.6)
+    return {
+      code: "aerosolGood",
+      sentiment: "good",
+      icon: "flame",
+      params: {},
+    };
+  return null;
+}
+
+function pathNote(f) {
+  if (f.pathClear == null) return null;
+  const clear = Math.round(f.pathClear * 100);
+  if (f.pathClear < 0.45)
+    return {
+      code: "pathBlocked",
+      sentiment: "bad",
+      icon: "cloud-fog",
+      params: { clear },
+    };
+  if (f.pathClear < 0.8)
+    return {
+      code: "pathPartial",
+      sentiment: "neutral",
+      icon: "compass",
+      params: { clear },
+    };
+  // Clear path + local "scenic" clouds: the deck can light up from below.
+  if (f.drama >= 0.4)
+    return {
+      code: "pathClear",
+      sentiment: "good",
+      icon: "sunset",
+      params: { clear },
+    };
+  return null;
+}
+
+function humidityNote(f) {
+  if (f.humidityPenalty >= 0.6)
+    return {
+      code: "humidHigh",
+      sentiment: "bad",
+      icon: "droplet",
+      params: { humidity: Math.round(f.humidity) },
+    };
+  if (f.humidityPenalty <= 0.1)
+    return {
+      code: "humidDry",
+      sentiment: "good",
+      icon: "wind",
+      params: { humidity: Math.round(f.humidity) },
+    };
+  return null;
+}
+
+// Order matters: the UI shows notes in this sequence (top 3 highlighted).
+const NOTE_FACTORS = [
+  highNote,
+  midNote,
+  lowNote,
+  overcastNote,
+  visNote,
+  aerosolNote,
+  pathNote,
+  humidityNote,
+];
+
 /**
  * Generates the explanatory notes from the score factors, in a language-
  * NEUTRAL form: each entry has { code, sentiment, icon, params }. The text
@@ -161,159 +326,7 @@ export function scoreLabel(score) {
  * @returns {Array<{code:string, sentiment:string, icon:string, params:Object}>}
  */
 export function explainScore(f) {
-  const notes = [];
-  const visKm = Math.round(f.visibility / 1000);
-
-  // High clouds
-  if (f.high >= 20 && f.high <= 75) {
-    notes.push({
-      code: "highGood",
-      sentiment: "good",
-      icon: "cloud",
-      params: { high: Math.round(f.high) },
-    });
-  } else if (f.high > 75) {
-    notes.push({
-      code: "highMuch",
-      sentiment: "neutral",
-      icon: "cloud",
-      params: { high: Math.round(f.high) },
-    });
-  } else {
-    notes.push({
-      code: "highFew",
-      sentiment: "neutral",
-      icon: "cloud-sun",
-      params: {},
-    });
-  }
-
-  // Mid clouds
-  if (f.mid >= 20 && f.mid <= 65) {
-    notes.push({
-      code: "midGood",
-      sentiment: "good",
-      icon: "cloud-sun",
-      params: { mid: Math.round(f.mid) },
-    });
-  }
-
-  // Low clouds (critical factor)
-  if (f.low >= 40) {
-    notes.push({
-      code: "lowBad",
-      sentiment: "bad",
-      icon: "haze",
-      params: { low: Math.round(f.low) },
-    });
-  } else if (f.low >= 15) {
-    notes.push({
-      code: "lowSome",
-      sentiment: "neutral",
-      icon: "haze",
-      params: { low: Math.round(f.low) },
-    });
-  } else {
-    notes.push({
-      code: "lowClear",
-      sentiment: "good",
-      icon: "sunset",
-      params: {},
-    });
-  }
-
-  // Total cover
-  if (f.overcast > 0.5) {
-    notes.push({
-      code: "overcast",
-      sentiment: "bad",
-      icon: "cloud",
-      params: { total: Math.round(f.total) },
-    });
-  }
-
-  // Visibility
-  if (f.visFactor >= 0.85) {
-    notes.push({
-      code: "visGood",
-      sentiment: "good",
-      icon: "eye",
-      params: { visKm },
-    });
-  } else if (f.visFactor < 0.4) {
-    notes.push({
-      code: "visBad",
-      sentiment: "bad",
-      icon: "cloud-fog",
-      params: { visKm },
-    });
-  }
-
-  // Aerosol / particulates
-  if (f.aerosol !== null && f.aerosol !== undefined) {
-    if (f.aerosolHaze >= 0.5) {
-      notes.push({
-        code: "hazeBad",
-        sentiment: "bad",
-        icon: "haze",
-        params: { pm25: f.pm25 != null ? Math.round(f.pm25) : null },
-      });
-    } else if (f.aerosolEnhance >= 0.6) {
-      notes.push({
-        code: "aerosolGood",
-        sentiment: "good",
-        icon: "flame",
-        params: {},
-      });
-    }
-  }
-
-  // Light path (only if the far samples are available)
-  if (f.pathClear !== null && f.pathClear !== undefined) {
-    const clear = Math.round(f.pathClear * 100);
-    if (f.pathClear < 0.45) {
-      notes.push({
-        code: "pathBlocked",
-        sentiment: "bad",
-        icon: "cloud-fog",
-        params: { clear },
-      });
-    } else if (f.pathClear < 0.8) {
-      notes.push({
-        code: "pathPartial",
-        sentiment: "neutral",
-        icon: "compass",
-        params: { clear },
-      });
-    } else if (f.drama >= 0.4) {
-      // Clear path + local "scenic" clouds: the deck can light up from below.
-      notes.push({
-        code: "pathClear",
-        sentiment: "good",
-        icon: "sunset",
-        params: { clear },
-      });
-    }
-  }
-
-  // Humidity
-  if (f.humidityPenalty >= 0.6) {
-    notes.push({
-      code: "humidHigh",
-      sentiment: "bad",
-      icon: "droplet",
-      params: { humidity: Math.round(f.humidity) },
-    });
-  } else if (f.humidityPenalty <= 0.1) {
-    notes.push({
-      code: "humidDry",
-      sentiment: "good",
-      icon: "wind",
-      params: { humidity: Math.round(f.humidity) },
-    });
-  }
-
-  return notes;
+  return NOTE_FACTORS.map((note) => note(f)).filter(Boolean);
 }
 
 /**
