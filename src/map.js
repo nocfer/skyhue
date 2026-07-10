@@ -1,28 +1,35 @@
-import { fetchForecast, fetchAirQuality, nextSunset, conditionsAtTime, airAtTime } from './api.js';
-import { computeSunsetScore, scoreLabel } from './score.js';
-import { sunPosition, azimuthToCardinal } from './astronomy.js';
+import {
+  fetchForecast,
+  fetchAirQuality,
+  nextSunset,
+  conditionsAtTime,
+  airAtTime,
+} from "./api.js";
+import { computeSunsetScore, scoreLabel } from "./score.js";
+import { sunPosition, azimuthToCardinal } from "./astronomy.js";
 import {
   destinationPoint,
   SAMPLE_DISTANCES,
   evaluateHorizon,
   spotVerdict,
   fetchElevations,
-  horizonDistanceKm,
   nearbySpots,
   kindInfo,
-} from './spots.js';
-import { icon } from './icons.js';
-import { scoreNumeral, skySwatch, button, scoreHue } from './ui.js';
-import { t, cardinal, getLang } from './i18n.js';
+} from "./spots.js";
+import { icon } from "./icons.js";
+import { scoreNumeral, skySwatch, button, scoreHue } from "./ui.js";
+import { t, cardinal, getLang } from "./i18n.js";
 
-const LEAFLET_CSS = 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css';
-const LEAFLET_JS = 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js';
+const LEAFLET_CSS =
+  "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css";
+const LEAFLET_JS = "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js";
 
-const TILE_DARK = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+const TILE_DARK =
+  "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
 const TILE_OPTS = {
-  subdomains: 'abcd',
+  subdomains: "abcd",
   maxZoom: 20,
-  attribution: '© OpenStreetMap © CARTO',
+  attribution: "© OpenStreetMap © CARTO",
 };
 
 function tileUrl() {
@@ -30,11 +37,11 @@ function tileUrl() {
 }
 
 const els = {
-  appView: document.getElementById('app-view'),
-  mapView: document.getElementById('map-view'),
-  canvas: document.getElementById('leaflet'),
-  panel: document.getElementById('map-panel'),
-  back: document.getElementById('map-back'),
+  appView: document.getElementById("app-view"),
+  mapView: document.getElementById("map-view"),
+  canvas: document.getElementById("leaflet"),
+  panel: document.getElementById("map-panel"),
+  back: document.getElementById("map-back"),
 };
 
 let map = null;
@@ -47,19 +54,42 @@ let bigTile = null;
 let leafletLoading = null;
 let evalToken = 0;
 let evalAbort = null;
+// A stalled CDN never fires `onerror`, so without a timeout the promise (and any
+// `await loadLeaflet()`) would hang forever. Reject after this so callers' catch
+// paths run and the map degrades to its "connection required" message.
+const LEAFLET_TIMEOUT_MS = 8000;
 export function loadLeaflet() {
   if (window.L) return Promise.resolve(window.L);
   if (leafletLoading) return leafletLoading;
   leafletLoading = new Promise((resolve, reject) => {
-    const link = document.createElement('link');
-    link.rel = 'stylesheet';
+    let settled = false;
+    let timer;
+    const settle = (fn, arg) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      fn(arg);
+    };
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
     link.href = LEAFLET_CSS;
+    // A failed stylesheet leaves the map unstyled but usable; warn, don't reject.
+    link.onerror = () => console.warn("Leaflet CSS failed to load");
     document.head.appendChild(link);
-    const script = document.createElement('script');
+    const script = document.createElement("script");
     script.src = LEAFLET_JS;
-    script.onload = () => resolve(window.L);
-    script.onerror = () => reject(new Error('Unable to load map'));
+    script.onload = () => settle(resolve, window.L);
+    script.onerror = () => settle(reject, new Error("Unable to load map"));
     document.head.appendChild(script);
+    timer = setTimeout(
+      () => settle(reject, new Error("Map load timed out")),
+      LEAFLET_TIMEOUT_MS,
+    );
+  });
+  // Clear the memo on failure so a later call can retry instead of being poisoned
+  // forever by a single stalled/failed load.
+  leafletLoading.catch(() => {
+    leafletLoading = null;
   });
   return leafletLoading;
 }
@@ -69,31 +99,35 @@ function scoreColor(score) {
 }
 
 const IMG = {
-  gold: '#ffce6f',
-  accent: '#ff8a52',
-  vis: '#6ea0ff',
+  gold: "#ffce6f",
+  accent: "#ff8a52",
+  vis: "#6ea0ff",
 };
 
-const SENT = { good: '#ffce6f', bad: '#d85a3c', neutral: '#9c9086' };
+const SENT = { good: "#ffce6f", bad: "#d85a3c", neutral: "#9c9086" };
 function spotPopupHtml(s) {
   const scores = [];
-  if (s.verdict?.score != null) scores.push(`${t('mappop.view')} <strong>${s.verdict.score}</strong>`);
-  if (s.skyScore != null) scores.push(`${t('mappop.sky')} <strong>${s.skyScore}</strong>`);
+  if (s.verdict?.score != null)
+    scores.push(`${t("mappop.view")} <strong>${s.verdict.score}</strong>`);
+  if (s.skyScore != null)
+    scores.push(`${t("mappop.sky")} <strong>${s.skyScore}</strong>`);
   const meta = [];
   if (Number.isFinite(s.dist))
-    meta.push(`${s.dist < 10 ? s.dist.toFixed(1) : Math.round(s.dist)} ${t('unit.km')}`);
-  if (s.dir) meta.push(t('mappop.towards', { dir: cardinal(s.dir) }));
-  if (Number.isFinite(s.driveMin)) meta.push(`~${s.driveMin} ${t('unit.min')}`);
+    meta.push(
+      `${s.dist < 10 ? s.dist.toFixed(1) : Math.round(s.dist)} ${t("unit.km")}`,
+    );
+  if (s.dir) meta.push(t("mappop.towards", { dir: cardinal(s.dir) }));
+  if (Number.isFinite(s.driveMin)) meta.push(`~${s.driveMin} ${t("unit.min")}`);
   const url = `https://www.openstreetmap.org/?mlat=${s.lat.toFixed(5)}&mlon=${s.lon.toFixed(
-    5
+    5,
   )}#map=15/${s.lat.toFixed(4)}/${s.lon.toFixed(4)}`;
   const name = s.name || t(kindInfo(s.kind).labelKey);
   return `<div class="mappop">
     <strong class="mappop__name">${name}</strong>
-    ${scores.length ? `<div class="mappop__scores">${scores.join(' · ')}</div>` : ''}
-    ${s.verdict?.code ? `<div class="mappop__verdict spot--${s.verdict.sentiment}">${t('verdict.' + s.verdict.code)}</div>` : ''}
-    ${meta.length ? `<div class="mappop__meta">${meta.join(' · ')}</div>` : ''}
-    <a href="${url}" target="_blank" rel="noopener">${t('spot.openOsm')}</a>
+    ${scores.length ? `<div class="mappop__scores">${scores.join(" · ")}</div>` : ""}
+    ${s.verdict?.code ? `<div class="mappop__verdict spot--${s.verdict.sentiment}">${t("verdict." + s.verdict.code)}</div>` : ""}
+    ${meta.length ? `<div class="mappop__meta">${meta.join(" · ")}</div>` : ""}
+    <a href="${url}" target="_blank" rel="noopener">${t("spot.openOsm")}</a>
   </div>`;
 }
 
@@ -106,7 +140,11 @@ function spotPopupHtml(s) {
  * @param {*} group featureGroup to add the layers to
  * @param {{lat,lon,azimuth,score,event,visibility,spots,onSpotClick?}} o
  */
-function buildSunsetOverlays(L, group, { lat, lon, azimuth, score, event, visibility, spots, onSpotClick }) {
+function buildSunsetOverlays(
+  L,
+  group,
+  { lat, lon, azimuth, score, event, visibility, spots, onSpotClick },
+) {
   const color = scoreColor(score);
   const end = destinationPoint(lat, lon, azimuth, 12); // ~12 km towards the sun
   const ray = [
@@ -114,13 +152,18 @@ function buildSunsetOverlays(L, group, { lat, lon, azimuth, score, event, visibi
     [end.lat, end.lon],
   ];
   // Ray towards the sun: soft warm halo + amber dashes (mock 2b/3d).
-  L.polyline(ray, { color: IMG.gold, weight: 9, opacity: 0.16, lineCap: 'round' }).addTo(group);
+  L.polyline(ray, {
+    color: IMG.gold,
+    weight: 9,
+    opacity: 0.16,
+    lineCap: "round",
+  }).addTo(group);
   L.polyline(ray, {
     color: IMG.gold,
     weight: 2.5,
     opacity: 0.85,
-    dashArray: '6 6',
-    lineCap: 'round',
+    dashArray: "6 6",
+    lineCap: "round",
   }).addTo(group);
 
   // Visibility circle: how far the atmosphere lets you see clearly.
@@ -132,7 +175,7 @@ function buildSunsetOverlays(L, group, { lat, lon, azimuth, score, event, visibi
       opacity: 0.5,
       fillColor: IMG.vis,
       fillOpacity: 0.06,
-      dashArray: '4 6',
+      dashArray: "4 6",
     }).addTo(group);
   }
 
@@ -141,7 +184,7 @@ function buildSunsetOverlays(L, group, { lat, lon, azimuth, score, event, visibi
     const c = SENT[s.verdict?.sentiment] || SENT.neutral;
     const m = L.marker([s.lat, s.lon], {
       icon: L.divIcon({
-        className: 'spotmark',
+        className: "spotmark",
         html: `<span class="spotmark__dot" style="--c:${c}"></span>`,
         iconSize: [16, 16],
         iconAnchor: [8, 8],
@@ -149,13 +192,13 @@ function buildSunsetOverlays(L, group, { lat, lon, azimuth, score, event, visibi
     })
       .addTo(group)
       .bindPopup(spotPopupHtml(s));
-    if (onSpotClick) m.on('click', () => onSpotClick(s));
+    if (onSpotClick) m.on("click", () => onSpotClick(s));
   });
 
   // The sun at the horizon, at the end of the ray (glow via CSS).
   L.marker([end.lat, end.lon], {
     icon: L.divIcon({
-      className: 'sunmark',
+      className: "sunmark",
       html: '<span class="sunmark__glow"></span>',
       iconSize: [26, 26],
       iconAnchor: [13, 13],
@@ -168,7 +211,7 @@ function buildSunsetOverlays(L, group, { lat, lon, azimuth, score, event, visibi
   // score, with a white ring and halo.
   L.marker([lat, lon], {
     icon: L.divIcon({
-      className: 'skymark',
+      className: "skymark",
       html: `<span class="skymark__score">${score}</span><span class="skymark__dot" style="--c:${color}"></span>`,
       iconSize: [44, 48],
       iconAnchor: [22, 44],
@@ -176,12 +219,12 @@ function buildSunsetOverlays(L, group, { lat, lon, azimuth, score, event, visibi
   })
     .addTo(group)
     .bindPopup(
-      t('map.markerPopup', {
+      t("map.markerPopup", {
         score,
-        event: t('event.' + (event === 'sunrise' ? 'sunrise' : 'sunset')),
+        event: t("event." + (event === "sunrise" ? "sunrise" : "sunset")),
         dir: cardinal(azimuthToCardinal(azimuth)),
         deg: Math.round(azimuth),
-      })
+      }),
     );
 }
 
@@ -194,14 +237,18 @@ let mini = { map: null, container: null, key: null, tile: null };
  * colored by score and a dashed ray towards the sun's azimuth, so you can see
  * at a glance where the sun will sit on the horizon.
  * @param {HTMLElement} mount container (already sized) to mount into
- * @param {{lat:number, lon:number, azimuth:number, score:number, event:string}} o
+ * @param {{lat:number, lon:number, azimuth:number, score:number, event:string,
+ *          visibility?:number, spots?:Array<any>, onExpand?:Function}} o
  */
-export async function mountMiniMap(mount, { lat, lon, azimuth, score, event, visibility, spots, onExpand }) {
+export async function mountMiniMap(
+  mount,
+  { lat, lon, azimuth, score, event, visibility, spots, onExpand },
+) {
   if (!mount) return;
   const L = await loadLeaflet(); // memoized: the first await is the only network cost
   const spotSig = (spots || []).length;
   const key = `${lat.toFixed(4)}|${lon.toFixed(4)}|${Math.round(azimuth)}|${score}|${event}|${Math.round(
-    visibility || 0
+    visibility || 0,
   )}|${spotSig}|${getLang()}`;
 
   // Same state as a previous render: move the existing container into the
@@ -214,8 +261,8 @@ export async function mountMiniMap(mount, { lat, lon, azimuth, score, event, vis
 
   // Different state (or first mount): rebuild.
   if (mini.map) mini.map.remove();
-  const container = document.createElement('div');
-  container.className = 'map';
+  const container = document.createElement("div");
+  container.className = "map";
   mount.appendChild(container);
   const map = L.map(container, {
     zoomControl: false,
@@ -223,22 +270,41 @@ export async function mountMiniMap(mount, { lat, lon, azimuth, score, event, vis
     scrollWheelZoom: false,
     doubleClickZoom: false,
     keyboard: false,
+    // Static preview → never animate. A queued zoom transition whose
+    // `transitionend` fires after the card re-renders (render() rebuilds it as
+    // spots/light-path data arrive) would run `_onZoomTransitionEnd` against a
+    // detached pane and throw `_leaflet_pos`. No animation, no stray callback.
+    zoomAnimation: false,
+    fadeAnimation: false,
+    markerZoomAnimation: false,
   }).setView([lat, lon], 12);
   compactAttribution(L, map);
   const tile = L.tileLayer(tileUrl(), TILE_OPTS).addTo(map);
   const overlays = L.featureGroup().addTo(map);
 
-  buildSunsetOverlays(L, overlays, { lat, lon, azimuth, score, event, visibility, spots });
+  buildSunsetOverlays(L, overlays, {
+    lat,
+    lon,
+    azimuth,
+    score,
+    event,
+    visibility,
+    spots,
+  });
 
   // A click on the map area (not on a marker: Leaflet doesn't propagate marker
   // clicks to the map's 'click') expands to the big in-app map.
   if (onExpand) {
-    container.classList.add('map-slot--clickable');
-    map.on('click', onExpand);
+    container.classList.add("map-slot--clickable");
+    map.on("click", onExpand);
   }
 
   // Frame everything (point, ray, visibility circle, suggested spots).
-  map.fitBounds(overlays.getBounds(), { padding: [28, 28], maxZoom: 12 });
+  map.fitBounds(overlays.getBounds(), {
+    padding: [28, 28],
+    maxZoom: 12,
+    animate: false,
+  });
 
   mini = { map, container, key, tile };
 }
@@ -246,7 +312,8 @@ export async function mountMiniMap(mount, { lat, lon, azimuth, score, event, vis
 /** Initial center: last analyzed place, otherwise the center of Italy. */
 function initialCenter() {
   const p = window.skyhueLastPlace;
-  if (p && Number.isFinite(p.latitude)) return { lat: p.latitude, lon: p.longitude, zoom: 12 };
+  if (p && Number.isFinite(p.latitude))
+    return { lat: p.latitude, lon: p.longitude, zoom: 12 };
   return { lat: 41.9, lon: 12.5, zoom: 6 };
 }
 
@@ -260,19 +327,19 @@ function compactAttribution(L, m) {
   m.attributionControl.setPrefix(false);
   const el = m.attributionControl.getContainer();
   if (!el) return;
-  el.classList.add('attr-collapsed');
-  el.setAttribute('role', 'button');
-  el.setAttribute('tabindex', '0');
-  el.setAttribute('aria-label', t('map.attribution'));
+  el.classList.add("attr-collapsed");
+  el.setAttribute("role", "button");
+  el.setAttribute("tabindex", "0");
+  el.setAttribute("aria-label", t("map.attribution"));
   // Don't let the tap propagate to the map (would cause a spurious "point picked").
   L.DomEvent.disableClickPropagation(el);
-  const toggle = () => el.classList.toggle('attr-open');
-  L.DomEvent.on(el, 'click', (e) => {
-    if (e.target.closest('a')) return; // let the credit links open
+  const toggle = () => el.classList.toggle("attr-open");
+  L.DomEvent.on(el, "click", (e) => {
+    if (e.target.closest("a")) return; // let the credit links open
     toggle();
   });
-  L.DomEvent.on(el, 'keydown', (e) => {
-    if (e.key === 'Enter' || e.key === ' ') {
+  L.DomEvent.on(el, "keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
       toggle();
     }
@@ -283,10 +350,13 @@ async function ensureMap() {
   const L = await loadLeaflet();
   if (map) return;
   const c = initialCenter();
-  map = L.map(els.canvas, { zoomControl: true }).setView([c.lat, c.lon], c.zoom);
+  map = L.map(els.canvas, { zoomControl: true }).setView(
+    [c.lat, c.lon],
+    c.zoom,
+  );
   compactAttribution(L, map);
   bigTile = L.tileLayer(tileUrl(), TILE_OPTS).addTo(map);
-  map.on('click', (e) => selectPoint(e.latlng.lat, e.latlng.lng));
+  map.on("click", (e) => selectPoint(e.latlng.lat, e.latlng.lng));
   addLegend(L);
 }
 
@@ -294,20 +364,20 @@ async function ensureMap() {
 function addLegend(L) {
   if (legendControl) return;
   const Legend = L.Control.extend({
-    options: { position: 'bottomleft' },
+    options: { position: "bottomleft" },
     onAdd() {
-      const el = L.DomUtil.create('details', 'maplegend');
+      const el = L.DomUtil.create("details", "maplegend");
       el.open = true;
       el.innerHTML = `
-        <summary class="maplegend__title">${t('map.legend')}</summary>
+        <summary class="maplegend__title">${t("map.legend")}</summary>
         <div class="maplegend__body">
-          <div class="maplegend__row"><span class="maplegend__ico maplegend__ico--point"></span> ${t('map.legend.point')}</div>
-          <div class="maplegend__row"><span class="maplegend__ico maplegend__ico--sun"></span> ${t('map.legend.sun')}</div>
-          <div class="maplegend__row"><span class="maplegend__ico maplegend__ico--ray"></span> ${t('map.legend.ray')}</div>
-          <div class="maplegend__row"><span class="maplegend__dot" style="--c:${SENT.good}"></span> ${t('map.legend.good')}</div>
-          <div class="maplegend__row"><span class="maplegend__dot" style="--c:${SENT.neutral}"></span> ${t('map.legend.neutral')}</div>
-          <div class="maplegend__row"><span class="maplegend__dot" style="--c:${SENT.bad}"></span> ${t('map.legend.bad')}</div>
-          <div class="maplegend__row"><span class="maplegend__ico maplegend__ico--vis"></span> ${t('map.legend.visibility')}</div>
+          <div class="maplegend__row"><span class="maplegend__ico maplegend__ico--point"></span> ${t("map.legend.point")}</div>
+          <div class="maplegend__row"><span class="maplegend__ico maplegend__ico--sun"></span> ${t("map.legend.sun")}</div>
+          <div class="maplegend__row"><span class="maplegend__ico maplegend__ico--ray"></span> ${t("map.legend.ray")}</div>
+          <div class="maplegend__row"><span class="maplegend__dot" style="--c:${SENT.good}"></span> ${t("map.legend.good")}</div>
+          <div class="maplegend__row"><span class="maplegend__dot" style="--c:${SENT.neutral}"></span> ${t("map.legend.neutral")}</div>
+          <div class="maplegend__row"><span class="maplegend__dot" style="--c:${SENT.bad}"></span> ${t("map.legend.bad")}</div>
+          <div class="maplegend__row"><span class="maplegend__ico maplegend__ico--vis"></span> ${t("map.legend.visibility")}</div>
         </div>`;
       // Don't let clicks/scrolls pass from the legend to the map below.
       L.DomEvent.disableClickPropagation(el);
@@ -363,7 +433,8 @@ function renderContext() {
   });
 
   const bounds = contextLayer.getBounds();
-  if (bounds.isValid()) map.fitBounds(bounds, { padding: [42, 42], maxZoom: 13, animate: false });
+  if (bounds.isValid())
+    map.fitBounds(bounds, { padding: [42, 42], maxZoom: 13, animate: false });
 }
 
 /**
@@ -399,7 +470,7 @@ async function selectPoint(lat, lon) {
     weight: 3,
     fillColor: IMG.accent,
     fillOpacity: 0.5,
-    className: 'tapmark',
+    className: "tapmark",
   }).addTo(map);
   marker.bringToFront();
   // Smooth transition to the chosen point (without pulling the zoom out too much).
@@ -417,7 +488,7 @@ async function evaluatePoint(lat, lon) {
   const { signal } = evalAbort;
   const token = ++evalToken;
   els.panel.hidden = false;
-  els.panel.innerHTML = `<p class="muted">${t('mp.calc')}</p>`;
+  els.panel.innerHTML = `<p class="muted">${t("mp.calc")}</p>`;
   try {
     const [forecast, air] = await Promise.all([
       fetchForecast(lat, lon, { signal }),
@@ -425,7 +496,8 @@ async function evaluatePoint(lat, lon) {
     ]);
     // Score the event the app is currently in (sunrise/sunset); a direct
     // #map deep-link has no context and defaults to sunset.
-    const event = window.skyhueMapContext?.event === 'sunrise' ? 'sunrise' : 'sunset';
+    const event =
+      window.skyhueMapContext?.event === "sunrise" ? "sunrise" : "sunset";
     const iso = nextSunset(forecast, new Date())[event];
     const cond = { ...conditionsAtTime(forecast, iso), ...airAtTime(air, iso) };
     const { score } = computeSunsetScore(cond);
@@ -438,23 +510,26 @@ async function evaluatePoint(lat, lon) {
     let spots = [];
     try {
       const pts = SAMPLE_DISTANCES.map((d) =>
-        d === 0 ? { lat, lon } : destinationPoint(lat, lon, sun.azimuth, d)
+        d === 0 ? { lat, lon } : destinationPoint(lat, lon, sun.azimuth, d),
       );
       const [el, near] = await Promise.all([
         fetchElevations(pts, { signal }),
         nearbySpots(lat, lon, sun.azimuth, { signal }).catch((err) => {
-          if (err?.name === 'AbortError') throw err; // evaluation superseded
+          if (err?.name === "AbortError") throw err; // evaluation superseded
           return [];
         }),
       ]);
-      const ahead = SAMPLE_DISTANCES.slice(1).map((distKm, k) => ({ distKm, elev: el[k + 1] }));
+      const ahead = SAMPLE_DISTANCES.slice(1).map((distKm, k) => ({
+        distKm,
+        elev: el[k + 1],
+      }));
       horizon = evaluateHorizon(el[0], ahead);
       spots = near;
     } catch (err) {
-      if (err?.name === 'AbortError' || signal.aborted) return; // superseded by a new tap
-      console.warn('Elevations/spots not available:', err);
+      if (err?.name === "AbortError" || signal.aborted) return; // superseded by a new tap
+      console.warn("Elevations/spots not available:", err);
     }
-    const verdict = spotVerdict('viewpoint', horizon);
+    const verdict = spotVerdict("viewpoint", horizon);
 
     if (token !== evalToken) return; // superseded by a more recent tap
 
@@ -484,46 +559,59 @@ async function evaluatePoint(lat, lon) {
       elevation: forecast.elevation,
     });
   } catch (err) {
-    if (err?.name === 'AbortError' || signal.aborted || token !== evalToken) return;
-    els.panel.innerHTML = `<p class="muted">${t('mp.na')}</p>`;
+    if (err?.name === "AbortError" || signal.aborted || token !== evalToken)
+      return;
+    els.panel.innerHTML = `<p class="muted">${t("mp.na")}</p>`;
   }
 }
 
-function renderPanel({ lat, lon, eventDate, score, sun, verdict, visibility, elevation }) {
-  const coords = `${Math.abs(lat).toFixed(2)}°${lat >= 0 ? 'N' : 'S'} · ${Math.abs(lon).toFixed(
-    2
-  )}°${lon >= 0 ? 'E' : 'W'}`;
+function renderPanel({
+  lat,
+  lon,
+  eventDate,
+  score,
+  sun,
+  verdict,
+  visibility,
+  elevation,
+}) {
+  const coords = `${Math.abs(lat).toFixed(2)}°${lat >= 0 ? "N" : "S"} · ${Math.abs(
+    lon,
+  ).toFixed(2)}°${lon >= 0 ? "E" : "W"}`;
   const dir = cardinal(azimuthToCardinal(sun.azimuth));
   els.panel.innerHTML = `
     <span class="mp__handle" aria-hidden="true"></span>
     <div class="mp__head">
-      ${skySwatch({ size: 'md' })}
+      ${skySwatch({ size: "md" })}
       <div class="mp__title">
-        <strong>${t('map.pointName')}</strong>
+        <strong>${t("map.pointName")}</strong>
         <span class="mp__coords mono">${coords}</span>
       </div>
       <div class="mp__scorebox">
-        ${scoreNumeral(score, { size: 'l', score, cls: 'mp__score' })}
-        <span class="mp__label">${t('label.' + scoreLabel(score))}</span>
+        ${scoreNumeral(score, { size: "l", score, cls: "mp__score" })}
+        <span class="mp__label">${t("label." + scoreLabel(score))}</span>
       </div>
     </div>
     <p class="mp__verdict spot--${verdict.sentiment}" style="--hue:${scoreHue(
-    verdict.score ?? score
-  )}">${icon(verdict.icon, { size: 16 })} ${t(
-    'verdict.' + verdict.code
-  )} — ${t('mappop.towards', { dir })} (${Math.round(sun.azimuth)}°)</p>
-    ${button(t('mp.openDetail'), { variant: 'primary', id: 'mp-open', cls: 'mp__open' })}
+      verdict.score ?? score,
+    )}">${icon(verdict.icon, { size: 16 })} ${t(
+      "verdict." + verdict.code,
+    )} — ${t("mappop.towards", { dir })} (${Math.round(sun.azimuth)}°)</p>
+    ${button(t("mp.openDetail"), { variant: "primary", id: "mp-open", cls: "mp__open" })}
   `;
-  const open = document.getElementById('mp-open');
-  open.addEventListener('click', () => {
+  const open = document.getElementById("mp-open");
+  open.addEventListener("click", () => {
     window.dispatchEvent(
-      new CustomEvent('skyhue:analyze', {
+      new CustomEvent("skyhue:analyze", {
         detail: {
           latitude: lat,
           longitude: lon,
-          label: t('map.pointLabel', { lat: lat.toFixed(3), lon: lon.toFixed(3) }),
+          label: t("map.pointLabel", {
+            lat: lat.toFixed(3),
+            lon: lon.toFixed(3),
+          }),
         },
-      })
+      }),
     );
     goToApp();
   });
@@ -545,17 +633,17 @@ function showMap() {
     })
     .catch(() => {
       els.panel.hidden = false;
-      els.panel.innerHTML = `<p class="muted">${t('map.loadError')}</p>`;
+      els.panel.innerHTML = `<p class="muted">${t("map.loadError")}</p>`;
     });
 }
 
 function goToApp() {
-  if (location.hash === '#map') location.hash = '';
+  if (location.hash === "#map") location.hash = "";
   else applyRoute();
 }
 
 function applyRoute() {
-  if (location.hash === '#map') {
+  if (location.hash === "#map") {
     showMap();
   } else {
     els.mapView.hidden = true;
@@ -564,14 +652,14 @@ function applyRoute() {
 }
 
 if (els.mapView) {
-  window.addEventListener('hashchange', applyRoute);
-  if (els.back) els.back.addEventListener('click', () => history.back());
+  window.addEventListener("hashchange", applyRoute);
+  if (els.back) els.back.addEventListener("click", () => history.back());
   applyRoute();
 }
 
 // Theme change: swap the light/dark tiles on the big map and on the mini-map
 // (the overlays are warm-tinted, consistent with both themes).
-window.addEventListener('skyhue:themechange', () => {
+window.addEventListener("skyhue:themechange", () => {
   const url = tileUrl();
   if (bigTile) bigTile.setUrl(url);
   if (mini.tile) mini.tile.setUrl(url);
@@ -579,7 +667,7 @@ window.addEventListener('skyhue:themechange', () => {
 
 // Language change: regenerate the legend and redraw the context (popups and
 // panel get recreated with the new strings on the next interaction/tap).
-window.addEventListener('skyhue:langchange', () => {
+window.addEventListener("skyhue:langchange", () => {
   if (!map || !window.L) return;
   if (legendControl) {
     map.removeControl(legendControl);
