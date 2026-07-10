@@ -759,15 +759,15 @@ function whenWord(date, event) {
 }
 
 /* ---------- Sky hero (results screen 1b) ---------- */
-function heroHtml({ eventDate, score, event }) {
+function heroHtml({ eventDate, score, event, factors }) {
   const { place } = state;
   const label = scoreLabel(score);
-  // Low scores: less vivid sky (desaturate + darken proportionally).
-  const satu = (0.4 + 0.6 * (score / 100)).toFixed(2);
-  const bright = (0.72 + 0.28 * (score / 100)).toFixed(2);
+  // Score-driven sky: the warm band rises and saturates with the score (see
+  // skyGradient). The palette already encodes how vivid it is, so no filter.
+  const sky = factors ? skyGradientCss(skyGradient(factors, score)) : "";
   return `
     <header class="rhero" style="--hue:${scoreHue(score)}">
-      <div class="rhero__sky" style="filter:saturate(${satu}) brightness(${bright})"></div>
+      <div class="rhero__sky"${sky ? ` style="background:${sky}"` : ""}></div>
       <div class="grain" aria-hidden="true"></div>
       <div class="rhero__melt"></div>
       <span class="rhero__sun" aria-hidden="true"></span>
@@ -1492,10 +1492,11 @@ async function shareImage({
   const stops = skyGradient(factors, score);
   const hsl = (s) => `hsl(${s.h} ${s.s}% ${s.l}%)`;
   const g = ctx.createLinearGradient(0, 0, 0, H);
-  g.addColorStop(0, hsl(stops[0]));
-  g.addColorStop(0.55, hsl(stops[1]));
-  g.addColorStop(0.8, hsl(stops[2]));
-  g.addColorStop(1, hsl(stops[3]));
+  // Use each stop's own position so the PNG matches the CSS hero (the warm band
+  // rises with the score; fixed positions would desync the two).
+  for (const s of stops) {
+    g.addColorStop(Math.min(1, Math.max(0, (s.p ?? 0) / 100)), hsl(s));
+  }
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, W, H);
 
@@ -1654,19 +1655,17 @@ function openShareSheet(data) {
     .addEventListener("click", () =>
       shareImage({ place, score, factors, eventDate, event, sun }),
     );
-  overlay
-    .querySelector("#sh-save")
-    .addEventListener("click", () =>
-      shareImage({
-        place,
-        score,
-        factors,
-        eventDate,
-        event,
-        sun,
-        download: true,
-      }),
-    );
+  overlay.querySelector("#sh-save").addEventListener("click", () =>
+    shareImage({
+      place,
+      score,
+      factors,
+      eventDate,
+      event,
+      sun,
+      download: true,
+    }),
+  );
   const copyBtn = overlay.querySelector("#sh-copy");
   copyBtn.addEventListener("click", async () => {
     await shareCurrent(score);
@@ -2235,9 +2234,3 @@ mountHomeMenu();
 updateSuggestAria();
 renderFavorites();
 initFromUrl();
-
-// Signal a successful boot to the watchdog in index.html. If a shell file ever
-// fails to load/link (e.g. a stale cached module missing an export), this line
-// never runs, so the watchdog self-heals the client (drops the SW + caches and
-// reloads from the network) — no user-side cache clearing required.
-window.__skyhueBooted = true;

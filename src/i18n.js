@@ -113,7 +113,7 @@ const DICT = {
     'label.exceptional': 'Eccezionale',
     'label.great': 'Ottimo',
     'label.good': 'Buono',
-    'label.fair': 'Discreto',
+    'label.fair': 'Modesto',
     'label.mediocre': 'Mediocre',
     'label.poor': 'Scarso',
 
@@ -210,8 +210,8 @@ const DICT = {
     'headline.great.sunrise': 'Una gran\nbell\'alba in\narrivo.',
     'headline.good.sunset': 'Un buon\ntramonto\nin arrivo.',
     'headline.good.sunrise': 'Una buona\nalba\nin arrivo.',
-    'headline.fair.sunset': 'Un tramonto\ndiscreto\nin arrivo.',
-    'headline.fair.sunrise': 'Un\'alba\ndiscreta\nin arrivo.',
+    'headline.fair.sunset': 'Un tramonto\nmodesto\nin arrivo.',
+    'headline.fair.sunrise': 'Un\'alba\nmodesto\nin arrivo.',
     'headline.mediocre.sunset': 'Un tramonto\nsmorzato\nin arrivo.',
     'headline.mediocre.sunrise': 'Un\'alba\nsmorzata\nin arrivo.',
     'headline.poor.sunset': 'Un tramonto\nspento\nin arrivo.',
@@ -224,9 +224,9 @@ const DICT = {
     'intro.good':
       'Buone condizioni per il colore, con qualche velatura utile. Il sole {verb} verso {dir}.',
     'intro.fair':
-      'Condizioni nella media: il colore potrebbe esserci a tratti. Il sole {verb} verso {dir}.',
+      'Nella media, ma la luce sarà calda: spesso vale l\'uscita. Il sole {verb} verso {dir}.',
     'intro.mediocre':
-      'Cielo poco favorevole: nubi o foschia smorzano le tinte. Il sole {verb} verso {dir}.',
+      'Colori in tono minore e cielo poco favorevole, ma il cielo può sorprendere. Il sole {verb} verso {dir}.',
     'intro.poor': 'Cielo chiuso: colori improbabili stavolta. Il sole {verb} verso {dir}.',
 
     'section.week': 'Questa settimana',
@@ -278,7 +278,7 @@ const DICT = {
     'upside.path.title': 'Via libera al sole · {gain}',
     'upside.path.detail': 'Con il percorso della luce sgombro a 40–250 km saliresti a ~{target}.',
 
-    'trend.arc': 'L’arco {when}',
+    'trend.arc': 'L’andamento {when}',
     'trend.predicted': 'Colore previsto',
 
     'section.atmosphere': 'Atmosfera',
@@ -525,9 +525,10 @@ const DICT = {
       'A clear, lit-up sky — high cirrus and crisp air line up for vivid colour. The sun {verb} to the {dir}.',
     'intro.good':
       'Good conditions for colour, with some helpful high cloud. The sun {verb} to the {dir}.',
-    'intro.fair': 'Average conditions — colour may come and go. The sun {verb} to the {dir}.',
+    'intro.fair':
+      'Average, but the light will be warm — often worth the trip. The sun {verb} to the {dir}.',
     'intro.mediocre':
-      'Unfavourable sky — cloud or haze mutes the tones. The sun {verb} to the {dir}.',
+      'Colours in a minor key and an unfavourable sky, but the sky can still surprise. The sun {verb} to the {dir}.',
     'intro.poor': 'A closed sky — colour is unlikely this time. The sun {verb} to the {dir}.',
 
     'section.week': 'This week',

@@ -46,6 +46,15 @@ from a CDN at runtime.
    Chrome profile** (`--user-data-dir` you `rm -rf` first) or unregister the SW +
    clear Cache Storage. Don't trust a screenshot from a profile that already
    loaded the app.
+   Two corollaries for the *user's* browser (not just test profiles):
+   - **Clients only update when `sw.js` itself changes** — a hard refresh does
+     NOT re-fetch the module scripts. Any change to shell files must come with a
+     **`CACHE = 'skyhue-vNN'` bump in `sw.js`**, or returning visitors keep the
+     old code forever.
+   - **With the local server down, the app still renders** — the SW serves the
+     whole shell from cache, so it looks alive but is frozen, and the updated
+     `sw.js` can never be fetched. If edits "don't show up" even after a cache
+     bump, first check the server is actually listening (`lsof -iTCP:8000`).
 
 2. **No browser drivers, no `node_modules`.** Playwright/chromium-cli aren't
    installed. → Drive headless Chrome directly over CDP with a tiny Node script.

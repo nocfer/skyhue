@@ -30,14 +30,12 @@
 :root {
   /* --- §1.1 Color (dark theme, default) ---------------------------------- */
   --bg: #120a16; /* screen / content background */
-  --bg-deep: #0a070d; /* behind sheets / dim layer */
   --surface: #171020; /* sheets, panels, map bottom sheet */
   --card: rgba(255, 255, 255, 0.05); /* card fill */
   --card-2: rgba(255, 255, 255, 0.035); /* quieter cards */
   --card-shadow: none; /* card elevation (light theme only) */
   --card-shadow-dim: none; /* quieter-card elevation (light theme only) */
   --hairline: rgba(255, 255, 255, 0.06); /* borders (v3 hairline) */
-  --divider: rgba(255, 255, 255, 0.08); /* section dividers */
 
   --text: #f6efe8; /* primary text */
   --muted: #8f8189; /* secondary text */
@@ -60,17 +58,17 @@
   --bar-track: rgba(255, 255, 255, 0.06); /* segment/meter bar background */
 
   /* --- §1.1 Imagery (IDENTICAL in both themes — never inverted) ----------- */
+  /* Black → warm sunset (no blue/violet cap): mirrors skyGradient() at a high
+     score, so the score-less home hero matches a great results sky. Hues stay
+     in a tight warm arc (near-black → red → orange → gold) — never magenta. */
   --sky-hero: linear-gradient(
     to bottom,
-    #160f2e,
-    #3a1a4d 20%,
-    #7c2b55 40%,
-    #c94360 58%,
-    #ff7e46 78%,
-    #ffb85e 92%,
-    #ffe4a6 100%
+    hsl(10 32% 6%) 0%,
+    hsl(5 60% 44%) 52%,
+    hsl(21 74% 52%) 76%,
+    hsl(42 75% 61%) 100%
   );
-  --sky-swatch: linear-gradient(to top, #2a1633, #c4416a 55%, #ffb85e);
+  --sky-swatch: linear-gradient(to top, hsl(10 40% 11%), hsl(4 62% 46%) 55%, hsl(42 80% 62%));
   --sun-glow: radial-gradient(circle, #fff4d4 0%, #ffd07a 42%, rgba(255, 170, 90, 0) 72%);
   --gold-img: #ffce6f; /* sun-ray stroke, dot glow (imagery: stays bright) */
   --accent-img: #ff8a52; /* orange as IMAGERY (hero meter, chart fade): never darkens */
@@ -116,18 +114,14 @@
   --s-3: 12px;
   --s-4: 16px;
   --s-5: 20px;
-  --s-6: 24px;
-  --s-7: 32px;
-  --s-8: 40px;
 
-  /* --- §1.3 Radii — 6 values (+ screen shell, mock only) ----------------- */
+  /* --- §1.3 Radii — 6 values --------------------------------------------- */
   --r-pill: 999px; /* chips, pills, selectors, circular buttons */
   --r-tile: 12px; /* icon tiles / small swatches */
   --r-control: 14px; /* buttons, inputs, thumbnails */
   --r-card: 18px; /* default for cards and list rows */
   --r-feature: 20px; /* emphasis / feature cards */
   --r-sheet: 26px; /* bottom sheet (top corners only) */
-  --r-screen: 42px; /* phone screen surface (mock/device frame only) */
 
   /* --- §1.5 Shadows / motion --------------------------------------------- */
   --shadow-sheet: 0 -8px 40px -12px rgba(0, 0, 0, 0.5); /* bottom sheet */
@@ -169,14 +163,12 @@
    NOT redefined: it stays identical to the dark theme. */
 :root[data-theme='light'] {
   --bg: #fdf7ef;
-  --bg-deep: #f6ede1;
   --surface: #ffffff;
   --card: #ffffff;
   --card-2: #fbf7f2;
   --card-shadow: 0 4px 14px -8px rgba(90, 45, 20, 0.12);
   --card-shadow-dim: 0 3px 10px -8px rgba(90, 45, 20, 0.08);
   --hairline: rgba(42, 31, 38, 0.05);
-  --divider: rgba(0, 0, 0, 0.08);
 
   --text: #2a1f26;
   --muted: #796d72; /* v3 contrast fix, was #8a7c82 */
@@ -953,18 +945,6 @@ body {
   dominant-baseline: middle;
 }
 
-
-.foot {
-  margin-top: 3rem;
-  text-align: center;
-  color: var(--muted);
-  font-size: 0.85rem;
-}
-
-.foot a {
-  color: var(--link-text);
-}
-
 /* Light theme: background with a warm halo on ivory, consistent with the dark theme. */
 :root[data-theme='light'] .sky {
   background:
@@ -1512,7 +1492,10 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  max-width: 62%;
+  /* Absorb all remaining width so the fixed action row never gets pushed
+     off-screen; min-width:0 lets the label span ellipsize inside the flex. */
+  flex: 0 1 auto;
+  min-width: 0;
   border: 0;
   background: transparent;
   color: #fff;
@@ -1529,6 +1512,7 @@ body {
 .rhero__actions {
   display: inline-flex;
   gap: 0.5rem;
+  flex: none;
 }
 .rhero__actions .gcircle {
   color: #fff;
@@ -1578,14 +1562,17 @@ body {
   width: 170px;
   height: 6px;
   border-radius: var(--r-pill);
-  background: rgba(255, 255, 255, 0.28);
+  /* Near-invisible track: the bar reads as a warm glow of "how high", not a
+     half-empty grade meter (a filled-to-42% bar on a bright track feels like a
+     failing mark). */
+  background: rgba(255, 255, 255, 0.12);
   overflow: hidden;
 }
 .rhero__meterfill {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, var(--gold-img), var(--accent-img));
+  background: linear-gradient(90deg, #ffdf9a, var(--gold-img));
 }
 
 .rcontent {
