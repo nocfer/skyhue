@@ -44,6 +44,7 @@ import {
   button,
 } from "./ui.js";
 import { mountMiniMap } from "./map.js";
+import { html, render as litRender, unsafeHTML } from "./render.js";
 import {
   t,
   cardinal,
@@ -72,7 +73,9 @@ import {
 
 const els = {
   form: document.getElementById("search-form"),
-  input: document.getElementById("search-input"),
+  input: /** @type {HTMLInputElement} */ (
+    document.getElementById("search-input")
+  ),
   suggest: document.getElementById("search-suggest"),
   geoBtn: document.getElementById("geo-btn"),
   results: document.getElementById("results"),
@@ -374,7 +377,7 @@ async function nameEstimatedSpots(spots, place) {
     try {
       const name = await reverseGeocode(s.lat, s.lon, getLang());
       if (name) s.name = name;
-    } catch (err) {
+    } catch {
       /* keeps the "estimated point" name */
     }
   }
@@ -686,9 +689,9 @@ function showResults() {
 function setEvent(ev) {
   if (ev !== "sunset" && ev !== "sunrise") return;
   state.event = ev;
-  document
-    .querySelectorAll(".mode")
-    .forEach((b) => b.classList.toggle("mode--active", b.dataset.event === ev));
+  document.querySelectorAll(".mode").forEach((/** @type {HTMLElement} */ b) => {
+    b.classList.toggle("mode--active", b.dataset.event === ev);
+  });
   // The azimuth changes a lot between sunrise and sunset: re-rate the spots'
   // outlook and resample the light path (nearly opposite ray).
   if (state.rawSpots && state.rawSpotsFor === state.place) {
@@ -1271,7 +1274,7 @@ function pointHtml({ cond, phase, factors }) {
 /** Assemble the results screen and wire up the handlers. */
 function renderResults(data, scored) {
   const { place, event } = data;
-  const { eventDate, score, factors, sun } = data;
+  const { eventDate, score, sun } = data;
   const tw = twilightTimes(eventDate, place.latitude, place.longitude);
 
   // "Top sunset incoming" banner (best day ≥85 and not today).
@@ -1345,15 +1348,19 @@ function renderResults(data, scored) {
   });
 
   // Week ribbon → switch day.
-  els.results.querySelectorAll(".wk__col").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      state.dayIndex = Number(btn.dataset.day);
-      render();
+  els.results
+    .querySelectorAll(".wk__col")
+    .forEach((/** @type {HTMLElement} */ btn) => {
+      btn.addEventListener("click", () => {
+        state.dayIndex = Number(btn.dataset.day);
+        render();
+      });
     });
-  });
 
   // "Show all" factors.
-  const whyMore = els.results.querySelector("#why-more");
+  const whyMore = /** @type {HTMLElement} */ (
+    els.results.querySelector("#why-more")
+  );
   const drivers = els.results.querySelector("#drivers");
   if (whyMore && drivers) {
     whyMore.addEventListener("click", () => {
@@ -1369,7 +1376,9 @@ function renderResults(data, scored) {
   if (scanBtn) scanBtn.addEventListener("click", scanCoordinates);
 
   // "See all points".
-  const spotsMore = els.results.querySelector("#spots-more");
+  const spotsMore = /** @type {HTMLElement} */ (
+    els.results.querySelector("#spots-more")
+  );
   const spotsList = els.results.querySelector("#spots-list");
   if (spotsMore && spotsList) {
     spotsMore.addEventListener("click", () => {
@@ -1618,27 +1627,6 @@ function openShareSheet(data) {
   const dir = cardinal(azimuthToCardinal(sun.azimuth));
   const overlay = document.createElement("div");
   overlay.className = "sheet-scrim";
-  overlay.innerHTML = `
-    <div class="sheet" role="dialog" aria-modal="true">
-      <span class="sheet__handle" aria-hidden="true"></span>
-      <h2 class="sheet__title display">${t("share.title." + event)}</h2>
-      <div class="sharecard" style="background:${skyCss}">
-        <div class="grain" aria-hidden="true"></div>
-        <span class="sharecard__brand">${icon("sunset", { size: 15 })} SkyHue</span>
-        ${scoreNumeral(score, { size: "xl", color: "#fff", cls: "sharecard__score" })}
-        <span class="sharecard__label display">${label}</span>
-        <div class="sharecard__foot">
-          <strong>${escapeHtml(place.label)}</strong>
-          <span>${noun} ${fmtTime(eventDate)} · ${dir} ${Math.round(sun.azimuth)}°</span>
-        </div>
-      </div>
-      ${button(t("share.image"), { variant: "primary", icon: "share", iconSize: 18, id: "sh-share", cls: "sheet__primary" })}
-      <div class="sheet__row">
-        ${button(t("share.save"), { variant: "ghost", id: "sh-save", cls: "sheet__ghost" })}
-        ${button(t("share.copy"), { variant: "ghost", id: "sh-copy", cls: "sheet__ghost" })}
-      </div>
-    </div>`;
-  document.body.appendChild(overlay);
   const close = () => {
     overlay.remove();
     document.removeEventListener("keydown", onKey);
@@ -1646,34 +1634,83 @@ function openShareSheet(data) {
   const onKey = (e) => {
     if (e.key === "Escape") close();
   };
+  const onCopy = async (e) => {
+    const btn = e.currentTarget;
+    await shareCurrent(score);
+    btn.textContent = t("status.linkCopied");
+    setTimeout(() => {
+      btn.textContent = t("share.copy");
+    }, 1600);
+  };
+  // lit-html: `place.label` is a plain interpolation, so it is auto-escaped (no
+  // more escapeHtml). The trusted string helpers (icon/scoreNumeral) are wrapped
+  // in unsafeHTML; the buttons are real elements so their clicks bind via @click.
+  const sheet = html`
+    <div class="sheet" role="dialog" aria-modal="true">
+      <span class="sheet__handle" aria-hidden="true"></span>
+      <h2 class="sheet__title display">${t("share.title." + event)}</h2>
+      <div class="sharecard" style="background:${skyCss}">
+        <div class="grain" aria-hidden="true"></div>
+        <span class="sharecard__brand"
+          >${unsafeHTML(icon("sunset", { size: 15 }))} SkyHue</span
+        >
+        ${unsafeHTML(
+          scoreNumeral(score, {
+            size: "xl",
+            color: "#fff",
+            cls: "sharecard__score",
+          }),
+        )}
+        <span class="sharecard__label display">${label}</span>
+        <div class="sharecard__foot">
+          <strong>${place.label}</strong>
+          <span
+            >${noun} ${fmtTime(eventDate)} · ${dir}
+            ${Math.round(sun.azimuth)}°</span
+          >
+        </div>
+      </div>
+      <button
+        class="btn btn--primary sheet__primary"
+        type="button"
+        @click=${() =>
+          shareImage({ place, score, factors, eventDate, event, sun })}
+      >
+        ${unsafeHTML(icon("share", { size: 18 }))} ${t("share.image")}
+      </button>
+      <div class="sheet__row">
+        <button
+          class="btn btn--ghost sheet__ghost"
+          type="button"
+          @click=${() =>
+            shareImage({
+              place,
+              score,
+              factors,
+              eventDate,
+              event,
+              sun,
+              download: true,
+            })}
+        >
+          ${t("share.save")}
+        </button>
+        <button
+          class="btn btn--ghost sheet__ghost"
+          type="button"
+          @click=${onCopy}
+        >
+          ${t("share.copy")}
+        </button>
+      </div>
+    </div>
+  `;
+  litRender(sheet, overlay);
   document.addEventListener("keydown", onKey);
   overlay.addEventListener("click", (e) => {
     if (e.target === overlay) close();
   });
-  overlay
-    .querySelector("#sh-share")
-    .addEventListener("click", () =>
-      shareImage({ place, score, factors, eventDate, event, sun }),
-    );
-  overlay.querySelector("#sh-save").addEventListener("click", () =>
-    shareImage({
-      place,
-      score,
-      factors,
-      eventDate,
-      event,
-      sun,
-      download: true,
-    }),
-  );
-  const copyBtn = overlay.querySelector("#sh-copy");
-  copyBtn.addEventListener("click", async () => {
-    await shareCurrent(score);
-    copyBtn.textContent = t("status.linkCopied");
-    setTimeout(() => {
-      copyBtn.textContent = t("share.copy");
-    }, 1600);
-  });
+  document.body.appendChild(overlay);
 }
 
 /** Draw the favorite place cards (home): swatch + name + time + score.
@@ -1717,25 +1754,29 @@ function renderFavorites() {
     if (f)
       analyze({ latitude: f.latitude, longitude: f.longitude, label: f.label });
   };
-  els.favorites.querySelectorAll(".place").forEach((card) => {
-    card.addEventListener("click", (e) => {
-      if (e.target.closest("[data-del]")) return;
-      load(card.dataset.id);
-    });
-    card.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" || e.key === " ") {
-        e.preventDefault();
+  els.favorites
+    .querySelectorAll(".place")
+    .forEach((/** @type {HTMLElement} */ card) => {
+      card.addEventListener("click", (e) => {
+        if (/** @type {Element} */ (e.target).closest("[data-del]")) return;
         load(card.dataset.id);
-      }
+      });
+      card.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          load(card.dataset.id);
+        }
+      });
     });
-  });
-  els.favorites.querySelectorAll("[data-del]").forEach((btn) => {
-    btn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      removeFavorite(btn.dataset.del);
-      renderFavorites();
+  els.favorites
+    .querySelectorAll("[data-del]")
+    .forEach((/** @type {HTMLElement} */ btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        removeFavorite(btn.dataset.del);
+        renderFavorites();
+      });
     });
-  });
   const cmp = els.favorites.querySelector("#fav-compare");
   if (cmp) cmp.addEventListener("click", compareFavorites);
 
@@ -1756,16 +1797,18 @@ async function enrichFavoriteCards(favs) {
           `.place[data-id="${CSS.escape(f.id)}"]`,
         );
         if (!el) return;
-        const sc = el.querySelector("[data-score]");
+        const sc = /** @type {HTMLElement} */ (
+          el.querySelector("[data-score]")
+        );
         const wh = el.querySelector("[data-when]");
         if (sc) {
-          sc.textContent = score;
-          sc.style.setProperty("--hue", scoreHue(score));
+          sc.textContent = String(score);
+          sc.style.setProperty("--hue", String(scoreHue(score)));
           sc.classList.add("is-set");
           sc.title = t("label." + scoreLabel(score));
         }
         // Swatch with the place's forecast sky gradient + label word.
-        const sw = el.querySelector(".swatch");
+        const sw = /** @type {HTMLElement} */ (el.querySelector(".swatch"));
         if (sw)
           sw.style.background = skyGradientCss(skyGradient(factors, score));
         const word = el.querySelector("[data-word]");
@@ -1823,7 +1866,7 @@ async function compareFavorites() {
         const cond = conditionsAtTime(fc, iso);
         const { score, factors } = computeSunsetScore(cond);
         return { label: f.label, score, factors, time: new Date(iso) };
-      } catch (err) {
+      } catch {
         return { label: f.label, score: null, time: null };
       }
     }),
@@ -2041,7 +2084,9 @@ els.input.addEventListener("keydown", (e) => {
 // on touch too: `mousedown` is only synthesized inconsistently from a tap, so
 // on mobile the suggestion often never registered.
 els.suggest.addEventListener("pointerdown", (e) => {
-  const li = e.target.closest(".suggest__item");
+  const li = /** @type {HTMLElement} */ (
+    /** @type {Element} */ (e.target).closest(".suggest__item")
+  );
   if (!li) return;
   e.preventDefault();
   chooseSuggest(Number(li.dataset.i));
@@ -2107,18 +2152,20 @@ function moreMenuHtml() {
 
 /** Close every open menu instance (home + results). */
 function closeAllMenus() {
-  document.querySelectorAll(".more-menu").forEach((pop) => {
-    pop.hidden = true;
-  });
   document
-    .querySelectorAll(".more-btn")
-    .forEach((b) => b.setAttribute("aria-expanded", "false"));
+    .querySelectorAll(".more-menu")
+    .forEach((/** @type {HTMLElement} */ pop) => {
+      pop.hidden = true;
+    });
+  document.querySelectorAll(".more-btn").forEach((b) => {
+    b.setAttribute("aria-expanded", "false");
+  });
 }
 
 /** Wire one menu instance (a `.menu` root): open/close + the two toggles. */
 function bindMoreMenu(root) {
   const btn = root.querySelector(".more-btn");
-  const pop = root.querySelector(".more-menu");
+  const pop = /** @type {HTMLElement} */ (root.querySelector(".more-menu"));
   if (!btn || !pop) return;
   btn.addEventListener("click", (e) => {
     e.stopPropagation();
@@ -2129,16 +2176,16 @@ function bindMoreMenu(root) {
   });
   // Picking an entry closes the menu: otherwise it stays open and the click
   // seems to have had no effect.
-  pop
-    .querySelectorAll(".menu__item")
-    .forEach((item) => item.addEventListener("click", closeAllMenus));
+  pop.querySelectorAll(".menu__item").forEach((item) => {
+    item.addEventListener("click", closeAllMenus);
+  });
   root.querySelector(".theme-toggle")?.addEventListener("click", toggleTheme);
   root.querySelector(".lang-toggle")?.addEventListener("click", toggleLanguage);
 }
 
 // Outside click / Escape closes any open menu (bound once).
 document.addEventListener("click", (e) => {
-  if (!e.target.closest(".menu")) closeAllMenus();
+  if (!(/** @type {Element} */ (e.target).closest(".menu"))) closeAllMenus();
 });
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") closeAllMenus();
@@ -2154,9 +2201,9 @@ function initFromUrl() {
     state.event = event;
     document
       .querySelectorAll(".mode")
-      .forEach((b) =>
-        b.classList.toggle("mode--active", b.dataset.event === event),
-      );
+      .forEach((/** @type {HTMLElement} */ b) => {
+        b.classList.toggle("mode--active", b.dataset.event === event);
+      });
     const label = p.get("label") || coordsLabel(lat, lon);
     analyze({ latitude: lat, longitude: lon, label });
   }
@@ -2189,7 +2236,7 @@ function toggleTheme() {
   document.documentElement.dataset.theme = next;
   try {
     localStorage.setItem("skyhue.theme", next);
-  } catch (e) {
+  } catch {
     /* storage unavailable */
   }
   updateThemeToggle();
@@ -2234,3 +2281,9 @@ mountHomeMenu();
 updateSuggestAria();
 renderFavorites();
 initFromUrl();
+
+// Signal a healthy boot to the self-heal watchdog in index.html: if the module
+// graph linked and this startup ran, we are NOT in the bricked-shell state the
+// watchdog guards against. Without this the watchdog misfires every session,
+// unregistering the service worker and clearing caches on each fresh load.
+window.__skyhueBooted = true;
