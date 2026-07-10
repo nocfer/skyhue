@@ -57,6 +57,11 @@ export function moonPhase(date) {
   return phase < 0 ? phase + 1 : phase;
 }
 
+/** Illuminated fraction of the moon disc (0..1) from the phase fraction (0..1). */
+export function moonIllumination(phase) {
+  return (1 - Math.cos(2 * Math.PI * phase)) / 2;
+}
+
 export function moonPhaseName(phase) {
   const codes = [
     'new',

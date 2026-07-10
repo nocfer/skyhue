@@ -1,13 +1,25 @@
 // Tests for the pure astronomy functions. Run with: node --test
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { sunPosition, twilightTimes, azimuthToCardinal } from '../src/astronomy.js';
+import {
+  sunPosition,
+  twilightTimes,
+  azimuthToCardinal,
+  moonIllumination,
+} from '../src/astronomy.js';
 
 test('azimuthToCardinal maps the main quadrants', () => {
   assert.equal(azimuthToCardinal(0), 'N');
   assert.equal(azimuthToCardinal(90), 'E');
   assert.equal(azimuthToCardinal(180), 'S');
   assert.equal(azimuthToCardinal(270), 'O');
+});
+
+test('moonIllumination maps the phase fraction to the lit fraction', () => {
+  assert.ok(Math.abs(moonIllumination(0)) < 1e-9, 'new moon → 0');
+  assert.ok(Math.abs(moonIllumination(0.5) - 1) < 1e-9, 'full moon → 1');
+  assert.ok(Math.abs(moonIllumination(0.25) - 0.5) < 1e-9, 'first quarter → 0.5');
+  assert.ok(Math.abs(moonIllumination(0.75) - 0.5) < 1e-9, 'last quarter → 0.5');
 });
 
 test('twilightTimes: golden → sunset → blue in order (evening)', () => {
