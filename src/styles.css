@@ -466,14 +466,8 @@ body {
 .mapview__canvas {
   flex: 1;
   min-height: 0;
-}
-
-.mapview__panel {
-  padding: 1rem 1.1rem;
-  background: var(--elevated);
-  border-top: 1px solid var(--card-border);
-  max-height: 45vh;
-  overflow-y: auto;
+  /* Fixed dark imagery in both themes (mock 2b); see --map-canvas token. */
+  background: var(--map-canvas);
 }
 
 /* --- Line SVG icons -------------------------------------------------------- */
@@ -2185,6 +2179,8 @@ body {
   padding: 1rem var(--side-pad);
   background: var(--surface);
   border-top: 1px solid var(--hairline);
+  max-height: 45vh;
+  overflow-y: auto;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -2200,9 +2196,6 @@ body {
 }
 
 /* ============================ MAP (2b) ============================ */
-.mapview__canvas {
-  background: var(--map-canvas);
-}
 /* Nudge the tiles toward the identity's plum-dark (mock 2b): sepia injects
    chroma into CARTO's grays, the hue rotation shifts it to violet. An
    approximation on raster tiles — applies to the big map and the mini-map. */
