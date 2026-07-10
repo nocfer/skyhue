@@ -1,7 +1,9 @@
 name: CI
 
-# Esegue i test dell'algoritmo a ogni push / PR. Non tocca il deploy (Pages usa
-# "deploy from a branch"): serve solo a garantire che la logica resti corretta.
+# Runs the test suite on every push / PR. This includes the import-graph check
+# (test/imports.test.js), which fails the build if a module imports a named
+# export that no shipped module provides — the bug that once bricked the whole
+# deployed app. Does not touch deploy (Pages uses "deploy from a branch").
 on:
   push:
   pull_request:
