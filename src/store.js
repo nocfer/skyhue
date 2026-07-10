@@ -1,4 +1,4 @@
-const KEY = 'skyhue.favorites';
+const KEY = "skyhue.favorites";
 
 let memory = [];
 
@@ -15,8 +15,7 @@ function write(list) {
   memory = list;
   try {
     localStorage.setItem(KEY, JSON.stringify(list));
-  } catch {
-  }
+  } catch {}
 }
 
 export function placeId(place) {

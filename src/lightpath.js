@@ -1,6 +1,6 @@
-import { fetchForecast } from './api.js';
-import { destinationPoint } from './spots.js';
-import { lightPathFactor } from './score.js';
+import { fetchForecast } from "./api.js";
+import { destinationPoint } from "./spots.js";
+import { lightPathFactor } from "./score.js";
 
 export const LIGHT_PATH_DISTANCES = [40, 90, 160, 250];
 
@@ -16,7 +16,7 @@ export async function fetchLightPath(lat, lon, azimuth) {
       const p = destinationPoint(lat, lon, azimuth, distKm);
       const forecast = await fetchForecast(p.lat, p.lon).catch(() => null);
       return { distKm, lat: p.lat, lon: p.lon, forecast };
-    })
+    }),
   );
   return { azimuth, points };
 }
@@ -57,7 +57,10 @@ export function sampleAtEpoch(forecast, epochMs) {
  */
 export function lightPathClearAt(lightPath, observerForecast, targetIso) {
   if (!lightPath?.points || !observerForecast || !targetIso) return null;
-  const epoch = epochOfLocal(targetIso, observerForecast.utc_offset_seconds ?? 0);
+  const epoch = epochOfLocal(
+    targetIso,
+    observerForecast.utc_offset_seconds ?? 0,
+  );
   const samples = lightPath.points
     .map((p) => {
       const s = sampleAtEpoch(p.forecast, epoch);

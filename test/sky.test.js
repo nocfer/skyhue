@@ -1,8 +1,8 @@
 // Tests for the sky palette generation. Run with: node --test
-import { test } from 'node:test';
-import assert from 'node:assert/strict';
-import { skyGradient, skyGradientCss } from '../src/sky.js';
-import { computeSunsetScore } from '../src/score.js';
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { skyGradient, skyGradientCss } from "../src/sky.js";
+import { computeSunsetScore } from "../src/score.js";
 
 const vivid = computeSunsetScore({
   cloudCover: 45,
@@ -22,7 +22,7 @@ const overcast = computeSunsetScore({
   humidity: 90,
 });
 
-test('skyGradient returns 4 stops', () => {
+test("skyGradient returns 4 stops", () => {
   const stops = skyGradient(vivid.factors, vivid.score);
   assert.equal(stops.length, 4);
   for (const s of stops) {
@@ -32,17 +32,17 @@ test('skyGradient returns 4 stops', () => {
   }
 });
 
-test('an overcast sky is less saturated than a vivid one', () => {
+test("an overcast sky is less saturated than a vivid one", () => {
   const avgSat = (r) =>
     skyGradient(r.factors, r.score).reduce((a, s) => a + s.s, 0) / 4;
   assert.ok(
     avgSat(overcast) < avgSat(vivid),
-    `coperto (${avgSat(overcast)}) dovrebbe essere < vivido (${avgSat(vivid)})`
+    `coperto (${avgSat(overcast)}) dovrebbe essere < vivido (${avgSat(vivid)})`,
   );
 });
 
-test('skyGradientCss produces a valid linear-gradient', () => {
+test("skyGradientCss produces a valid linear-gradient", () => {
   const css = skyGradientCss(skyGradient(vivid.factors, vivid.score));
   assert.match(css, /^linear-gradient\(180deg, hsl\(/);
-  assert.ok(css.includes('0%') && css.includes('100%'));
+  assert.ok(css.includes("0%") && css.includes("100%"));
 });

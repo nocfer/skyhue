@@ -8,13 +8,12 @@ export const TTL = {
   REVERSE: 30 * 24 * 60 * 60 * 1000, // place name from coordinates: static
 };
 
-export function coordKey(prefix, lat, lon, decimals = 3, extra = '') {
+export function coordKey(prefix, lat, lon, decimals = 3, extra = "") {
   return `${prefix}:${lat.toFixed(decimals)},${lon.toFixed(decimals)}${extra}`;
 }
 
-
-const DB_NAME = 'skyhue-cache';
-const STORE = 'entries';
+const DB_NAME = "skyhue-cache";
+const STORE = "entries";
 let dbPromise = null;
 
 function openDB() {
@@ -40,27 +39,30 @@ function idbBackend() {
       return openDB().then(
         (db) =>
           new Promise((resolve, reject) => {
-            const req = db.transaction(STORE, 'readonly').objectStore(STORE).get(key);
+            const req = db
+              .transaction(STORE, "readonly")
+              .objectStore(STORE)
+              .get(key);
             req.onsuccess = () => resolve(req.result);
             req.onerror = () => reject(req.error);
-          })
+          }),
       );
     },
     set(key, entry) {
       return openDB().then(
         (db) =>
           new Promise((resolve, reject) => {
-            const tx = db.transaction(STORE, 'readwrite');
+            const tx = db.transaction(STORE, "readwrite");
             tx.objectStore(STORE).put(entry, key);
             tx.oncomplete = () => resolve();
             tx.onerror = () => reject(tx.error);
-          })
+          }),
       );
     },
   };
 }
 
-let backend = typeof indexedDB !== 'undefined' ? idbBackend() : null;
+let backend = typeof indexedDB !== "undefined" ? idbBackend() : null;
 
 export function _setCacheBackend(b) {
   backend = b;
@@ -82,8 +84,7 @@ export async function cached(key, ttl, producer) {
         store.set(key, entry);
         return entry.value;
       }
-    } catch {
-    }
+    } catch {}
   }
 
   const value = await producer();
@@ -92,8 +93,7 @@ export async function cached(key, ttl, producer) {
   if (backend) {
     try {
       Promise.resolve(backend.set(key, entry)).catch(() => {});
-    } catch {
-    }
+    } catch {}
   }
   return value;
 }

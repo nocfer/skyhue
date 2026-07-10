@@ -16,7 +16,8 @@ import { clamp } from "./score.js";
 export function skyGradient(f, score) {
   const block = Math.max(f.lowBlock ?? 0, f.overcast ?? 0);
   const vivid = clamp(
-    (score / 100) * (0.6 + 0.4 * (f.drama ?? 0)) + 0.15 * (f.aerosolEnhance ?? 0),
+    (score / 100) * (0.6 + 0.4 * (f.drama ?? 0)) +
+      0.15 * (f.aerosolEnhance ?? 0),
     0,
     1,
   );

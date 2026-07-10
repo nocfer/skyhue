@@ -1,12 +1,16 @@
 // Geometry/parity audit: asserts mock-derived layout values against the live
 // app over CDP. usage: node audit.mjs <url> [--settle=ms] [--seed] [--w=390]
 const [url, ...rest] = process.argv.slice(2);
-const opt = Object.fromEntries(rest.map((a) => a.replace(/^--/, '').split('=')));
+const opt = Object.fromEntries(
+  rest.map((a) => a.replace(/^--/, "").split("=")),
+);
 const settle = Number(opt.settle || 8000);
 const W = Number(opt.w || 390);
 const H = W >= 1100 ? 900 : 844;
 
-const tab = await (await fetch('http://localhost:9222/json/new?about:blank', { method: 'PUT' })).json();
+const tab = await (
+  await fetch("http://localhost:9222/json/new?about:blank", { method: "PUT" })
+).json();
 const ws = new WebSocket(tab.webSocketDebuggerUrl);
 await new Promise((r) => (ws.onopen = r));
 let id = 0;
@@ -14,28 +18,47 @@ const pend = new Map();
 const events = [];
 ws.onmessage = (e) => {
   const m = JSON.parse(e.data);
-  if (m.id && pend.has(m.id)) { pend.get(m.id)(m.result || m.error); pend.delete(m.id); }
-  else if (m.method) events.push(m.method);
+  if (m.id && pend.has(m.id)) {
+    pend.get(m.id)(m.result || m.error);
+    pend.delete(m.id);
+  } else if (m.method) events.push(m.method);
 };
-const send = (method, params = {}) => new Promise((res) => { pend.set(++id, res); ws.send(JSON.stringify({ id, method, params })); });
+const send = (method, params = {}) =>
+  new Promise((res) => {
+    pend.set(++id, res);
+    ws.send(JSON.stringify({ id, method, params }));
+  });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-await send('Page.enable');
-await send('Network.enable');
-await send('Network.setCacheDisabled', { cacheDisabled: true });
+await send("Page.enable");
+await send("Network.enable");
+await send("Network.setCacheDisabled", { cacheDisabled: true });
 // The SW is cache-first for the shell: purge it or we audit stale CSS.
-await send('Storage.clearDataForOrigin', { origin: 'http://localhost:8000', storageTypes: 'service_workers,cache_storage' });
-await send('Emulation.setDeviceMetricsOverride', { width: W, height: H, deviceScaleFactor: 2, mobile: W < 800 });
-await send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: 'dark' }] });
-await send('Page.navigate', { url: 'http://localhost:8000/favicon.ico' });
+await send("Storage.clearDataForOrigin", {
+  origin: "http://localhost:8000",
+  storageTypes: "service_workers,cache_storage",
+});
+await send("Emulation.setDeviceMetricsOverride", {
+  width: W,
+  height: H,
+  deviceScaleFactor: 2,
+  mobile: W < 800,
+});
+await send("Emulation.setEmulatedMedia", {
+  features: [{ name: "prefers-color-scheme", value: "dark" }],
+});
+await send("Page.navigate", { url: "http://localhost:8000/favicon.ico" });
 await sleep(300);
 if (opt.seed !== undefined) {
-  await send('Runtime.evaluate', { expression: `localStorage.setItem('skyhue.lang','en');localStorage.setItem('skyhue.favorites', JSON.stringify([{id:'40.850,14.270',latitude:40.85,longitude:14.27,label:'Napoli'},{id:'38.720,-9.140',latitude:38.72,longitude:-9.14,label:'Lisbona'}]));` });
+  await send("Runtime.evaluate", {
+    expression: `localStorage.setItem('skyhue.lang','en');localStorage.setItem('skyhue.favorites', JSON.stringify([{id:'40.850,14.270',latitude:40.85,longitude:14.27,label:'Napoli'},{id:'38.720,-9.140',latitude:38.72,longitude:-9.14,label:'Lisbona'}]));`,
+  });
 }
 events.length = 0;
-await send('Page.navigate', { url });
+await send("Page.navigate", { url });
 const t0 = Date.now();
-while (!events.includes('Page.loadEventFired') && Date.now() - t0 < 30000) await sleep(50);
+while (!events.includes("Page.loadEventFired") && Date.now() - t0 < 30000)
+  await sleep(50);
 await sleep(settle);
 
 const CHECKS = `(() => {
@@ -152,12 +175,17 @@ const CHECKS = `(() => {
   return out;
 })()`;
 
-const r = await send('Runtime.evaluate', { expression: CHECKS, returnByValue: true });
+const r = await send("Runtime.evaluate", {
+  expression: CHECKS,
+  returnByValue: true,
+});
 const rows = r.result?.value || [];
 let fail = 0;
 for (const c of rows) {
   if (!c.ok) fail++;
-  console.log(`${c.ok ? 'PASS' : 'FAIL'}  ${c.name}  (got ${c.got}, want ${c.want})`);
+  console.log(
+    `${c.ok ? "PASS" : "FAIL"}  ${c.name}  (got ${c.got}, want ${c.want})`,
+  );
 }
 console.log(`\n${rows.length - fail}/${rows.length} checks passed`);
 ws.close();

@@ -19,7 +19,7 @@ export function lightPathFactor(samples) {
       Number.isFinite(s.distKm) &&
       (Number.isFinite(s.cloudCoverLow) ||
         Number.isFinite(s.cloudCoverMid) ||
-        Number.isFinite(s.cloudCoverHigh))
+        Number.isFinite(s.cloudCoverHigh)),
   );
   if (valid.length < 2) return null; // partial data → neutral, not a false signal
 
@@ -109,7 +109,7 @@ export function computeSunsetScore(c) {
   const score = clamp(
     raw * (1 - 0.85 * lowBlock) * (1 - 0.9 * overcast) * aerosolMult * pathMult,
     0,
-    100
+    100,
   );
 
   return {
@@ -144,12 +144,12 @@ export function computeSunsetScore(c) {
  * @returns {'exceptional'|'great'|'good'|'fair'|'mediocre'|'poor'}
  */
 export function scoreLabel(score) {
-  if (score >= 85) return 'exceptional';
-  if (score >= 70) return 'great';
-  if (score >= 55) return 'good';
-  if (score >= 40) return 'fair';
-  if (score >= 20) return 'mediocre';
-  return 'poor';
+  if (score >= 85) return "exceptional";
+  if (score >= 70) return "great";
+  if (score >= 55) return "good";
+  if (score >= 40) return "fair";
+  if (score >= 20) return "mediocre";
+  return "poor";
 }
 
 /**
@@ -166,50 +166,105 @@ export function explainScore(f) {
 
   // High clouds
   if (f.high >= 20 && f.high <= 75) {
-    notes.push({ code: 'highGood', sentiment: 'good', icon: 'cloud', params: { high: Math.round(f.high) } });
+    notes.push({
+      code: "highGood",
+      sentiment: "good",
+      icon: "cloud",
+      params: { high: Math.round(f.high) },
+    });
   } else if (f.high > 75) {
-    notes.push({ code: 'highMuch', sentiment: 'neutral', icon: 'cloud', params: { high: Math.round(f.high) } });
+    notes.push({
+      code: "highMuch",
+      sentiment: "neutral",
+      icon: "cloud",
+      params: { high: Math.round(f.high) },
+    });
   } else {
-    notes.push({ code: 'highFew', sentiment: 'neutral', icon: 'cloud-sun', params: {} });
+    notes.push({
+      code: "highFew",
+      sentiment: "neutral",
+      icon: "cloud-sun",
+      params: {},
+    });
   }
 
   // Mid clouds
   if (f.mid >= 20 && f.mid <= 65) {
-    notes.push({ code: 'midGood', sentiment: 'good', icon: 'cloud-sun', params: { mid: Math.round(f.mid) } });
+    notes.push({
+      code: "midGood",
+      sentiment: "good",
+      icon: "cloud-sun",
+      params: { mid: Math.round(f.mid) },
+    });
   }
 
   // Low clouds (critical factor)
   if (f.low >= 40) {
-    notes.push({ code: 'lowBad', sentiment: 'bad', icon: 'haze', params: { low: Math.round(f.low) } });
+    notes.push({
+      code: "lowBad",
+      sentiment: "bad",
+      icon: "haze",
+      params: { low: Math.round(f.low) },
+    });
   } else if (f.low >= 15) {
-    notes.push({ code: 'lowSome', sentiment: 'neutral', icon: 'haze', params: { low: Math.round(f.low) } });
+    notes.push({
+      code: "lowSome",
+      sentiment: "neutral",
+      icon: "haze",
+      params: { low: Math.round(f.low) },
+    });
   } else {
-    notes.push({ code: 'lowClear', sentiment: 'good', icon: 'sunset', params: {} });
+    notes.push({
+      code: "lowClear",
+      sentiment: "good",
+      icon: "sunset",
+      params: {},
+    });
   }
 
   // Total cover
   if (f.overcast > 0.5) {
-    notes.push({ code: 'overcast', sentiment: 'bad', icon: 'cloud', params: { total: Math.round(f.total) } });
+    notes.push({
+      code: "overcast",
+      sentiment: "bad",
+      icon: "cloud",
+      params: { total: Math.round(f.total) },
+    });
   }
 
   // Visibility
   if (f.visFactor >= 0.85) {
-    notes.push({ code: 'visGood', sentiment: 'good', icon: 'eye', params: { visKm } });
+    notes.push({
+      code: "visGood",
+      sentiment: "good",
+      icon: "eye",
+      params: { visKm },
+    });
   } else if (f.visFactor < 0.4) {
-    notes.push({ code: 'visBad', sentiment: 'bad', icon: 'cloud-fog', params: { visKm } });
+    notes.push({
+      code: "visBad",
+      sentiment: "bad",
+      icon: "cloud-fog",
+      params: { visKm },
+    });
   }
 
   // Aerosol / particulates
   if (f.aerosol !== null && f.aerosol !== undefined) {
     if (f.aerosolHaze >= 0.5) {
       notes.push({
-        code: 'hazeBad',
-        sentiment: 'bad',
-        icon: 'haze',
+        code: "hazeBad",
+        sentiment: "bad",
+        icon: "haze",
         params: { pm25: f.pm25 != null ? Math.round(f.pm25) : null },
       });
     } else if (f.aerosolEnhance >= 0.6) {
-      notes.push({ code: 'aerosolGood', sentiment: 'good', icon: 'flame', params: {} });
+      notes.push({
+        code: "aerosolGood",
+        sentiment: "good",
+        icon: "flame",
+        params: {},
+      });
     }
   }
 
@@ -217,20 +272,45 @@ export function explainScore(f) {
   if (f.pathClear !== null && f.pathClear !== undefined) {
     const clear = Math.round(f.pathClear * 100);
     if (f.pathClear < 0.45) {
-      notes.push({ code: 'pathBlocked', sentiment: 'bad', icon: 'cloud-fog', params: { clear } });
+      notes.push({
+        code: "pathBlocked",
+        sentiment: "bad",
+        icon: "cloud-fog",
+        params: { clear },
+      });
     } else if (f.pathClear < 0.8) {
-      notes.push({ code: 'pathPartial', sentiment: 'neutral', icon: 'compass', params: { clear } });
+      notes.push({
+        code: "pathPartial",
+        sentiment: "neutral",
+        icon: "compass",
+        params: { clear },
+      });
     } else if (f.drama >= 0.4) {
       // Clear path + local "scenic" clouds: the deck can light up from below.
-      notes.push({ code: 'pathClear', sentiment: 'good', icon: 'sunset', params: { clear } });
+      notes.push({
+        code: "pathClear",
+        sentiment: "good",
+        icon: "sunset",
+        params: { clear },
+      });
     }
   }
 
   // Humidity
   if (f.humidityPenalty >= 0.6) {
-    notes.push({ code: 'humidHigh', sentiment: 'bad', icon: 'droplet', params: { humidity: Math.round(f.humidity) } });
+    notes.push({
+      code: "humidHigh",
+      sentiment: "bad",
+      icon: "droplet",
+      params: { humidity: Math.round(f.humidity) },
+    });
   } else if (f.humidityPenalty <= 0.1) {
-    notes.push({ code: 'humidDry', sentiment: 'good', icon: 'wind', params: { humidity: Math.round(f.humidity) } });
+    notes.push({
+      code: "humidDry",
+      sentiment: "good",
+      icon: "wind",
+      params: { humidity: Math.round(f.humidity) },
+    });
   }
 
   return notes;
@@ -245,17 +325,17 @@ export function explainScore(f) {
  * overcast (ambiguous sign) and the message would be confusing.
  *
  * @param {SunsetConditions} c
- * @returns {Array<{code:string, gain:number, target:number}>} by decreasing
- *          gain, only gains ≥ 5 points, at most 3 entries
+ * @returns {Array<{code:string, patch:Partial<SunsetConditions>}>} one entry per
+ *          lever (empty patches already excluded by the callers' gain filter)
  */
 // Counterfactual levers as monotone condition patches (min/max: never suggest
 // a worsening; already-ideal inputs yield zero gain and get filtered out).
 function upsideLevers(c) {
   return [
-    { code: 'cirrus', patch: { cloudCoverHigh: 50 } },
-    { code: 'horizon', patch: { cloudCoverLow: 0 } },
+    { code: "cirrus", patch: { cloudCoverHigh: 50 } },
+    { code: "horizon", patch: { cloudCoverLow: 0 } },
     {
-      code: 'clearAir',
+      code: "clearAir",
       patch: {
         visibility: Math.max(c.visibility ?? 24000, 24000),
         humidity: Math.min(c.humidity ?? 50, 60),
@@ -264,7 +344,7 @@ function upsideLevers(c) {
     ...(c.aerosol != null || c.pm25 != null
       ? [
           {
-            code: 'haze',
+            code: "haze",
             patch: {
               aerosol: c.aerosol != null ? Math.min(c.aerosol, 0.2) : null,
               pm25: c.pm25 != null ? Math.min(c.pm25, 10) : null,
@@ -272,7 +352,7 @@ function upsideLevers(c) {
           },
         ]
       : []),
-    ...(c.pathClear != null ? [{ code: 'path', patch: { pathClear: 1 } }] : []),
+    ...(c.pathClear != null ? [{ code: "path", patch: { pathClear: 1 } }] : []),
   ];
 }
 

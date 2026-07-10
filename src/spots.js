@@ -1,10 +1,10 @@
-import { azimuthToCardinal } from './astronomy.js';
-import { cached, coordKey, TTL } from './cache.js';
+import { azimuthToCardinal } from "./astronomy.js";
+import { cached, coordKey, TTL } from "./cache.js";
 
 const OVERPASS_ENDPOINTS = [
-  'https://overpass-api.de/api/interpreter',
-  'https://overpass.kumi.systems/api/interpreter',
-  'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
+  "https://overpass-api.de/api/interpreter",
+  "https://overpass.kumi.systems/api/interpreter",
+  "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
 ];
 const EARTH_KM = 6371;
 const DEG = Math.PI / 180;
@@ -28,7 +28,7 @@ export function angleDiff(a, b) {
   return d;
 }
 export function driveMinutes(distKm) {
-  return Math.max(1, Math.round((distKm * 1.3) / 50 * 60));
+  return Math.max(1, Math.round(((distKm * 1.3) / 50) * 60));
 }
 
 export function horizonDistanceKm(elevM) {
@@ -40,15 +40,15 @@ export function destinationPoint(lat, lon, bearingDeg, distKm) {
   const f1 = lat * DEG;
   const l1 = lon * DEG;
   const f2 = Math.asin(
-    Math.sin(f1) * Math.cos(d) + Math.cos(f1) * Math.sin(d) * Math.cos(th)
+    Math.sin(f1) * Math.cos(d) + Math.cos(f1) * Math.sin(d) * Math.cos(th),
   );
   const l2 =
     l1 +
     Math.atan2(
       Math.sin(th) * Math.sin(d) * Math.cos(f1),
-      Math.cos(d) - Math.sin(f1) * Math.sin(f2)
+      Math.cos(d) - Math.sin(f1) * Math.sin(f2),
     );
-  return { lat: f2 / DEG, lon: (((l2 / DEG + 540) % 360) - 180) };
+  return { lat: f2 / DEG, lon: ((l2 / DEG + 540) % 360) - 180 };
 }
 
 export const SAMPLE_DISTANCES = [0, 0.4, 0.8, 1.5, 3, 5];
@@ -82,28 +82,28 @@ const KIND_BASE = {
 };
 
 /**
- * @returns {{score:number, sentiment:string, icon:string, label:string}}
+ * @returns {{score:number, sentiment:string, icon:string, code:string}}
  */
 export function spotVerdict(kind, horizon) {
   let score = KIND_BASE[kind] ?? 45;
   if (!horizon) {
-    return { score, sentiment: 'neutral', icon: 'help', code: 'notEvaluated' };
+    return { score, sentiment: "neutral", icon: "help", code: "notEvaluated" };
   }
   const { obstructed, seaFraction, maxAngle } = horizon;
   if (obstructed) {
     score = Math.max(0, score - 35);
-    return { score, sentiment: 'bad', icon: 'mountain', code: 'obstructed' };
+    return { score, sentiment: "bad", icon: "mountain", code: "obstructed" };
   }
   score += Math.round(20 * seaFraction);
   score += Math.max(0, Math.round((2 - maxAngle) * 5));
   score = Math.max(0, Math.min(100, score));
   if (seaFraction >= 0.5) {
-    return { score, sentiment: 'good', icon: 'waves', code: 'openSea' };
+    return { score, sentiment: "good", icon: "waves", code: "openSea" };
   }
-  if (kind === 'beach' && seaFraction < 0.3) {
-    return { score, sentiment: 'neutral', icon: 'sunset', code: 'openNoSea' };
+  if (kind === "beach" && seaFraction < 0.3) {
+    return { score, sentiment: "neutral", icon: "sunset", code: "openNoSea" };
   }
-  return { score, sentiment: 'good', icon: 'sunset', code: 'openLand' };
+  return { score, sentiment: "good", icon: "sunset", code: "openLand" };
 }
 
 /**
@@ -137,11 +137,15 @@ export function prescoreGrid(points, elevations, stepKm) {
   const sea = 1; // m: "sea / sea level" threshold
   const pts = points.map((p, i) => ({ ...p, elev: elevations[i] ?? null }));
   return pts.map((p) => {
-    if (p.elev == null || p.elev <= sea) return { ...p, coastal: false, prescore: -Infinity };
+    if (p.elev == null || p.elev <= sea)
+      return { ...p, coastal: false, prescore: -Infinity };
     let coastal = false;
     for (const q of pts) {
       if (q === p || q.elev == null) continue;
-      if (q.elev <= sea && distanceKm(p.lat, p.lon, q.lat, q.lon) <= stepKm * 1.5) {
+      if (
+        q.elev <= sea &&
+        distanceKm(p.lat, p.lon, q.lat, q.lon) <= stepKm * 1.5
+      ) {
         coastal = true;
         break;
       }
@@ -154,12 +158,13 @@ export function prescoreGrid(points, elevations, stepKm) {
 /**
  * Fetches the elevations (m) for a list of points, in a single batch call.
  * @param {Array<{lat:number, lon:number}>} points
+ * @param {{signal?:AbortSignal}} [opts]
  * @returns {Promise<number[]>} elevations aligned with the points
  */
 export async function fetchElevations(points, { signal } = {}) {
   if (!points.length) return [];
-  const lats = points.map((p) => p.lat.toFixed(5)).join(',');
-  const lons = points.map((p) => p.lon.toFixed(5)).join(',');
+  const lats = points.map((p) => p.lat.toFixed(5)).join(",");
+  const lons = points.map((p) => p.lon.toFixed(5)).join(",");
   // Terrain elevation is immutable: the point list is already a stable key.
   return cached(`elev:${lats}|${lons}`, TTL.ELEVATION, async () => {
     const url = `https://api.open-meteo.com/v1/elevation?latitude=${lats}&longitude=${lons}`;
@@ -172,29 +177,29 @@ export async function fetchElevations(points, { signal } = {}) {
 
 // Spot kinds we consider, with label and icon.
 const KINDS = {
-  viewpoint: { labelKey: 'kind.viewpoint', icon: 'eye' },
-  lighthouse: { labelKey: 'kind.lighthouse', icon: 'lighthouse' },
-  cape: { labelKey: 'kind.cape', icon: 'mountain' },
-  cliff: { labelKey: 'kind.cliff', icon: 'cliff' },
-  peak: { labelKey: 'kind.peak', icon: 'peak' },
-  beach: { labelKey: 'kind.beach', icon: 'umbrella' },
-  estimate: { labelKey: 'kind.estimate', icon: 'compass' },
+  viewpoint: { labelKey: "kind.viewpoint", icon: "eye" },
+  lighthouse: { labelKey: "kind.lighthouse", icon: "lighthouse" },
+  cape: { labelKey: "kind.cape", icon: "mountain" },
+  cliff: { labelKey: "kind.cliff", icon: "cliff" },
+  peak: { labelKey: "kind.peak", icon: "peak" },
+  beach: { labelKey: "kind.beach", icon: "umbrella" },
+  estimate: { labelKey: "kind.estimate", icon: "compass" },
 };
 
 function classify(tags = {}) {
-  if (tags.tourism === 'viewpoint') return 'viewpoint';
-  if (tags.man_made === 'lighthouse') return 'lighthouse';
-  if (tags.natural === 'cape') return 'cape';
-  if (tags.natural === 'cliff') return 'cliff';
-  if (tags.natural === 'peak') return 'peak';
-  if (tags.natural === 'beach') return 'beach';
+  if (tags.tourism === "viewpoint") return "viewpoint";
+  if (tags.man_made === "lighthouse") return "lighthouse";
+  if (tags.natural === "cape") return "cape";
+  if (tags.natural === "cliff") return "cliff";
+  if (tags.natural === "peak") return "peak";
+  if (tags.natural === "beach") return "beach";
   // Named points (e.g. "Punta Ferro") often mapped only as place=locality.
-  const n = (tags.name || '').toLowerCase();
-  if (/^(punta|capo|cabo)\b/.test(n)) return 'cape';
-  if (/^(faro|torre)\b/.test(n)) return 'lighthouse';
-  if (/^belvedere\b/.test(n)) return 'viewpoint';
-  if (/^(monte|pizzo|cima)\b/.test(n)) return 'peak';
-  return 'viewpoint';
+  const n = (tags.name || "").toLowerCase();
+  if (/^(punta|capo|cabo)\b/.test(n)) return "cape";
+  if (/^(faro|torre)\b/.test(n)) return "lighthouse";
+  if (/^belvedere\b/.test(n)) return "viewpoint";
+  if (/^(monte|pizzo|cima)\b/.test(n)) return "peak";
+  return "viewpoint";
 }
 
 export function kindInfo(kind) {
@@ -203,13 +208,22 @@ export function kindInfo(kind) {
 
 /**
  * Fetches the scenic spots within `radiusKm` of a position.
+ * @param {number} lat
+ * @param {number} lon
+ * @param {number} [radiusKm]
+ * @param {{signal?:AbortSignal}} [opts]
  * @returns {Promise<Array<{id,lat,lon,name,kind}>>}
  */
-export async function fetchSunsetSpots(lat, lon, radiusKm = 25, { signal } = {}) {
+export async function fetchSunsetSpots(
+  lat,
+  lon,
+  radiusKm = 25,
+  { signal } = {},
+) {
   const r = Math.round(radiusKm * 1000);
   // POIs are nearly static: key on rounded coordinates (~1 km) + radius, so
   // taps close together reuse the same Overpass response (expensive query).
-  const key = coordKey('spots', lat, lon, 2, `|${radiusKm}`);
+  const key = coordKey("spots", lat, lon, 2, `|${radiusKm}`);
   return cached(key, TTL.SPOTS, async () => {
     // `nwr` + `out center` also include points mapped as areas (beaches,
     // headlands), not just as nodes.
@@ -250,13 +264,17 @@ out center 90;`;
  * sampling elevations along the ray, and returns the best ones sorted by
  * quality. Self-contained (origin = the given lat/lon), so it's reusable
  * from the map screen.
+ * @param {number} lat
+ * @param {number} lon
+ * @param {number} azimuth
+ * @param {{radiusKm?:number, evaluate?:number, show?:number, nearKm?:number, signal?:AbortSignal}} [opts]
  * @returns {Promise<Array<{lat,lon,name,kind,dist,dir,driveMin,elev,verdict,finalScore}>>}
  */
 export async function nearbySpots(
   lat,
   lon,
   azimuth,
-  { radiusKm = 25, evaluate = 14, show = 6, nearKm = 6, signal } = {}
+  { radiusKm = 25, evaluate = 14, show = 6, nearKm = 6, signal } = {},
 ) {
   const raw = await fetchSunsetSpots(lat, lon, radiusKm, { signal });
   if (!raw.length) return [];
@@ -276,15 +294,19 @@ export async function nearbySpots(
   const points = [];
   for (const s of nearest) {
     for (const d of SAMPLE_DISTANCES) {
-      points.push(d === 0 ? { lat: s.lat, lon: s.lon } : destinationPoint(s.lat, s.lon, azimuth, d));
+      points.push(
+        d === 0
+          ? { lat: s.lat, lon: s.lon }
+          : destinationPoint(s.lat, s.lon, azimuth, d),
+      );
     }
   }
   let elevations = null;
   try {
     elevations = await fetchElevations(points, { signal });
   } catch (err) {
-    if (err?.name === 'AbortError') throw err; // evaluation superseded: propagate
-    console.warn('Elevations not available for nearby spots:', err);
+    if (err?.name === "AbortError") throw err; // evaluation superseded: propagate
+    console.warn("Elevations not available for nearby spots:", err);
   }
 
   const n = SAMPLE_DISTANCES.length;
@@ -320,29 +342,33 @@ export async function nearbySpots(
  * (hamlet/village/neighbourhood or natural feature), or null if unavailable.
  * Use sparingly (~1 req/s policy): only for a handful of points.
  */
-export async function reverseGeocode(lat, lon, lang = 'it') {
+export async function reverseGeocode(lat, lon, lang = "it") {
   // Place names are static + Nominatim has a ~1 req/s policy: long, persistent cache.
-  return cached(coordKey('rev', lat, lon, 5, `|${lang}`), TTL.REVERSE, async () => {
-    const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat.toFixed(
-      5
-    )}&lon=${lon.toFixed(5)}&zoom=14&accept-language=${lang}`;
-    const res = await fetch(url, { headers: { Accept: 'application/json' } });
-    if (!res.ok) throw new Error(`Nominatim ${res.status}`);
-    const data = await res.json();
-    const a = data.address || {};
-    return (
-      a.hamlet ||
-      a.village ||
-      a.town ||
-      a.suburb ||
-      a.neighbourhood ||
-      a.locality ||
-      a.natural ||
-      data.name ||
-      (data.display_name ? data.display_name.split(',')[0].trim() : null) ||
-      null
-    );
-  });
+  return cached(
+    coordKey("rev", lat, lon, 5, `|${lang}`),
+    TTL.REVERSE,
+    async () => {
+      const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat.toFixed(
+        5,
+      )}&lon=${lon.toFixed(5)}&zoom=14&accept-language=${lang}`;
+      const res = await fetch(url, { headers: { Accept: "application/json" } });
+      if (!res.ok) throw new Error(`Nominatim ${res.status}`);
+      const data = await res.json();
+      const a = data.address || {};
+      return (
+        a.hamlet ||
+        a.village ||
+        a.town ||
+        a.suburb ||
+        a.neighbourhood ||
+        a.locality ||
+        a.natural ||
+        data.name ||
+        (data.display_name ? data.display_name.split(",")[0].trim() : null) ||
+        null
+      );
+    },
+  );
 }
 
 /** Runs an Overpass query trying the endpoints in sequence (form-urlencoded). */
@@ -351,9 +377,9 @@ async function overpassQuery(q, signal) {
   for (const endpoint of OVERPASS_ENDPOINTS) {
     try {
       const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: 'data=' + encodeURIComponent(q),
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: "data=" + encodeURIComponent(q),
         signal,
       });
       if (!res.ok) throw new Error(`Overpass ${res.status}`);
@@ -361,9 +387,9 @@ async function overpassQuery(q, signal) {
     } catch (err) {
       // Evaluation cancelled (new tap): stop right away, don't fall back
       // to the next endpoint.
-      if (err?.name === 'AbortError' || signal?.aborted) throw err;
+      if (err?.name === "AbortError" || signal?.aborted) throw err;
       lastErr = err;
     }
   }
-  throw lastErr ?? new Error('Overpass non raggiungibile');
+  throw lastErr ?? new Error("Overpass non raggiungibile");
 }
