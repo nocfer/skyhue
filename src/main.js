@@ -2235,3 +2235,9 @@ mountHomeMenu();
 updateSuggestAria();
 renderFavorites();
 initFromUrl();
+
+// Signal a successful boot to the watchdog in index.html. If a shell file ever
+// fails to load/link (e.g. a stale cached module missing an export), this line
+// never runs, so the watchdog self-heals the client (drops the SW + caches and
+// reloads from the network) — no user-side cache clearing required.
+window.__skyhueBooted = true;
