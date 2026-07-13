@@ -14,13 +14,13 @@ import { eventNoun, fmtWeekdayLong } from "./format.js";
 import {
   spotsSectionTemplate,
   heroTemplate,
-  introHtml,
+  introTemplate,
   eventToggleTemplate,
   weekRibbonTemplate,
-  conditionsHtml,
+  conditionsTemplate,
   whyTemplate,
-  hourlyHtml,
-  lookAtHtml,
+  hourlyTemplate,
+  lookAtTemplate,
   pointTemplate,
   moreMenuHtml,
 } from "./views.js";
@@ -129,9 +129,9 @@ function renderResults(data, scored) {
       </button>`
     : nothing;
 
-  // lit render: hero/banner/toggle/ribbon are migrated lit templates with inline
-  // @click; the remaining sections are still `innerHTML` string builders wrapped
-  // in unsafeHTML until their slice lands, still bound in bindResultsHandlers.
+  // lit render: every section is a lit template with inline @click; handlers are
+  // passed in as callbacks, so there is no post-render re-binding step. Only the
+  // shared menu (bindMoreMenu) and the Leaflet mount stay imperative, below.
   litRender(
     html`
       ${heroTemplate(data, {
@@ -145,7 +145,7 @@ function renderResults(data, scored) {
         },
       })}
       <div class="rcontent">
-        ${banner} ${unsafeHTML(introHtml(data))}
+        ${banner} ${introTemplate(data)}
         ${eventToggleTemplate({ onSetEvent: setEvent })}
         ${weekRibbonTemplate(
           scored,
@@ -158,19 +158,19 @@ function renderResults(data, scored) {
           ${whyTemplate(data, {
             onToggleDrivers: (btn) => toggleCollapse(btn, "#drivers"),
           })}
-          ${unsafeHTML(lookAtHtml(sun, tw, event))}
+          ${lookAtTemplate(sun, tw, event)}
           ${pointTemplate(data, { onOpenMap: openBigMap })}
         </div>
         <div class="rcol rcol--b">
-          ${unsafeHTML(hourlyHtml(data, tw, event))}
-          ${unsafeHTML(conditionsHtml(data.cond))}
+          ${hourlyTemplate(data, tw, event)}
+          ${conditionsTemplate(data.cond)}
           ${spotsSectionTemplate(sun, data.factors, {
             onToggleSpots: (btn) => toggleCollapse(btn, "#spots-list"),
             onScan: scanCoordinates,
           })}
         </div>
         <footer class="rfoot">
-          <p data-i18n-html="foot.credits">${t("foot.credits")}</p>
+          <p data-i18n-html="foot.credits">${unsafeHTML(t("foot.credits"))}</p>
         </footer>
       </div>
     `,

@@ -1,11 +1,13 @@
-// View builders for the results screen: pure string helpers that turn state +
-// data into HTML fragments. They read `state` and localized text but hold no
-// state and wire no handlers — the controller (main.js `renderResults`) stitches
-// the exported sections together and binds events.
+// View builders for the results screen: each exported section returns a lit-html
+// template built from state + data. They read `state` and localized text but hold
+// no state; interactive elements bind via @click to callbacks the controller
+// (main.js `renderResults`) passes in — no post-render re-binding.
 //
-// NOTE: these are `innerHTML` string templates, NOT lit-html templates, so
-// user-controlled text (place/geocoder labels) MUST go through `escapeHtml`.
-// The lit-html migration (see CLAUDE.md) is not yet applied here.
+// User-controlled text (place/geocoder/spot names) is a bare `${…}` interpolation
+// and is auto-escaped by lit — no escapeHtml. Trusted HTML-string helpers
+// (icon/scoreNumeral/statCell/sectionHeader/chip/skySwatch and the pure-SVG
+// builders compassSvg/areaChartSvg) are wrapped in `unsafeHTML`. `moreMenuHtml`
+// stays a string (shared with the home screen, imperative open/close).
 
 import { html, unsafeHTML, nothing } from "./render.js";
 import { state, SPOTS_EVALUATE } from "./state.js";
@@ -204,7 +206,7 @@ export function spotsSectionTemplate(sun, factors, { onToggleSpots, onScan }) {
   return html`
     <section class="sect">
       ${unsafeHTML(sectionHeader(t("section.spots")))}
-      <p class="sect__cap">${dirNote}</p>
+      <p class="sect__cap">${unsafeHTML(dirNote)}</p>
       <p class="dualscore mono">${t("spot.dualLegend")}</p>
       ${body} ${more}
       <div class="estimate">
@@ -327,12 +329,17 @@ export function heroTemplate(
   `;
 }
 
-export function introHtml({ score, sun }) {
+export function introTemplate({ score, sun }) {
   // The direction is highlighted in gold (mock 1b: "The sun sets to the <NW>").
-  return `<p class="rintro">${t("intro." + scoreLabel(score), {
-    dir: `<strong>${dirName(sun.azimuth)}</strong>`,
-    verb: t(state.event === "sunset" ? "verb.sets" : "verb.rises"),
-  })}</p>`;
+  // t() returns markup (the <strong> is trusted, i18n + a cardinal), so unsafeHTML.
+  return html`<p class="rintro">
+    ${unsafeHTML(
+      t("intro." + scoreLabel(score), {
+        dir: `<strong>${dirName(sun.azimuth)}</strong>`,
+        verb: t(state.event === "sunset" ? "verb.sets" : "verb.rises"),
+      }),
+    )}
+  </p>`;
 }
 
 /* Compact sunrise/sunset toggle on the results screen. `onSetEvent(ev)` is the
@@ -466,35 +473,70 @@ function lightPathCell(cond) {
   });
 }
 
-export function conditionsHtml(cond) {
+export function conditionsTemplate(cond) {
   const visKm = cond.visibility / 1000;
-  const cell = (icon, label, type, v, value) => {
+  const cell = (ico, label, type, v, value) => {
     const d = condDesc(type, v);
     return statCell({
-      icon,
+      icon: ico,
       label,
       value,
       note: d.text,
       noteAccent: d.positive,
     });
   };
-  return `
+  const mid = Math.round(cond.cloudCoverMid ?? 0);
+  return html`
     <section class="sect">
-      ${sectionHeader(t("section.conditions"))}
+      ${unsafeHTML(sectionHeader(t("section.conditions")))}
       <div class="statgrid">
-        ${cell("cloud-sun", t("cond.highCloud"), "high", cond.cloudCoverHigh, Math.round(cond.cloudCoverHigh) + "%")}
-        ${cell("cloud", t("cond.lowCloud"), "low", cond.cloudCoverLow, Math.round(cond.cloudCoverLow) + "%")}
-        ${cell("eye", t("stat.visibility"), "vis", visKm, visKm.toFixed(0) + " km")}
-        ${cell("droplet", t("stat.humidity"), "hum", cond.humidity, Math.round(cond.humidity) + "%")}
-        ${lightPathCell(cond)}
+        ${unsafeHTML(
+          cell(
+            "cloud-sun",
+            t("cond.highCloud"),
+            "high",
+            cond.cloudCoverHigh,
+            Math.round(cond.cloudCoverHigh) + "%",
+          ),
+        )}
+        ${unsafeHTML(
+          cell(
+            "cloud",
+            t("cond.lowCloud"),
+            "low",
+            cond.cloudCoverLow,
+            Math.round(cond.cloudCoverLow) + "%",
+          ),
+        )}
+        ${unsafeHTML(
+          cell(
+            "eye",
+            t("stat.visibility"),
+            "vis",
+            visKm,
+            visKm.toFixed(0) + " km",
+          ),
+        )}
+        ${unsafeHTML(
+          cell(
+            "droplet",
+            t("stat.humidity"),
+            "hum",
+            cond.humidity,
+            Math.round(cond.humidity) + "%",
+          ),
+        )}
+        ${unsafeHTML(lightPathCell(cond))}
       </div>
-      ${(() => {
-        const mid = Math.round(cond.cloudCoverMid ?? 0);
-        return mid >= 5
-          ? `<p class="sect__cap cond__mid">${t("cond.midNote", { mid })}</p>`
-          : "";
-      })()}
-    </section>`;
+      ${
+        mid >= 5
+          ? html`<p class="sect__cap cond__mid">
+            ${t("cond.midNote", { mid })}
+          </p>`
+          : nothing
+      }
+    </section>
+  `;
 }
 
 // Icons for the counterfactual "what's missing to climb" levers (scoreUpside).
@@ -710,7 +752,7 @@ function areaChartSvg(timeline) {
   </svg>`;
 }
 
-export function hourlyHtml({ timeline }, tw, event) {
+export function hourlyTemplate({ timeline }, tw, event) {
   const swatches = timeline
     .map(
       (c) =>
@@ -719,23 +761,30 @@ export function hourlyHtml({ timeline }, tw, event) {
         )}"></span>`,
     )
     .join("");
-  return `
+  return html`
     <section class="sect">
-      ${sectionHeader(
-        t("trend.arc", {
-          when: t(state.event === "sunset" ? "when.sunset2" : "when.sunrise2"),
-        }),
+      ${unsafeHTML(
+        sectionHeader(
+          t("trend.arc", {
+            when: t(
+              state.event === "sunset" ? "when.sunset2" : "when.sunrise2",
+            ),
+          }),
+        ),
       )}
-      <p class="sect__cap">${t("trend.hint", {
-        when: t(state.event === "sunset" ? "when.sunset2" : "when.sunrise2"),
-      })}</p>
-      <div class="arc-card">${areaChartSvg(timeline)}</div>
+      <p class="sect__cap">
+        ${t("trend.hint", {
+          when: t(state.event === "sunset" ? "when.sunset2" : "when.sunrise2"),
+        })}
+      </p>
+      <div class="arc-card">${unsafeHTML(areaChartSvg(timeline))}</div>
       <div class="swatches">
         <span class="swatches__k mono">${t("trend.predicted")}</span>
-        <div class="swatches__row">${swatches}</div>
+        <div class="swatches__row">${unsafeHTML(swatches)}</div>
       </div>
-      ${lightChipsHtml(tw, event)}
-    </section>`;
+      ${unsafeHTML(lightChipsHtml(tw, event))}
+    </section>
+  `;
 }
 
 /* Golden/blue hour chips (reused in "Where to look" and the hourly trend). */
@@ -756,23 +805,28 @@ function lightChipsHtml(tw, event) {
 }
 
 /* "Where to look": compass + direction text + golden/blue hour chips. */
-export function lookAtHtml(sun, tw, event) {
-  return `
+export function lookAtTemplate(sun, tw, event) {
+  return html`
     <section class="sect">
-      ${sectionHeader(t("section.lookAt"))}
+      ${unsafeHTML(sectionHeader(t("section.lookAt")))}
       <div class="lookat">
-        ${compassSvg(sun.azimuth)}
+        ${unsafeHTML(compassSvg(sun.azimuth))}
         <div class="lookat__body">
-          <p class="lookat__dir">${dirName(sun.azimuth)}, ${Math.round(sun.azimuth)}°</p>
-          <p class="lookat__txt">${t("lookAt.text", {
-            verb: t(event === "sunset" ? "verb.sets" : "verb.rises"),
-            dir: dirName(sun.azimuth),
-            deg: Math.round(sun.azimuth),
-          })}</p>
+          <p class="lookat__dir">
+            ${dirName(sun.azimuth)}, ${Math.round(sun.azimuth)}°
+          </p>
+          <p class="lookat__txt">
+            ${t("lookAt.text", {
+              verb: t(event === "sunset" ? "verb.sets" : "verb.rises"),
+              dir: dirName(sun.azimuth),
+              deg: Math.round(sun.azimuth),
+            })}
+          </p>
         </div>
       </div>
-      ${lightChipsHtml(tw, event)}
-    </section>`;
+      ${unsafeHTML(lightChipsHtml(tw, event))}
+    </section>
+  `;
 }
 
 /* "The point" (3d): mini-map + grid note + 2×2 Atmosphere grid. `onOpenMap`
