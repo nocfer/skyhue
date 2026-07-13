@@ -11,10 +11,10 @@
 //   - scanCoordinates()  on-demand "search unmapped points" grid scan
 //   - resultsModel()     build { day, scored } for render() to draw
 //
-// The only view touch is user feedback in analyze() (`setStatus`, clearing the
-// stale results container); the scoring itself is DOM-free. A future extension
-// (see CONTEXT.md) would hand each session run an AbortSignal to cancel the
-// in-flight fetches rather than merely ignore their results.
+// The module never touches the DOM — the only outward effect is a status
+// message via `setStatus` — so the scoring path stays pure and testable. A
+// future extension (see CONTEXT.md) would hand each session run an AbortSignal
+// to cancel the in-flight fetches rather than merely ignore their results.
 import {
   fetchForecast,
   fetchAirQuality,
@@ -44,7 +44,6 @@ import {
 } from "./spots.js";
 import {
   state,
-  els,
   update,
   SPOTS_EVALUATE,
   SPOTS_SHOW,
@@ -58,7 +57,9 @@ import { setStatus } from "./format.js";
 /** Fetch data for a place and show the result. */
 export async function analyze(place) {
   setStatus(t("status.fetching", { label: place.label }), "info");
-  els.results.innerHTML = "";
+  // No explicit clear: analyze() always runs with the home showing (results
+  // hidden), and the next render() diffs the results via lit regardless — so
+  // this module never touches the DOM, keeping the scoring path pure/testable.
   try {
     // Weather and air quality in parallel; air is optional and non-blocking.
     const [forecast, air] = await Promise.all([

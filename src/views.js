@@ -7,6 +7,7 @@
 // user-controlled text (place/geocoder labels) MUST go through `escapeHtml`.
 // The lit-html migration (see CLAUDE.md) is not yet applied here.
 
+import { html, unsafeHTML, nothing } from "./render.js";
 import { state, SPOTS_EVALUATE } from "./state.js";
 import {
   fmtTime,
@@ -196,59 +197,95 @@ function compassSvg(azimuth) {
 }
 
 /* ---------- Sky hero (results screen 1b) ---------- */
-export function heroHtml({ eventDate, score, event, factors }) {
+// lit template. `place.label` is a bare interpolation (auto-escaped — no
+// escapeHtml). Trusted HTML-string helpers (icon/scoreNumeral) are wrapped in
+// unsafeHTML. The four interactive buttons bind via @click to callbacks the
+// controller passes in, so no post-render re-binding is needed. The `.menu`
+// stays a string (moreMenuHtml) — it is shared with the home screen and keeps
+// its own imperative open/close wiring (bindMoreMenu).
+export function heroTemplate(
+  { eventDate, score, event, factors },
+  { onHome, onSearch, onShare, onToggleFav },
+) {
   const { place } = state;
   const label = scoreLabel(score);
   // Score-driven sky: the warm band rises and saturates with the score (see
   // skyGradient). The palette already encodes how vivid it is, so no filter.
   const sky = factors ? skyGradientCss(skyGradient(factors, score)) : "";
-  return `
+  const fav = isFavorite(place);
+  return html`
     <header class="rhero" style="--hue:${scoreHue(score)}">
-      <div class="rhero__sky"${sky ? ` style="background:${sky}"` : ""}></div>
+      <div
+        class="rhero__sky"
+        style=${sky ? `background:${sky}` : nothing}
+      ></div>
       <div class="grain" aria-hidden="true"></div>
       <div class="rhero__melt"></div>
       <span class="rhero__sun" aria-hidden="true"></span>
       <div class="rhero__top">
-        <button type="button" class="rhero__loc" id="rhero-loc" aria-label="${t("rhero.change")}">
-          ${icon("pin", { size: 16 })}<span>${escapeHtml(place.label)}</span>${icon(
-            "chevron-down",
-            {
-              size: 16,
-            },
-          )}
+        <button
+          type="button"
+          class="rhero__loc"
+          id="rhero-loc"
+          aria-label=${t("rhero.change")}
+          @click=${onHome}
+        >
+          ${unsafeHTML(icon("pin", { size: 16 }))}<span>${place.label}</span
+          >${unsafeHTML(icon("chevron-down", { size: 16 }))}
         </button>
         <div class="rhero__actions">
-          <button type="button" class="gcircle" id="rhero-search" aria-label="${t("rhero.searchAria")}">${icon(
-            "search",
-            { size: 17 },
-          )}</button>
-          <button type="button" class="gcircle" id="rhero-share" aria-label="${t("detail.shareAria")}">${icon(
-            "share",
-            { size: 16 },
-          )}</button>
-          <button type="button" class="gcircle fav-toggle" aria-pressed="${isFavorite(
-            place,
-          )}" aria-label="${t("detail.favSave")}">${icon("star", {
-            size: 17,
-            fill: isFavorite(place),
-          })}</button>
-          <div class="menu">${moreMenuHtml()}</div>
+          <button
+            type="button"
+            class="gcircle"
+            id="rhero-search"
+            aria-label=${t("rhero.searchAria")}
+            @click=${onSearch}
+          >
+            ${unsafeHTML(icon("search", { size: 17 }))}
+          </button>
+          <button
+            type="button"
+            class="gcircle"
+            id="rhero-share"
+            aria-label=${t("detail.shareAria")}
+            @click=${onShare}
+          >
+            ${unsafeHTML(icon("share", { size: 16 }))}
+          </button>
+          <button
+            type="button"
+            class="gcircle fav-toggle${fav ? " fav-toggle--on" : ""}"
+            aria-pressed=${fav}
+            aria-label=${t("detail.favSave")}
+            @click=${onToggleFav}
+          >
+            ${unsafeHTML(icon("star", { size: 17, fill: fav }))}
+          </button>
+          <div class="menu">${unsafeHTML(moreMenuHtml())}</div>
         </div>
       </div>
       <div class="rhero__verdict">
-        <p class="rhero__eyebrow mono">${whenWord(eventDate, event)} · ${eventNoun(
-          event,
-        )} ${fmtTime(eventDate)}</p>
-        <h1 class="verdict__headline">${t("headline." + label + "." + event)}</h1>
-        <p class="rhero__score">${scoreNumeral(score, {
-          size: "l",
-          score,
-        })}<span>${t("results.scoreOutOf")}</span></p>
+        <p class="rhero__eyebrow mono">
+          ${whenWord(eventDate, event)} · ${eventNoun(event)}
+          ${fmtTime(eventDate)}
+        </p>
+        <h1 class="verdict__headline">
+          ${t("headline." + label + "." + event)}
+        </h1>
+        <p class="rhero__score">
+          ${unsafeHTML(scoreNumeral(score, { size: "l", score }))}<span
+            >${t("results.scoreOutOf")}</span
+          >
+        </p>
         <div class="rhero__meter" role="presentation" aria-hidden="true">
-          <span class="rhero__meterfill" style="width:${Math.max(0, Math.min(100, score))}%"></span>
+          <span
+            class="rhero__meterfill"
+            style="width:${Math.max(0, Math.min(100, score))}%"
+          ></span>
         </div>
       </div>
-    </header>`;
+    </header>
+  `;
 }
 
 export function introHtml({ score, sun }) {

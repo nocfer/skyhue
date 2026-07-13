@@ -2,9 +2,10 @@
 // the chrome (menus, theme, language, startup) and the event wiring. The analysis
 // domain — fetching + scoring — lives behind analysis.js, whose four verbs it
 // drives; the store (state.js) and its sole subscriber (render) live here too.
+import { html, render as litRender, unsafeHTML, nothing } from "./render.js";
 import { coordsLabel } from "./api.js";
 import { twilightTimes } from "./astronomy.js";
-import { isFavorite, toggleFavorite } from "./store.js";
+import { toggleFavorite } from "./store.js";
 import { icon } from "./icons.js";
 import { mountMiniMap } from "./map.js";
 import { t, initLang, getLang, setLang, applyStaticI18n } from "./i18n.js";
@@ -12,7 +13,7 @@ import { state, els, update, subscribe } from "./state.js";
 import { eventNoun, fmtWeekdayLong } from "./format.js";
 import {
   spotsSectionHtml,
-  heroHtml,
+  heroTemplate,
   introHtml,
   eventToggleHtml,
   weekRibbonHtml,
@@ -44,7 +45,7 @@ function showHome(focusSearch) {
   state.spots = null;
   state.rawSpots = null;
   els.results.hidden = true;
-  els.results.innerHTML = "";
+  litRender(nothing, els.results); // clear lit-managed content safely
   const home = document.getElementById("home");
   if (home) home.hidden = false;
   updateHomeTagline(); // event may have changed while on the results screen
@@ -120,25 +121,43 @@ function renderResults(data, scored) {
       })}</span></button>`
     : "";
 
-  els.results.innerHTML = `
-    ${heroHtml(data)}
-    <div class="rcontent">
-      ${bannerHtml}
-      ${introHtml(data)}
-      ${eventToggleHtml()}
-      ${weekRibbonHtml(scored, bannerBest ? bannerBest.d.dayIndex : null)}
-      <div class="rcol rcol--a">
-        ${whyHtml(data)}
-        ${lookAtHtml(sun, tw, event)}
-        ${pointHtml(data)}
+  // lit render: the hero is a migrated lit template with inline @click; the
+  // other sections are still `innerHTML` string builders, wrapped in unsafeHTML
+  // until their slice lands. Their handlers stay in bindResultsHandlers below.
+  litRender(
+    html`
+      ${heroTemplate(data, {
+        onHome: () => showHome(),
+        onSearch: () => showHome(true),
+        onShare: () => openShareSheet(data),
+        onToggleFav: () => {
+          toggleFavorite(place);
+          renderFavorites();
+          update(); // re-render so the hero star reflects the new state
+        },
+      })}
+      <div class="rcontent">
+        ${unsafeHTML(bannerHtml)} ${unsafeHTML(introHtml(data))}
+        ${unsafeHTML(eventToggleHtml())}
+        ${unsafeHTML(
+          weekRibbonHtml(scored, bannerBest ? bannerBest.d.dayIndex : null),
+        )}
+        <div class="rcol rcol--a">
+          ${unsafeHTML(whyHtml(data))} ${unsafeHTML(lookAtHtml(sun, tw, event))}
+          ${unsafeHTML(pointHtml(data))}
+        </div>
+        <div class="rcol rcol--b">
+          ${unsafeHTML(hourlyHtml(data, tw, event))}
+          ${unsafeHTML(conditionsHtml(data.cond))}
+          ${unsafeHTML(spotsSectionHtml(place, sun, data.factors))}
+        </div>
+        <footer class="rfoot">
+          <p data-i18n-html="foot.credits">${t("foot.credits")}</p>
+        </footer>
       </div>
-      <div class="rcol rcol--b">
-        ${hourlyHtml(data, tw, event)}
-        ${conditionsHtml(data.cond)}
-        ${spotsSectionHtml(place, sun, data.factors)}
-      </div>
-      <footer class="rfoot"><p data-i18n-html="foot.credits">${t("foot.credits")}</p></footer>
-    </div>`;
+    `,
+    els.results,
+  );
 
   bindResultsHandlers(data, best);
   els.results.scrollTop = 0;
@@ -148,31 +167,13 @@ function renderResults(data, scored) {
 function bindResultsHandlers(data, best) {
   const { place, event, score, sun } = data;
 
-  // Back to the home (new search / change place).
-  els.results.querySelector("#rhero-loc")?.addEventListener("click", showHome);
-  els.results
-    .querySelector("#rhero-search")
-    ?.addEventListener("click", () => showHome(true));
-  els.results
-    .querySelector("#rhero-share")
-    ?.addEventListener("click", () => openShareSheet(data));
+  // The hero (back/search/share/favorite) is migrated to lit @click in
+  // heroTemplate; its handlers are passed there from renderResults.
 
-  // "More options" menu (theme + language), mirrored from the home.
+  // "More options" menu (theme + language), mirrored from the home. The menu is
+  // shared with the home screen and keeps its own imperative open/close wiring.
   const resMenu = els.results.querySelector(".menu");
   if (resMenu) bindMoreMenu(resMenu);
-
-  // Favorite (star in the hero).
-  const favBtn = els.results.querySelector(".fav-toggle");
-  if (favBtn) {
-    favBtn.classList.toggle("fav-toggle--on", isFavorite(place));
-    favBtn.addEventListener("click", () => {
-      const saved = toggleFavorite(place);
-      favBtn.innerHTML = icon("star", { size: 17, fill: saved });
-      favBtn.classList.toggle("fav-toggle--on", saved);
-      favBtn.setAttribute("aria-pressed", String(saved));
-      renderFavorites();
-    });
-  }
 
   // Sunrise/sunset toggle (compact variant in the results).
   bindModes(els.results);
