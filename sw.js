@@ -2,7 +2,7 @@
 // The CACHE version is a content hash of the SHELL files, stamped by
 // `npm run stamp` (tools/stamp-sw.mjs). Do NOT edit it by hand — CI's
 // `npm run stamp:check` fails the build if it is stale.
-const CACHE = "skyhue-d1899594";
+const CACHE = "skyhue-3d8081da";
 
 // App-shell files to pre-cache (paths relative to the scope).
 const SHELL = [

@@ -62,6 +62,7 @@ import {
 import { openShareSheet } from "./share.js";
 import { renderFavorites } from "./favorites.js";
 import { updateSuggestAria } from "./suggest.js";
+import { beginRun } from "./session.js";
 
 /** Fetch data for a place and show the result. */
 async function analyze(place) {
@@ -101,14 +102,15 @@ async function analyze(place) {
 
 /** Load scenic viewpoints (OSM) in the background and rate their outlook. */
 async function loadSpots(place) {
+  const run = beginRun();
   try {
     const raw = await fetchSunsetSpots(place.latitude, place.longitude);
-    if (state.place !== place) return; // the user switched place in the meantime
-    update({ rawSpots: raw, rawSpotsFor: place });
+    if (run.stalePlace()) return; // the user switched place in the meantime
+    update({ rawSpots: raw, rawSpotsFor: run.place });
     await evaluateSpots();
   } catch (err) {
     console.warn("Scenic spots not available:", err);
-    if (state.place !== place) return;
+    if (run.stalePlace()) return;
     update({ spotsError: true });
   }
 }
@@ -128,14 +130,15 @@ function currentAzimuth() {
  * one model cell). Failure → score without this factor.
  */
 async function loadLightPath(place) {
-  const { event } = state;
+  const run = beginRun();
+  const { event } = run;
   update({
     lightPath: { status: "loading", place, event, azimuth: null, data: null },
   });
   try {
     const azimuth = currentAzimuth();
     const data = await fetchLightPath(place.latitude, place.longitude, azimuth);
-    if (state.place !== place || state.event !== event) return; // superseded
+    if (run.staleEvent()) return; // place or event changed — superseded
     const valid = data.points.filter((p) => p.forecast).length;
     update({
       lightPath:
@@ -145,7 +148,7 @@ async function loadLightPath(place) {
     });
   } catch (err) {
     console.warn("Light path not available:", err);
-    if (state.place !== place || state.event !== event) return;
+    if (run.staleEvent()) return;
     update({
       lightPath: { status: "error", place, event, azimuth: null, data: null },
     });
@@ -166,7 +169,8 @@ function pathClearAt(iso) {
  * switching sunrise/sunset recomputes without re-querying OSM.
  */
 async function evaluateSpots() {
-  const place = state.place;
+  const run = beginRun();
+  const place = run.place;
   const raw = state.rawSpots;
   if (!raw) return;
   if (raw.length === 0) {
@@ -193,14 +197,14 @@ async function evaluateSpots() {
     .slice(0, SPOTS_EVALUATE);
 
   const evaluated = await refineCandidates(nearest, azimuth, place);
-  if (state.place !== place) return;
+  if (run.stalePlace()) return;
 
   // Sort by final score (outlook − distance), then by proximity.
   evaluated.sort((a, b) => b.finalScore - a.finalScore || a.dist - b.dist);
   update({ spots: evaluated });
 
   // In background: compute the sky score directly at the finalist points.
-  loadSky(state.spots, place);
+  loadSky(state.spots);
 }
 
 /**
@@ -264,7 +268,8 @@ async function refineCandidates(candidates, azimuth, place) {
  * the best with the same outlook rating used for mapped spots.
  */
 async function scanCoordinates() {
-  const place = state.place;
+  const run = beginRun();
+  const place = run.place;
   if (!place || state.estimating) return;
   update({ estimating: true, estimateError: false });
   try {
@@ -278,7 +283,7 @@ async function scanCoordinates() {
       perSide,
     );
     const gelev = await fetchElevations(grid);
-    if (state.place !== place) return;
+    if (run.stalePlace()) return;
     const step = (2 * radius) / (perSide - 1);
     const candidates = prescoreGrid(grid, gelev, step)
       .filter((p) => p.prescore > -Infinity)
@@ -286,17 +291,17 @@ async function scanCoordinates() {
       .slice(0, SPOTS_EVALUATE)
       .map((p) => ({ lat: p.lat, lon: p.lon, kind: "estimate", name: null }));
     const evaluated = await refineCandidates(candidates, azimuth, place);
-    if (state.place !== place) return;
+    if (run.stalePlace()) return;
     evaluated.sort((a, b) => b.finalScore - a.finalScore || a.dist - b.dist);
     update({
       estimatedSpots: evaluated.slice(0, SPOTS_SHOW),
       estimating: false,
     });
-    loadSky(state.estimatedSpots, place);
-    nameEstimatedSpots(state.estimatedSpots, place);
+    loadSky(state.estimatedSpots);
+    nameEstimatedSpots(state.estimatedSpots);
   } catch (err) {
     console.warn("Coordinate scan failed:", err);
-    if (state.place !== place) return;
+    if (run.stalePlace()) return;
     update({ estimating: false, estimateError: true });
   }
 }
@@ -309,7 +314,8 @@ async function scanCoordinates() {
  * Name the first estimated points via reverse geocoding (Nominatim),
  * sequentially to respect the rate limit. Updates the name and re-renders.
  */
-async function nameEstimatedSpots(spots, place) {
+async function nameEstimatedSpots(spots) {
+  const run = beginRun();
   const top = (spots || []).filter((s) => s.kind === "estimate").slice(0, 3);
   for (const s of top) {
     try {
@@ -319,11 +325,12 @@ async function nameEstimatedSpots(spots, place) {
       /* keeps the "estimated point" name */
     }
   }
-  if (state.place !== place) return;
+  if (run.stalePlace()) return;
   update(); // names were mutated in place on the spot objects — just redraw
 }
 
-async function loadSky(list, place) {
+async function loadSky(list) {
+  const run = beginRun();
   const top = (list || []).slice(0, SPOTS_SKY);
   if (!top.length) return;
   const scores = await Promise.all(
@@ -343,7 +350,7 @@ async function loadSky(list, place) {
       }
     }),
   );
-  if (state.place !== place) return;
+  if (run.stalePlace()) return;
   top.forEach((s, i) => {
     s.skyScore = scores[i];
   });

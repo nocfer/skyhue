@@ -47,16 +47,37 @@ write, not a separate call to remember. Corollaries:
   (`render()`, `renderFavorites()`), by design. The store owns exactly the
   `state` object, nothing more.
 
-### The analysis session — *planned (candidate A)*
+### The analysis session — `src/session.js`
 
 The async loaders in `main.js` (`loadSpots`, `loadLightPath`, `loadSky`,
-`scanCoordinates`, …) currently guard against the user navigating away with
-scattered `state.place !== place` / `state.event !== event` checks — the
-cancellation protocol lives at ~10 call-sites. The planned deepening is an
-**analysis session** module owning an epoch that bumps on Place/Event change;
-each loader gates its `update()` commit through `session.live()`. It is
-**orthogonal to the store** and composes at the call-site (`if (!s.live())
-return;` before `update(…)`).
+`scanCoordinates`, `evaluateSpots`, `nameEstimatedSpots`) must drop their result
+if the user navigates away mid-fetch. That cancellation protocol used to live as
+~10 scattered `state.place !== place` / `state.event !== event` checks; it is now
+one module. A loader calls **`beginRun()`** at entry to capture the analysis
+identity, and after its `await` asks whether the run has gone stale before it
+commits via `update(…)`:
+
+```js
+const run = beginRun();
+const raw = await fetchSunsetSpots(…);
+if (run.stalePlace()) return;   // superseded — drop it
+update({ rawSpots: raw });
+```
+
+**Two scopes**, because the data has two dependencies — this is the distinction
+the module makes explicit:
+
+- **`stalePlace()`** — the Place changed. Spots, elevations and sky scores are
+  tied to the Place only, so they survive an Event switch.
+- **`staleEvent()`** — the Place *or* the Event changed. Only the light path
+  uses this: its ray flips between sunrise and sunset.
+
+The session is **orthogonal to the store** — it reads `state` but composes with
+`update` only at the call-site, and holds no state of its own. Nothing is
+aborted; a superseded fetch simply goes unused. **Future extension:** hand each
+run an `AbortSignal` to cancel the in-flight fetches (`api.js` / `spots.js` /
+`lightpath.js`) outright — a network-efficiency win with a larger blast radius,
+deliberately deferred.
 
 ### The render layer — *migrating (candidate C)*
 
