@@ -296,48 +296,72 @@ export function introHtml({ score, sun }) {
   })}</p>`;
 }
 
-/* Compact sunrise/sunset toggle on the results screen. */
-export function eventToggleHtml() {
-  const mk = (ev, ico) =>
-    `<button type="button" class="mode${state.event === ev ? " mode--active" : ""}" data-event="${ev}">${icon(
-      ico,
-      { size: 15 },
-    )} <span>${t("event." + ev)}</span></button>`;
-  return `<div class="modes modes--compact" role="group" aria-label="${t(
-    "mode.groupAria",
-  )}">${mk("sunset", "sunset")}${mk("sunrise", "sunrise")}</div>`;
+/* Compact sunrise/sunset toggle on the results screen. `onSetEvent(ev)` is the
+ * controller's setEvent (also re-renders); the home screen keeps its own static
+ * .mode buttons wired by bindModes. */
+export function eventToggleTemplate({ onSetEvent }) {
+  const mk = (ev, ico) => html`
+    <button
+      type="button"
+      class="mode${state.event === ev ? " mode--active" : ""}"
+      data-event=${ev}
+      @click=${() => onSetEvent(ev)}
+    >
+      ${unsafeHTML(icon(ico, { size: 15 }))} <span>${t("event." + ev)}</span>
+    </button>
+  `;
+  return html`
+    <div
+      class="modes modes--compact"
+      role="group"
+      aria-label=${t("mode.groupAria")}
+    >
+      ${mk("sunset", "sunset")}${mk("sunrise", "sunrise")}
+    </div>
+  `;
 }
 
-/* "This week": 7-day ribbon with dot + colored number. */
-export function weekRibbonHtml(scored, bestDayIndex = null) {
+/* "This week": 7-day ribbon with dot + colored number. `onSelectDay(i)` switches
+ * the analyzed day. */
+export function weekRibbonTemplate(scored, bestDayIndex, { onSelectDay }) {
   // Weekly summary: the caption uses the maximum; the glow highlights only
   // the "banner-worthy" day (≥85 and not today), or none if it doesn't qualify.
   const best = scored.reduce((a, b) => (b.score > a.score ? b : a), scored[0]);
-  const cols = scored
-    .map(({ d, score, date }) => {
-      const isBest = bestDayIndex != null && d.dayIndex === bestDayIndex;
-      const active = d.dayIndex === state.dayIndex;
-      // Dot sized by the score (7–11px), color from the warm ramp.
-      const dotSize = (7 + 4 * (score / 100)).toFixed(1);
-      return `
-      <button class="wk__col${active ? " wk__col--active" : ""}${
-        isBest ? " wk__col--best" : ""
-      }" data-day="${d.dayIndex}" style="--hue:${scoreHue(score)};--dsz:${dotSize}px">
-        ${scoreNumeral(score, { size: "xs", score, cls: "wk__score" })}
-        <span class="wk__dot"></span>
-        <span class="wk__day">${fmtWeekdayShort(date)}</span>
-      </button>`;
-    })
-    .join("");
-  return `
+  return html`
     <section class="sect sect--week">
-      ${sectionHeader(t("section.week"))}
-      <p class="sect__cap">${t("week.caption", {
-        day: fmtWeekdayShort(best.date),
-        score: best.score,
-      })}</p>
-      <div class="wk">${cols}</div>
-    </section>`;
+      ${unsafeHTML(sectionHeader(t("section.week")))}
+      <p class="sect__cap">
+        ${t("week.caption", {
+          day: fmtWeekdayShort(best.date),
+          score: best.score,
+        })}
+      </p>
+      <div class="wk">
+        ${scored.map(({ d, score, date }) => {
+          const isBest = bestDayIndex != null && d.dayIndex === bestDayIndex;
+          const active = d.dayIndex === state.dayIndex;
+          // Dot sized by the score (7–11px), color from the warm ramp.
+          const dotSize = (7 + 4 * (score / 100)).toFixed(1);
+          return html`
+            <button
+              class="wk__col${active ? " wk__col--active" : ""}${
+                isBest ? " wk__col--best" : ""
+              }"
+              data-day=${d.dayIndex}
+              style="--hue:${scoreHue(score)};--dsz:${dotSize}px"
+              @click=${() => onSelectDay(d.dayIndex)}
+            >
+              ${unsafeHTML(
+                scoreNumeral(score, { size: "xs", score, cls: "wk__score" }),
+              )}
+              <span class="wk__dot"></span>
+              <span class="wk__day">${fmtWeekdayShort(date)}</span>
+            </button>
+          `;
+        })}
+      </div>
+    </section>
+  `;
 }
 
 /* "Conditions": 2×2 weather cards with a short descriptor. */

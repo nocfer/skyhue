@@ -15,8 +15,8 @@ import {
   spotsSectionHtml,
   heroTemplate,
   introHtml,
-  eventToggleHtml,
-  weekRibbonHtml,
+  eventToggleTemplate,
+  weekRibbonTemplate,
   conditionsHtml,
   whyHtml,
   hourlyHtml,
@@ -111,19 +111,27 @@ function renderResults(data, scored) {
   const best = scored.reduce((a, b) => (b.score > a.score ? b : a), scored[0]);
   const bannerBest =
     best && best.score >= 85 && best.d.dayIndex >= 1 ? best : null;
-  const bannerHtml = bannerBest
-    ? `<button type="button" class="topbanner" id="topbanner">${icon("flame", {
-        size: 18,
-      })} <span>${t("banner.top", {
-        noun: eventNoun(event),
-        day: fmtWeekdayLong(best.date),
-        score: best.score,
-      })}</span></button>`
-    : "";
+  const banner = bannerBest
+    ? html`<button
+        type="button"
+        class="topbanner"
+        id="topbanner"
+        @click=${() => update({ dayIndex: best.d.dayIndex })}
+      >
+        ${unsafeHTML(icon("flame", { size: 18 }))}
+        <span
+          >${t("banner.top", {
+            noun: eventNoun(event),
+            day: fmtWeekdayLong(best.date),
+            score: best.score,
+          })}</span
+        >
+      </button>`
+    : nothing;
 
-  // lit render: the hero is a migrated lit template with inline @click; the
-  // other sections are still `innerHTML` string builders, wrapped in unsafeHTML
-  // until their slice lands. Their handlers stay in bindResultsHandlers below.
+  // lit render: hero/banner/toggle/ribbon are migrated lit templates with inline
+  // @click; the remaining sections are still `innerHTML` string builders wrapped
+  // in unsafeHTML until their slice lands, still bound in bindResultsHandlers.
   litRender(
     html`
       ${heroTemplate(data, {
@@ -137,10 +145,14 @@ function renderResults(data, scored) {
         },
       })}
       <div class="rcontent">
-        ${unsafeHTML(bannerHtml)} ${unsafeHTML(introHtml(data))}
-        ${unsafeHTML(eventToggleHtml())}
-        ${unsafeHTML(
-          weekRibbonHtml(scored, bannerBest ? bannerBest.d.dayIndex : null),
+        ${banner} ${unsafeHTML(introHtml(data))}
+        ${eventToggleTemplate({ onSetEvent: setEvent })}
+        ${weekRibbonTemplate(
+          scored,
+          bannerBest ? bannerBest.d.dayIndex : null,
+          {
+            onSelectDay: (i) => update({ dayIndex: i }),
+          },
         )}
         <div class="rcol rcol--a">
           ${unsafeHTML(whyHtml(data))} ${unsafeHTML(lookAtHtml(sun, tw, event))}
@@ -159,12 +171,12 @@ function renderResults(data, scored) {
     els.results,
   );
 
-  bindResultsHandlers(data, best);
+  bindResultsHandlers(data);
   els.results.scrollTop = 0;
 }
 
 /** Wire up the handlers for the just-rendered results screen. */
-function bindResultsHandlers(data, best) {
+function bindResultsHandlers(data) {
   const { place, event, score, sun } = data;
 
   // The hero (back/search/share/favorite) is migrated to lit @click in
@@ -175,22 +187,8 @@ function bindResultsHandlers(data, best) {
   const resMenu = els.results.querySelector(".menu");
   if (resMenu) bindMoreMenu(resMenu);
 
-  // Sunrise/sunset toggle (compact variant in the results).
-  bindModes(els.results);
-
-  // Banner → jump to the best day.
-  els.results.querySelector("#topbanner")?.addEventListener("click", () => {
-    update({ dayIndex: best.d.dayIndex });
-  });
-
-  // Week ribbon → switch day.
-  els.results
-    .querySelectorAll(".wk__col")
-    .forEach((/** @type {HTMLElement} */ btn) => {
-      btn.addEventListener("click", () => {
-        update({ dayIndex: Number(btn.dataset.day) });
-      });
-    });
+  // The event toggle, banner and week ribbon are migrated to lit @click
+  // (eventToggleTemplate / weekRibbonTemplate / the banner in renderResults).
 
   // "Show all" factors.
   const whyMore = /** @type {HTMLElement} */ (
