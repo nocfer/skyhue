@@ -79,6 +79,25 @@ run an `AbortSignal` to cancel the in-flight fetches (`api.js` / `spots.js` /
 `lightpath.js`) outright — a network-efficiency win with a larger blast radius,
 deliberately deferred.
 
+### The analysis domain — `src/analysis.js`
+
+Everything that turns a Place + Event into the scored model lives here — fetching
+(weather, air, spots, elevations, light path), rating scenic Spots, and computing
+the Sunset Score. It draws nothing; `main.js` is the controller that drives it and
+renders. The interface is **four verbs** over eleven private functions:
+
+- **`analyze(place)`** — full analysis for a newly chosen Place.
+- **`refreshForEvent()`** — recompute the Event-dependent data after a sunrise/
+  sunset switch (concentrates the "what does the new Event invalidate?" rule).
+- **`scanCoordinates()`** — the on-demand "search unmapped points" grid scan.
+- **`resultsModel()`** — pure, synchronous `{ day, scored }` for `render()` to draw.
+
+Writes flow through the store's `update()`; staleness is gated by the session's
+`beginRun()`. `resultsModel`/`evaluateDay` are DOM-free and unit-tested against a
+forecast fixture. The async loaders are **not** unit-tested yet: they call `fetch`
+directly and `api.js` exposes no injection seam — adding one (so the loaders can
+be driven with fixtures) is the natural follow-up.
+
 ### The render layer — *migrating (candidate C)*
 
 Rendering is moving from `innerHTML` template strings to lit-html (the single
