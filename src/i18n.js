@@ -5,8 +5,10 @@
 //   point    = arbitrary coordinates — map-tap, grid    (IT: punto)
 const DICT = {
   it: {
-    "app.tagline":
-      "Quanto sarà bello il prossimo tramonto? Un punteggio da meteo reale e dati astronomici.",
+    "app.tagline.sunset":
+      "Quanto si accenderà il prossimo tramonto? Un punteggio da meteo reale e dati astronomici.",
+    "app.tagline.sunrise":
+      "Quanto si accenderà la prossima alba? Un punteggio da meteo reale e dati astronomici.",
     "search.placeholder": "Cerca una città…",
     "search.aria": "Cerca una città",
     "search.suggestAria": "Suggerimenti di ricerca",
@@ -113,12 +115,12 @@ const DICT = {
     "mappop.sky": "cielo",
     "mappop.towards": "verso {dir}",
 
-    "label.exceptional": "Eccezionale",
-    "label.great": "Ottimo",
-    "label.good": "Buono",
-    "label.fair": "Modesto",
-    "label.mediocre": "Mediocre",
-    "label.poor": "Scarso",
+    "label.exceptional": "Infuocato",
+    "label.great": "Intenso",
+    "label.good": "Colorato",
+    "label.fair": "Pastello",
+    "label.mediocre": "Tenue",
+    "label.poor": "Neutro",
 
     "kind.viewpoint": "Punto panoramico",
     "kind.lighthouse": "Faro",
@@ -205,7 +207,7 @@ const DICT = {
     "menu.themeLight": "Chiaro",
     "menu.themeDark": "Scuro",
     "menu.langLabel": "Lingua",
-    "home.headline": "Insegui<br />la luce.",
+    "home.headline": "Come sarà<br />la luce?",
     "fav.title": "I tuoi luoghi",
     "map.pickSpot": "Scegli un punto sulla mappa",
     "map.pickTitle": "Scegli un punto",
@@ -216,18 +218,22 @@ const DICT = {
     "rhero.change": "Cambia località",
     "rhero.searchAria": "Nuova ricerca",
 
-    "headline.exceptional.sunset": "Un tramonto\nda non\nperdere.",
-    "headline.exceptional.sunrise": "Un'alba\nda non\nperdere.",
-    "headline.great.sunset": "Gran bel\ntramonto in\narrivo.",
-    "headline.great.sunrise": "Una gran\nbell'alba in\narrivo.",
-    "headline.good.sunset": "Un buon\ntramonto\nin arrivo.",
-    "headline.good.sunrise": "Una buona\nalba\nin arrivo.",
-    "headline.fair.sunset": "Un tramonto\nmodesto\nin arrivo.",
-    "headline.fair.sunrise": "Un'alba\nmodesto\nin arrivo.",
-    "headline.mediocre.sunset": "Un tramonto\nsmorzato\nin arrivo.",
-    "headline.mediocre.sunrise": "Un'alba\nsmorzata\nin arrivo.",
-    "headline.poor.sunset": "Un tramonto\nspento\nin arrivo.",
-    "headline.poor.sunrise": "Un'alba\nspenta\nin arrivo.",
+    // Event-neutral: the noun (sunset/sunrise) is already in the eyebrow. The
+    // score measures likely COLOUR, not beauty, so the copy describes the light
+    // and never judges the event as good/bad (a clear-sky sunset scores low but
+    // can still be lovely). sunset/sunrise keys share the same text.
+    "headline.exceptional.sunset": "Il cielo\ns'infiamma.",
+    "headline.exceptional.sunrise": "Il cielo\ns'infiamma.",
+    "headline.great.sunset": "Colori\nintensi\nin arrivo.",
+    "headline.great.sunrise": "Colori\nintensi\nin arrivo.",
+    "headline.good.sunset": "Bel colore\nin arrivo.",
+    "headline.good.sunrise": "Bel colore\nin arrivo.",
+    "headline.fair.sunset": "Luce calda,\ntoni\npastello.",
+    "headline.fair.sunrise": "Luce calda,\ntoni\npastello.",
+    "headline.mediocre.sunset": "Colore\nin tono\nminore.",
+    "headline.mediocre.sunrise": "Colore\nin tono\nminore.",
+    "headline.poor.sunset": "Poco\ncolore\nstavolta.",
+    "headline.poor.sunrise": "Poco\ncolore\nstavolta.",
 
     "intro.exceptional":
       "Tutto si allinea: cirri alti, aria tersa, orizzonte aperto. Il sole {verb} verso {dir}.",
@@ -329,8 +335,10 @@ const DICT = {
   },
 
   en: {
-    "app.tagline":
-      "How good will the next sunset be? A score from live weather and astronomical data.",
+    "app.tagline.sunset":
+      "How much colour will the next sunset bring? A score from live weather and astronomical data.",
+    "app.tagline.sunrise":
+      "How much colour will the next sunrise bring? A score from live weather and astronomical data.",
     "search.placeholder": "Search a city…",
     "search.aria": "Search a city",
     "search.suggestAria": "Search suggestions",
@@ -436,12 +444,12 @@ const DICT = {
     "mappop.sky": "sky",
     "mappop.towards": "towards {dir}",
 
-    "label.exceptional": "Exceptional",
-    "label.great": "Great",
-    "label.good": "Good",
-    "label.fair": "Fair",
-    "label.mediocre": "Mediocre",
-    "label.poor": "Poor",
+    "label.exceptional": "Fiery",
+    "label.great": "Vivid",
+    "label.good": "Colourful",
+    "label.fair": "Pastel",
+    "label.mediocre": "Faint",
+    "label.poor": "Neutral",
 
     "kind.viewpoint": "Viewpoint",
     "kind.lighthouse": "Lighthouse",
@@ -535,18 +543,19 @@ const DICT = {
     "rhero.change": "Change location",
     "rhero.searchAria": "New search",
 
-    "headline.exceptional.sunset": "An\nunmissable\nsunset.",
-    "headline.exceptional.sunrise": "An\nunmissable\nsunrise.",
-    "headline.great.sunset": "Great\nsunset\nahead.",
-    "headline.great.sunrise": "Great\nsunrise\nahead.",
-    "headline.good.sunset": "A good\nsunset\nahead.",
-    "headline.good.sunrise": "A good\nsunrise\nahead.",
-    "headline.fair.sunset": "A fair\nsunset\nahead.",
-    "headline.fair.sunrise": "A fair\nsunrise\nahead.",
-    "headline.mediocre.sunset": "A muted\nsunset\nahead.",
-    "headline.mediocre.sunrise": "A muted\nsunrise\nahead.",
-    "headline.poor.sunset": "A dull\nsunset\nahead.",
-    "headline.poor.sunrise": "A dull\nsunrise\nahead.",
+    // Event-neutral (see the IT block): describes likely COLOUR, not beauty.
+    "headline.exceptional.sunset": "The sky\ncatches\nfire.",
+    "headline.exceptional.sunrise": "The sky\ncatches\nfire.",
+    "headline.great.sunset": "Vivid\ncolour\nahead.",
+    "headline.great.sunrise": "Vivid\ncolour\nahead.",
+    "headline.good.sunset": "Good\ncolour\nahead.",
+    "headline.good.sunrise": "Good\ncolour\nahead.",
+    "headline.fair.sunset": "Warm light,\npastel\ntones.",
+    "headline.fair.sunrise": "Warm light,\npastel\ntones.",
+    "headline.mediocre.sunset": "Colour in\na minor\nkey.",
+    "headline.mediocre.sunrise": "Colour in\na minor\nkey.",
+    "headline.poor.sunset": "Little\ncolour\nthis time.",
+    "headline.poor.sunrise": "Little\ncolour\nthis time.",
 
     "intro.exceptional":
       "Everything lines up — high cirrus, crisp air, an open horizon. The sun {verb} to the {dir}.",

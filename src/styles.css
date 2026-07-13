@@ -1262,12 +1262,20 @@ body {
   gap: 0.4rem;
   border: 0;
   background: transparent;
-  color: var(--muted);
+  /* Inactive label stays legible (not disabled-looking): the active option is
+     signalled by the accent fill + bold weight, so the text can be full --text. */
+  color: var(--text);
   padding: 0.45rem 1rem;
   border-radius: var(--r-tile);
   cursor: pointer;
   font: inherit;
   font-size: 0.9rem;
+}
+.mode .ico {
+  color: var(--muted);
+}
+.mode--active .ico {
+  color: inherit;
 }
 .mode--active {
   background: var(--accent);
@@ -1471,12 +1479,15 @@ body {
   z-index: 1;
   animation: sunpulse 2.8s ease-in-out infinite;
 }
-.rhero__top,
 .rhero__verdict {
   position: relative;
   z-index: 2;
 }
 .rhero__top {
+  position: relative;
+  /* Above the verdict (z2): keeps the dropdown menu on top instead of
+     being covered by the headline/score painted later in the DOM. */
+  z-index: 5;
   display: flex;
   align-items: center;
   justify-content: space-between;

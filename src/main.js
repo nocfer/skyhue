@@ -437,6 +437,7 @@ function showHome(focusSearch) {
   els.results.innerHTML = "";
   const home = document.getElementById("home");
   if (home) home.hidden = false;
+  updateHomeTagline(); // event may have changed while on the results screen
   renderFavorites();
   window.scrollTo(0, 0);
   if (focusSearch === true) setTimeout(() => els.input?.focus(), 50);
@@ -466,7 +467,10 @@ function setEvent(ev) {
   if (state.forecast) render();
   if (state.forecast) loadLightPath(state.place); // usually a cache hit: instant
   if (state.rawSpots && state.rawSpotsFor === state.place) evaluateSpots();
-  if (!state.forecast) renderFavorites(); // refresh the favorites' scores on the home
+  if (!state.forecast) {
+    updateHomeTagline(); // tagline names the selected event (sunset/sunrise)
+    renderFavorites(); // refresh the favorites' scores on the home
+  }
 }
 
 /** Wire up the sunrise/sunset buttons contained in `root`. */
@@ -762,6 +766,7 @@ function toggleLanguage() {
   setLang(getLang() === "en" ? "it" : "en");
   document.documentElement.lang = getLang();
   applyStaticI18n();
+  updateHomeTagline(); // not covered by data-i18n: refresh in the new language
   mountHomeMenu(); // rebuild the home menu (labels/value) in the new language
   updateSuggestAria();
   renderFavorites();
@@ -778,6 +783,13 @@ function toggleLanguage() {
   );
 }
 
+/** Set the home tagline for the current event (sunset/sunrise); the copy is
+ *  static markup otherwise, so it must be refreshed on event/language change. */
+function updateHomeTagline() {
+  const el = document.querySelector(".home__tagline");
+  if (el) el.textContent = t(`app.tagline.${state.event}`);
+}
+
 /** Build + wire the home menu (called at startup and after a language switch). */
 function mountHomeMenu() {
   const slot = document.getElementById("home-menu");
@@ -790,6 +802,7 @@ function mountHomeMenu() {
 initLang();
 document.documentElement.lang = getLang();
 applyStaticI18n();
+updateHomeTagline();
 mountHomeMenu();
 updateSuggestAria();
 renderFavorites();
