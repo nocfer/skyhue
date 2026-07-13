@@ -98,11 +98,23 @@ forecast fixture. The async loaders are **not** unit-tested yet: they call `fetc
 directly and `api.js` exposes no injection seam — adding one (so the loaders can
 be driven with fixtures) is the natural follow-up.
 
-### The render layer — *migrating (candidate C)*
+### The render layer — lit-html (`src/render.js`, `src/views.js`)
 
-Rendering is moving from `innerHTML` template strings to lit-html (the single
-CDN choke point is `src/render.js`). The share sheet (`openShareSheet`) is
-migrated; the results screen is next, which will delete `bindResultsHandlers`
-(imperative listener re-binding on every render) and retire the `escapeHtml`
-requirement inside migrated views. The store contract is unchanged by this
-migration: `subscribe(render)` still holds when `render` becomes a lit diff.
+Rendering uses lit-html, pinned at the single CDN choke point `src/render.js`.
+The **share sheet** and the whole **results screen** are migrated: every section
+in `views.js` returns a lit template, interactive elements bind via `@click` to
+callbacks the controller passes in, and `render()` is `render(template,
+els.results)`. This deleted `bindResultsHandlers` (the per-render imperative
+re-binding) and retired `escapeHtml` from `views.js` — user text (place/spot
+names) is a bare auto-escaped `${…}`; trusted i18n/HTML-string helpers are
+wrapped in `unsafeHTML`. **Watch out:** a few i18n strings carry markup
+(`spots.dirNote`, `foot.credits`, `home.headline`), so `t()` output that renders
+as content must go through `unsafeHTML`, not a bare interpolation.
+
+Two deliberate imperative exceptions remain: the **shared menu** (`bindMoreMenu`
+— open/close state, used by the home screen too) and the **Leaflet mini-map**
+mount (`mountMiniMap` post-render in `renderResults`). The store contract is
+unchanged: `subscribe(render)` drives the lit diff.
+
+Still on `innerHTML` string templates (a later screen-by-screen follow-up):
+`favorites.js` and `suggest.js` — `escapeHtml` remains **mandatory** there.
