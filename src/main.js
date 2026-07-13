@@ -12,16 +12,16 @@ import { t, initLang, getLang, setLang, applyStaticI18n } from "./i18n.js";
 import { state, els, update, subscribe } from "./state.js";
 import { eventNoun, fmtWeekdayLong } from "./format.js";
 import {
-  spotsSectionHtml,
+  spotsSectionTemplate,
   heroTemplate,
   introHtml,
   eventToggleTemplate,
   weekRibbonTemplate,
   conditionsHtml,
-  whyHtml,
+  whyTemplate,
   hourlyHtml,
   lookAtHtml,
-  pointHtml,
+  pointTemplate,
   moreMenuHtml,
 } from "./views.js";
 import { openShareSheet } from "./share.js";
@@ -155,13 +155,19 @@ function renderResults(data, scored) {
           },
         )}
         <div class="rcol rcol--a">
-          ${unsafeHTML(whyHtml(data))} ${unsafeHTML(lookAtHtml(sun, tw, event))}
-          ${unsafeHTML(pointHtml(data))}
+          ${whyTemplate(data, {
+            onToggleDrivers: (btn) => toggleCollapse(btn, "#drivers"),
+          })}
+          ${unsafeHTML(lookAtHtml(sun, tw, event))}
+          ${pointTemplate(data, { onOpenMap: openBigMap })}
         </div>
         <div class="rcol rcol--b">
           ${unsafeHTML(hourlyHtml(data, tw, event))}
           ${unsafeHTML(conditionsHtml(data.cond))}
-          ${unsafeHTML(spotsSectionHtml(place, sun, data.factors))}
+          ${spotsSectionTemplate(sun, data.factors, {
+            onToggleSpots: (btn) => toggleCollapse(btn, "#spots-list"),
+            onScan: scanCoordinates,
+          })}
         </div>
         <footer class="rfoot">
           <p data-i18n-html="foot.credits">${t("foot.credits")}</p>
@@ -171,58 +177,15 @@ function renderResults(data, scored) {
     els.results,
   );
 
-  bindResultsHandlers(data);
-  els.results.scrollTop = 0;
-}
-
-/** Wire up the handlers for the just-rendered results screen. */
-function bindResultsHandlers(data) {
-  const { place, event, score, sun } = data;
-
-  // The hero (back/search/share/favorite) is migrated to lit @click in
-  // heroTemplate; its handlers are passed there from renderResults.
-
-  // "More options" menu (theme + language), mirrored from the home. The menu is
-  // shared with the home screen and keeps its own imperative open/close wiring.
+  // The shared .menu keeps its imperative open/close wiring (used by home too).
   const resMenu = els.results.querySelector(".menu");
   if (resMenu) bindMoreMenu(resMenu);
 
-  // The event toggle, banner and week ribbon are migrated to lit @click
-  // (eventToggleTemplate / weekRibbonTemplate / the banner in renderResults).
-
-  // "Show all" factors.
-  const whyMore = /** @type {HTMLElement} */ (
-    els.results.querySelector("#why-more")
-  );
-  const drivers = els.results.querySelector("#drivers");
-  if (whyMore && drivers) {
-    whyMore.addEventListener("click", () => {
-      const collapsed = drivers.classList.toggle("is-collapsed");
-      whyMore.textContent = collapsed
-        ? whyMore.dataset.more
-        : whyMore.dataset.less;
-    });
-  }
-
-  // "Search unmapped points too".
-  const scanBtn = els.results.querySelector(".scan-btn");
-  if (scanBtn) scanBtn.addEventListener("click", scanCoordinates);
-
-  // "See all points".
-  const spotsMore = /** @type {HTMLElement} */ (
-    els.results.querySelector("#spots-more")
-  );
-  const spotsList = els.results.querySelector("#spots-list");
-  if (spotsMore && spotsList) {
-    spotsMore.addEventListener("click", () => {
-      const collapsed = spotsList.classList.toggle("is-collapsed");
-      spotsMore.textContent = collapsed
-        ? spotsMore.dataset.more
-        : spotsMore.dataset.less;
-    });
-  }
-
-  // Context for the big map (refreshed on every render).
+  // Mini-map: Leaflet is imperative and not lit-aware, so mount it after the lit
+  // render — the one remaining post-render escape hatch (like map.js's literals
+  // and shareImage's canvas in the coherence contract). Context is refreshed
+  // every render; the big map reads it from window.skyhueMapContext when opened.
+  const { score } = data;
   const mapCtx = {
     lat: place.latitude,
     lon: place.longitude,
@@ -233,14 +196,22 @@ function bindResultsHandlers(data) {
     spots: Array.isArray(state.spots) ? state.spots : [],
   };
   lastMapContext = mapCtx;
-  els.results
-    .querySelector("#open-bigmap")
-    ?.addEventListener("click", openBigMap);
-
   mountMiniMap(els.results.querySelector("#detail-map"), {
     ...mapCtx,
     onExpand: openBigMap,
   }).catch((err) => console.warn("Mini-map not available:", err));
+
+  els.results.scrollTop = 0;
+}
+
+/** Toggle a collapsible list open/closed and swap the trigger's label. The
+ *  collapse state is ephemeral DOM state (reset to collapsed on every render),
+ *  so it lives here rather than in the store. */
+function toggleCollapse(btn, sel) {
+  const el = els.results.querySelector(sel);
+  if (!el) return;
+  const collapsed = el.classList.toggle("is-collapsed");
+  btn.textContent = collapsed ? btn.dataset.more : btn.dataset.less;
 }
 
 // Last known map context (current place/event/day): the big map

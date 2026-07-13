@@ -15,7 +15,6 @@ import {
   whenWord,
   eventNoun,
   dirName,
-  escapeHtml,
 } from "./format.js";
 import { t, cardinal, getLang } from "./i18n.js";
 import {
@@ -25,7 +24,6 @@ import {
   statCell,
   sectionHeader,
   chip,
-  button,
 } from "./ui.js";
 import { skyGradient, skyGradientCss } from "./sky.js";
 import { icon } from "./icons.js";
@@ -43,22 +41,30 @@ import { isFavorite } from "./store.js";
  * mounted onto it by `mountMiniMap` after DOM insertion) + "Expand" chip and
  * button that open the in-app big map with all points marked.
  */
-function mapEmbedHtml() {
-  return `
+function mapEmbedTemplate({ onOpenMap }) {
+  return html`
     <div class="map-wrap">
       <div class="map-slot" id="detail-map"></div>
-      <span class="map-slot__expand" aria-hidden="true">${icon("maximize", {
-        size: 15,
-      })} ${t("detail.expand")}</span>
+      <span class="map-slot__expand" aria-hidden="true"
+        >${unsafeHTML(icon("maximize", { size: 15 }))} ${t("detail.expand")}</span
+      >
     </div>
-    ${button(t("detail.openMap"), { variant: "primary", icon: "map", id: "open-bigmap", cls: "map__open" })}`;
+    <button
+      type="button"
+      class="btn btn--primary map__open"
+      id="open-bigmap"
+      @click=${onOpenMap}
+    >
+      ${unsafeHTML(icon("map", { size: 16 }))} ${t("detail.openMap")}
+    </button>
+  `;
 }
 
 /** Card for a suggested spot (used for both POIs and estimated points).
  *  `factors` (of the analyzed point) drives the thumbnail gradient:
  *  forecast sky over the spot's sky score; obstructed outlooks → muted
  *  tile without sun. */
-function spotRowHtml(s, factors) {
+function spotRowTemplate(s, factors) {
   const info = kindInfo(s.kind);
   const dist = s.dist < 10 ? s.dist.toFixed(1) : Math.round(s.dist);
   const v = s.verdict;
@@ -87,92 +93,125 @@ function spotRowHtml(s, factors) {
   const meta = `${kindLabel} · ${dist} ${t("unit.km")} · ~${s.driveMin} ${t("unit.min")} · ${cardinal(
     s.dir,
   )}${quota}`;
-  return `<li class="spot spot--${v.sentiment}" style="--hue:${scoreHue(v.score)}">
-    ${skySwatch({ size: "lg", grad, sun: !isBad, tag: est ? t("spot.estTag") : "" })}
+  // The spot name (from OSM / reverse geocoding) is user-controlled: as a bare
+  // lit interpolation it is auto-escaped — no escapeHtml. `title` likewise.
+  return html`<li
+    class="spot spot--${v.sentiment}"
+    style="--hue:${scoreHue(v.score)}"
+  >
+    ${unsafeHTML(
+      skySwatch({
+        size: "lg",
+        grad,
+        sun: !isBad,
+        tag: est ? t("spot.estTag") : "",
+      }),
+    )}
     <div class="spot__body">
-      <a class="spot__name" href="${url}" target="_blank" rel="noopener">${escapeHtml(
-        s.name || t(info.labelKey),
-      )}</a>
-      <span class="spot__verdict">${icon(v.icon, { size: 15 })} ${t(
-        "verdict." + v.code,
-      )}<span class="spot__kind" title="${escapeHtml(kindLabel)}">${icon(
-        info.icon,
-        {
-          size: 14,
-        },
-      )}</span></span>
+      <a class="spot__name" href=${url} target="_blank" rel="noopener"
+        >${s.name || t(info.labelKey)}</a
+      >
+      <span class="spot__verdict"
+        >${unsafeHTML(icon(v.icon, { size: 15 }))} ${t("verdict." + v.code)}<span
+          class="spot__kind"
+          title=${kindLabel}
+          >${unsafeHTML(icon(info.icon, { size: 14 }))}</span
+        ></span
+      >
       <span class="spot__meta mono">${meta}</span>
     </div>
     <div class="spot__scores">
-      ${scoreNumeral(v.score, { size: "m", score: v.score, title: t("spot.viewQuality") })}
-      ${skyPill}
+      ${unsafeHTML(
+        scoreNumeral(v.score, {
+          size: "m",
+          score: v.score,
+          title: t("spot.viewQuality"),
+        }),
+      )}
+      ${skyPill ? unsafeHTML(skyPill) : nothing}
     </div>
   </li>`;
 }
 
-/** "From coordinates" estimate block (button + optional list). */
-function estimateBlockHtml(factors) {
-  let list = "";
+/** "From coordinates" estimate block (button + optional list). `onScan` runs
+ *  the grid scan. The `.scan-btn` markup mirrors the `button` primitive so it
+ *  can carry an inline @click. */
+function estimateBlockTemplate(factors, { onScan }) {
+  let list = nothing;
   if (state.estimateError) {
-    list = `<p class="muted">${t("spots.estimateError")}</p>`;
+    list = html`<p class="muted">${t("spots.estimateError")}</p>`;
   } else if (state.estimatedSpots && state.estimatedSpots.length) {
-    list = `<ul class="spots">${state.estimatedSpots
-      .map((s) => spotRowHtml(s, factors))
-      .join("")}</ul>
+    list = html`<ul class="spots">
+        ${state.estimatedSpots.map((s) => spotRowTemplate(s, factors))}
+      </ul>
       <p class="muted spots__hint">${t("spots.estimateHint")}</p>`;
   } else if (state.estimatedSpots && state.estimatedSpots.length === 0) {
-    list = `<p class="muted">${t("spots.estimateNone")}</p>`;
+    list = html`<p class="muted">${t("spots.estimateNone")}</p>`;
   }
-  return `
-    ${button(state.estimating ? t("spots.scanning") : t("spots.scan"), {
-      variant: "outline",
-      icon: state.estimating ? undefined : "compass",
-      cls: "scan-btn",
-      attrs: state.estimating ? "disabled" : "",
-    })}
-    ${list}`;
+  return html`
+    <button
+      type="button"
+      class="btn btn--outline scan-btn"
+      ?disabled=${state.estimating}
+      @click=${onScan}
+    >
+      ${
+        state.estimating
+          ? nothing
+          : html`${unsafeHTML(icon("compass", { size: 16 }))} `
+      }${state.estimating ? t("spots.scanning") : t("spots.scan")}
+    </button>
+    ${list}
+  `;
 }
 
-/** "Where to go watch it" section: nearby viewpoints (dual score). */
-export function spotsSectionHtml(place, sun, factors) {
+/** "Where to go watch it" section: nearby viewpoints (dual score). `onToggleSpots`
+ *  expands the list; `onScan` runs the coordinate estimate. */
+export function spotsSectionTemplate(sun, factors, { onToggleSpots, onScan }) {
   const dirNote = t("spots.dirNote", {
     verb: t(state.event === "sunset" ? "verb.sets" : "verb.rises"),
     dir: cardinal(azimuthToCardinal(sun.azimuth)),
     deg: Math.round(sun.azimuth),
   });
 
-  let body = "";
-  let more = "";
+  let body = nothing;
+  let more = nothing;
   if (state.spotsError) {
-    body = `<p class="sect__note">${t("spots.error")}</p>`;
+    body = html`<p class="sect__note">${t("spots.error")}</p>`;
   } else if (state.spots === null) {
-    body = `<p class="sect__note">${t("spots.loading")}</p>`;
+    body = html`<p class="sect__note">${t("spots.loading")}</p>`;
   } else if (state.spots.length === 0) {
-    body = `<p class="sect__note">${t("spots.none")}</p>`;
+    body = html`<p class="sect__note">${t("spots.none")}</p>`;
   } else {
     const shown = state.spots.slice(0, SPOTS_EVALUATE);
-    body = `<ul class="spots is-collapsed" id="spots-list">${shown
-      .map((s) => spotRowHtml(s, factors))
-      .join("")}</ul>`;
+    body = html`<ul class="spots is-collapsed" id="spots-list">
+      ${shown.map((s) => spotRowTemplate(s, factors))}
+    </ul>`;
     if (shown.length > 3) {
-      more = `<button type="button" class="linkbtn" id="spots-more" data-more="${t(
-        "spots.seeAll",
-        {
-          n: shown.length,
-        },
-      )}" data-less="${t("why.showLess")}">${t("spots.seeAll", { n: shown.length })}</button>`;
+      more = html`<button
+        type="button"
+        class="linkbtn"
+        id="spots-more"
+        data-more=${t("spots.seeAll", { n: shown.length })}
+        data-less=${t("why.showLess")}
+        @click=${(/** @type {Event} */ e) => onToggleSpots(e.currentTarget)}
+      >
+        ${t("spots.seeAll", { n: shown.length })}
+      </button>`;
     }
   }
 
-  return `
+  return html`
     <section class="sect">
-      ${sectionHeader(t("section.spots"))}
+      ${unsafeHTML(sectionHeader(t("section.spots")))}
       <p class="sect__cap">${dirNote}</p>
       <p class="dualscore mono">${t("spot.dualLegend")}</p>
-      ${body}
-      ${more}
-      <div class="estimate">${estimateBlockHtml(factors)}</div>
-    </section>`;
+      ${body} ${more}
+      <div class="estimate">
+        ${estimateBlockTemplate(factors, { onScan })}
+      </div>
+    </section>
+  `;
 }
 
 /** SVG compass with the sun placed at its azimuth (0°=N, 90°=E, …). */
@@ -467,8 +506,12 @@ const UPSIDE_ICONS = {
   path: "compass",
 };
 
-/* "Why this score": "how it breaks down" bar + factor cards (top 3 + show all). */
-export function whyHtml({ score, factors, notes, cond }) {
+/* "Why this score": "how it breaks down" bar + factor cards (top 3 + show all).
+ * `onToggleDrivers` expands the full factor list. */
+export function whyTemplate(
+  { score, factors, notes, cond },
+  { onToggleDrivers },
+) {
   const b0 = WEIGHTS.base * 100;
   const d0 = WEIGHTS.drama * 100 * (factors.drama ?? 0);
   const c0 = WEIGHTS.clarity * 100 * (factors.clarity ?? 0);
@@ -497,15 +540,19 @@ export function whyHtml({ score, factors, notes, cond }) {
     })
     .join("");
 
-  const more =
+  const moreBtn =
     notes.length > 3
-      ? `<button type="button" class="linkbtn" id="why-more" data-more="${t(
-          "why.showAll",
-          {
-            n: notes.length,
-          },
-        )}" data-less="${t("why.showLess")}">${t("why.showAll", { n: notes.length })}</button>`
-      : "";
+      ? html`<button
+          type="button"
+          class="linkbtn"
+          id="why-more"
+          data-more=${t("why.showAll", { n: notes.length })}
+          data-less=${t("why.showLess")}
+          @click=${(/** @type {Event} */ e) => onToggleDrivers(e.currentTarget)}
+        >
+          ${t("why.showAll", { n: notes.length })}
+        </button>`
+      : nothing;
 
   // Counterfactual levers: what's missing (on its own) for a higher score.
   const upside = scoreUpside(cond);
@@ -538,35 +585,56 @@ export function whyHtml({ score, factors, notes, cond }) {
     ? `<p class="sect__cap">${t(goodCount === 1 ? "why.subOne" : "why.sub", { n: goodCount })}</p>`
     : "";
 
-  return `
+  return html`
     <section class="sect">
-      ${sectionHeader(t("section.why"))}
-      ${sub}
+      ${unsafeHTML(sectionHeader(t("section.why")))} ${unsafeHTML(sub)}
       <div class="addsup">
-        <div class="addsup__head"><span class="mono">${t("why.addsUp")}</span>${scoreNumeral(
-          score,
-          { size: "s", score, cls: "addsup__score" },
-        )}</div>
+        <div class="addsup__head">
+          <span class="mono">${t("why.addsUp")}</span
+          >${unsafeHTML(
+            scoreNumeral(score, { size: "s", score, cls: "addsup__score" }),
+          )}
+        </div>
         <div class="addsup__bar">
-          <span class="addsup__seg addsup__seg--base" style="width:${pct(base)}%"></span>
-          <span class="addsup__seg addsup__seg--drama" style="width:${pct(drama)}%"></span>
-          <span class="addsup__seg addsup__seg--clarity" style="width:${pct(clarity)}%"></span>
+          <span
+            class="addsup__seg addsup__seg--base"
+            style="width:${pct(base)}%"
+          ></span>
+          <span
+            class="addsup__seg addsup__seg--drama"
+            style="width:${pct(drama)}%"
+          ></span>
+          <span
+            class="addsup__seg addsup__seg--clarity"
+            style="width:${pct(clarity)}%"
+          ></span>
         </div>
         <div class="addsup__legend">
           <span><i class="dotc dotc--base"></i>${t("why.baseline")} ${base}</span>
           <span><i class="dotc dotc--drama"></i>${t("why.drama")} +${drama}</span>
-          <span><i class="dotc dotc--clarity"></i>${t("why.clarity")} +${clarity}</span>
+          <span
+            ><i class="dotc dotc--clarity"></i>${t("why.clarity")} +${clarity}</span
+          >
         </div>
       </div>
-      <ul class="drivers is-collapsed" id="drivers">${cards}</ul>
-      ${more}
+      <ul class="drivers is-collapsed" id="drivers">
+        ${unsafeHTML(cards)}
+      </ul>
+      ${moreBtn}
       <p class="why-legend">
-        <span class="why-legend__c why-legend__c--good"></span>${t("why.legendGood")}
-        <span class="why-legend__c why-legend__c--neutral"></span>${t("why.legendNeutral")}
-        <span class="why-legend__c why-legend__c--bad"></span>${t("why.legendBad")}
+        <span class="why-legend__c why-legend__c--good"></span>${t(
+          "why.legendGood",
+        )}
+        <span class="why-legend__c why-legend__c--neutral"></span>${t(
+          "why.legendNeutral",
+        )}
+        <span class="why-legend__c why-legend__c--bad"></span>${t(
+          "why.legendBad",
+        )}
       </p>
-      ${missing}
-    </section>`;
+      ${unsafeHTML(missing)}
+    </section>
+  `;
 }
 
 /* "Tonight's arc": SVG area chart + forecast color swatch per hour. */
@@ -707,8 +775,9 @@ export function lookAtHtml(sun, tw, event) {
     </section>`;
 }
 
-/* "The point" (3d): mini-map + grid note + 2×2 Atmosphere grid. */
-export function pointHtml({ cond, phase, factors }) {
+/* "The point" (3d): mini-map + grid note + 2×2 Atmosphere grid. `onOpenMap`
+ * opens the full-screen map; the Leaflet mini-map is mounted post-render. */
+export function pointTemplate({ cond, phase, factors }, { onOpenMap }) {
   const { place } = state;
   const grid = state.forecast;
   const gridNote =
@@ -751,19 +820,36 @@ export function pointHtml({ cond, phase, factors }) {
       )
     : "";
 
-  return `
+  return html`
     <section class="sect">
-      ${sectionHeader(t("section.point"))}
-      ${mapEmbedHtml()}
-      ${gridNote ? `<p class="gridnote mono">${gridNote}</p>` : ""}
-      ${sectionHeader(t("section.atmosphere"), { variant: "mono", sub: true })}
+      ${unsafeHTML(sectionHeader(t("section.point")))}
+      ${mapEmbedTemplate({ onOpenMap })}
+      ${gridNote ? html`<p class="gridnote mono">${gridNote}</p>` : nothing}
+      ${unsafeHTML(
+        sectionHeader(t("section.atmosphere"), { variant: "mono", sub: true }),
+      )}
       <div class="statgrid">
-        ${aerosolCard}
-        ${atmo("moon", t("stat.moon"), Math.round(moonIllumination(phase) * 100) + "%", t("moon." + moonPhaseName(phase)))}
-        ${horizonCard}
-        ${atmo("thermometer", t("stat.temp"), Math.round(cond.temperature) + "°C", t("atmo.tempCap." + state.event))}
+        ${unsafeHTML(aerosolCard)}
+        ${unsafeHTML(
+          atmo(
+            "moon",
+            t("stat.moon"),
+            Math.round(moonIllumination(phase) * 100) + "%",
+            t("moon." + moonPhaseName(phase)),
+          ),
+        )}
+        ${unsafeHTML(horizonCard)}
+        ${unsafeHTML(
+          atmo(
+            "thermometer",
+            t("stat.temp"),
+            Math.round(cond.temperature) + "°C",
+            t("atmo.tempCap." + state.event),
+          ),
+        )}
       </div>
-    </section>`;
+    </section>
+  `;
 }
 
 // "More options" menu (theme + language). The same markup lives on the home
