@@ -3,3 +3,7 @@ node_modules/
 *.log
 dist/
 .cache/
+.claude/
+.agents/
+.mcp.json
+skills-lock.json
