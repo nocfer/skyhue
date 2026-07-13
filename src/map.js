@@ -251,19 +251,23 @@ export async function mountMiniMap(
     visibility || 0,
   )}|${spotSig}|${getLang()}`;
 
-  // Same state as a previous render: move the existing container into the
-  // new node (renders are sequential → the last, live one wins).
+  // Same state as a previous render: reuse the existing Leaflet container.
+  // lit preserves the mount node (#detail-map) across re-renders, so use
+  // replaceChildren — not appendChild — to make the reused container the sole
+  // child and drop any stale one left behind by a prior render.
   if (mini.container && mini.key === key) {
-    mount.appendChild(mini.container);
+    mount.replaceChildren(mini.container);
     mini.map.invalidateSize();
     return;
   }
 
-  // Different state (or first mount): rebuild.
+  // Different state (or first mount): rebuild. replaceChildren (not appendChild)
+  // so the container `mini.map.remove()` left in the persistent mount node is
+  // dropped instead of stacking a second map — which doubled the map height.
   if (mini.map) mini.map.remove();
   const container = document.createElement("div");
   container.className = "map";
-  mount.appendChild(container);
+  mount.replaceChildren(container);
   const map = L.map(container, {
     zoomControl: false,
     dragging: false, // static preview: doesn't trap the page scroll
