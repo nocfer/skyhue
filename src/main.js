@@ -38,6 +38,8 @@ import {
 import {
   state,
   els,
+  update,
+  subscribe,
   SPOTS_EVALUATE,
   SPOTS_SHOW,
   SPOTS_SKY,
@@ -72,21 +74,22 @@ async function analyze(place) {
       fetchAirQuality(place.latitude, place.longitude).catch(() => null),
     ]);
     const { dayIndex } = nextSunset(forecast, new Date());
-    state.place = place;
     window.skyhueLastPlace = {
       latitude: place.latitude,
       longitude: place.longitude,
     };
-    state.forecast = forecast;
-    state.air = air;
-    state.dayIndex = dayIndex;
-    state.spots = null;
-    state.spotsError = false;
-    state.estimatedSpots = null;
-    state.estimating = false;
-    state.estimateError = false;
-    state.lightPath = null;
-    render();
+    update({
+      place,
+      forecast,
+      air,
+      dayIndex,
+      spots: null,
+      spotsError: false,
+      estimatedSpots: null,
+      estimating: false,
+      estimateError: false,
+      lightPath: null,
+    });
     setStatus("", "info");
     loadSpots(place); // in background: doesn't block the main view
     loadLightPath(place); // same: the azimuth needs the just-arrived forecast
@@ -101,14 +104,12 @@ async function loadSpots(place) {
   try {
     const raw = await fetchSunsetSpots(place.latitude, place.longitude);
     if (state.place !== place) return; // the user switched place in the meantime
-    state.rawSpots = raw;
-    state.rawSpotsFor = place;
+    update({ rawSpots: raw, rawSpotsFor: place });
     await evaluateSpots();
   } catch (err) {
     console.warn("Scenic spots not available:", err);
     if (state.place !== place) return;
-    state.spotsError = true;
-    render();
+    update({ spotsError: true });
   }
 }
 
@@ -128,34 +129,26 @@ function currentAzimuth() {
  */
 async function loadLightPath(place) {
   const { event } = state;
-  state.lightPath = {
-    status: "loading",
-    place,
-    event,
-    azimuth: null,
-    data: null,
-  };
+  update({
+    lightPath: { status: "loading", place, event, azimuth: null, data: null },
+  });
   try {
     const azimuth = currentAzimuth();
     const data = await fetchLightPath(place.latitude, place.longitude, azimuth);
     if (state.place !== place || state.event !== event) return; // superseded
     const valid = data.points.filter((p) => p.forecast).length;
-    state.lightPath =
-      valid >= 2
-        ? { status: "ready", place, event, azimuth, data }
-        : { status: "error", place, event, azimuth, data: null };
-    render();
+    update({
+      lightPath:
+        valid >= 2
+          ? { status: "ready", place, event, azimuth, data }
+          : { status: "error", place, event, azimuth, data: null },
+    });
   } catch (err) {
     console.warn("Light path not available:", err);
     if (state.place !== place || state.event !== event) return;
-    state.lightPath = {
-      status: "error",
-      place,
-      event,
-      azimuth: null,
-      data: null,
-    };
-    render();
+    update({
+      lightPath: { status: "error", place, event, azimuth: null, data: null },
+    });
   }
 }
 
@@ -177,8 +170,7 @@ async function evaluateSpots() {
   const raw = state.rawSpots;
   if (!raw) return;
   if (raw.length === 0) {
-    state.spots = [];
-    render();
+    update({ spots: [] });
     return;
   }
 
@@ -205,8 +197,7 @@ async function evaluateSpots() {
 
   // Sort by final score (outlook − distance), then by proximity.
   evaluated.sort((a, b) => b.finalScore - a.finalScore || a.dist - b.dist);
-  state.spots = evaluated;
-  render();
+  update({ spots: evaluated });
 
   // In background: compute the sky score directly at the finalist points.
   loadSky(state.spots, place);
@@ -275,9 +266,7 @@ async function refineCandidates(candidates, azimuth, place) {
 async function scanCoordinates() {
   const place = state.place;
   if (!place || state.estimating) return;
-  state.estimating = true;
-  state.estimateError = false;
-  render();
+  update({ estimating: true, estimateError: false });
   try {
     const azimuth = currentAzimuth();
     const radius = 20;
@@ -299,17 +288,16 @@ async function scanCoordinates() {
     const evaluated = await refineCandidates(candidates, azimuth, place);
     if (state.place !== place) return;
     evaluated.sort((a, b) => b.finalScore - a.finalScore || a.dist - b.dist);
-    state.estimatedSpots = evaluated.slice(0, SPOTS_SHOW);
-    state.estimating = false;
-    render();
+    update({
+      estimatedSpots: evaluated.slice(0, SPOTS_SHOW),
+      estimating: false,
+    });
     loadSky(state.estimatedSpots, place);
     nameEstimatedSpots(state.estimatedSpots, place);
   } catch (err) {
     console.warn("Coordinate scan failed:", err);
     if (state.place !== place) return;
-    state.estimating = false;
-    state.estimateError = true;
-    render();
+    update({ estimating: false, estimateError: true });
   }
 }
 
@@ -332,7 +320,7 @@ async function nameEstimatedSpots(spots, place) {
     }
   }
   if (state.place !== place) return;
-  render();
+  update(); // names were mutated in place on the spot objects — just redraw
 }
 
 async function loadSky(list, place) {
@@ -375,7 +363,7 @@ async function loadSky(list, place) {
       (b.overallScore ?? b.finalScore) - (a.overallScore ?? a.finalScore) ||
       a.dist - b.dist,
   );
-  render();
+  update(); // scores/order mutated in place on the spot objects — just redraw
 }
 
 /** Compute score + explanation for a day's event (sunrise/sunset). */
@@ -427,7 +415,10 @@ function evaluateDay(dayIndex) {
 }
 
 /** Show the home (no place). If focusSearch, move the cursor into the
- *  search bar (used by the "search" button in the results hero). */
+ *  search bar (used by the "search" button in the results hero).
+ *  This is a render function — `render()` calls it when there is no forecast —
+ *  so it resets `state` directly rather than via `update()`, which would
+ *  re-enter the notify cycle it is already running inside. */
 function showHome(focusSearch) {
   state.forecast = null;
   state.place = null;
@@ -453,24 +444,22 @@ function showResults() {
 /** Switch event (sunrise/sunset) and re-render keeping all toggles in sync. */
 function setEvent(ev) {
   if (ev !== "sunset" && ev !== "sunrise") return;
-  state.event = ev;
+  // The azimuth changes a lot between sunrise and sunset: re-rate the spots'
+  // outlook and resample the light path (nearly opposite ray).
+  const reSpots = state.rawSpots && state.rawSpotsFor === state.place;
+  const patch = { event: ev, lightPath: null };
+  if (reSpots) {
+    patch.spots = null;
+    patch.spotsError = false;
+  }
+  // Notifies → render(): a results redraw, or the home via showHome() (which
+  // itself refreshes the tagline + favorites' scores for the new event).
+  update(patch);
   document.querySelectorAll(".mode").forEach((/** @type {HTMLElement} */ b) => {
     b.classList.toggle("mode--active", b.dataset.event === ev);
   });
-  // The azimuth changes a lot between sunrise and sunset: re-rate the spots'
-  // outlook and resample the light path (nearly opposite ray).
-  if (state.rawSpots && state.rawSpotsFor === state.place) {
-    state.spots = null;
-    state.spotsError = false;
-  }
-  state.lightPath = null;
-  if (state.forecast) render();
   if (state.forecast) loadLightPath(state.place); // usually a cache hit: instant
-  if (state.rawSpots && state.rawSpotsFor === state.place) evaluateSpots();
-  if (!state.forecast) {
-    updateHomeTagline(); // tagline names the selected event (sunset/sunrise)
-    renderFavorites(); // refresh the favorites' scores on the home
-  }
+  if (reSpots) evaluateSpots();
 }
 
 /** Wire up the sunrise/sunset buttons contained in `root`. */
@@ -585,8 +574,7 @@ function bindResultsHandlers(data, best) {
 
   // Banner → jump to the best day.
   els.results.querySelector("#topbanner")?.addEventListener("click", () => {
-    state.dayIndex = best.d.dayIndex;
-    render();
+    update({ dayIndex: best.d.dayIndex });
   });
 
   // Week ribbon → switch day.
@@ -594,8 +582,7 @@ function bindResultsHandlers(data, best) {
     .querySelectorAll(".wk__col")
     .forEach((/** @type {HTMLElement} */ btn) => {
       btn.addEventListener("click", () => {
-        state.dayIndex = Number(btn.dataset.day);
-        render();
+        update({ dayIndex: Number(btn.dataset.day) });
       });
     });
 
@@ -715,7 +702,7 @@ function initFromUrl() {
   const lon = parseFloat(p.get("lon"));
   if (Number.isFinite(lat) && Number.isFinite(lon)) {
     const event = p.get("event") === "sunrise" ? "sunrise" : "sunset";
-    state.event = event;
+    update({ event }); // home shows during analyze()'s async fetch, as before
     document
       .querySelectorAll(".mode")
       .forEach((/** @type {HTMLElement} */ b) => {
@@ -797,6 +784,10 @@ function mountHomeMenu() {
   slot.innerHTML = moreMenuHtml();
   bindMoreMenu(slot);
 }
+
+// The store's sole subscriber: every `update()` redraws through here. Wired
+// before the first `update()` (in initFromUrl / analyze) can fire.
+subscribe(render);
 
 // Startup: language, static texts, the home menu, favorites and shared link.
 initLang();
