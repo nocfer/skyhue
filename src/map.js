@@ -54,6 +54,7 @@ let bigTile = null;
 let leafletLoading = null;
 let evalToken = 0;
 let evalAbort = null;
+let tapTimer = null;
 // A stalled CDN never fires `onerror`, so without a timeout the promise (and any
 // `await loadLeaflet()`) would hang forever. Reject after this so callers' catch
 // paths run and the map degrades to its "connection required" message.
@@ -404,6 +405,10 @@ function renderContext() {
   const L = window.L;
 
   // Clear the previous tap state and the previous context.
+  if (tapTimer) {
+    clearTimeout(tapTimer);
+    tapTimer = null;
+  }
   if (contextLayer) {
     contextLayer.remove();
     contextLayer = null;
@@ -462,11 +467,17 @@ function clearTap() {
   }
 }
 
-/** Handles the tap on a point: places the marker, flies to the point and evaluates it. */
-async function selectPoint(lat, lon) {
+/**
+ * Handles the tap on a point: instant marker feedback, then a debounced fly +
+ * evaluation. Debouncing coalesces a rapid burst of taps into a single fly +
+ * evaluation — without it, each tap fired its own zoom animation and overlay
+ * rebuild, and a burst stacked them faster than they tore down (event listeners
+ * spiked into the thousands and the main thread thrashed with layout work).
+ */
+function selectPoint(lat, lon) {
   const L = window.L;
-  // Wipe the previous tap up front: tapping a second point must not leave the
-  // old ray/score/spots hanging around until the (async) new evaluation lands.
+  // Instant, cheap feedback: wipe the previous tap and drop the pick marker
+  // right where the user tapped, before any async/animated work.
   clearTap();
   marker = L.circleMarker([lat, lon], {
     radius: 9,
@@ -477,9 +488,16 @@ async function selectPoint(lat, lon) {
     className: "tapmark",
   }).addTo(map);
   marker.bringToFront();
-  // Smooth transition to the chosen point (without pulling the zoom out too much).
-  map.flyTo([lat, lon], Math.max(map.getZoom(), 12), { duration: 0.6 });
-  await evaluatePoint(lat, lon);
+  // Debounce the expensive part (animated fly + fetches + overlay rebuild): only
+  // the last tap of a rapid burst runs it. evaluatePoint still aborts/supersedes
+  // its own in-flight work for taps spaced further apart than this window.
+  if (tapTimer) clearTimeout(tapTimer);
+  tapTimer = setTimeout(() => {
+    tapTimer = null;
+    // Smooth transition to the chosen point (without pulling the zoom out too much).
+    map.flyTo([lat, lon], Math.max(map.getZoom(), 12), { duration: 0.6 });
+    evaluatePoint(lat, lon);
+  }, 150);
 }
 
 /** Evaluates a point: score for the current event, sun direction and view towards the sun. */
@@ -650,6 +668,10 @@ function applyRoute() {
   if (location.hash === "#map") {
     showMap();
   } else {
+    if (tapTimer) {
+      clearTimeout(tapTimer); // don't let a pending tap fire on the hidden map
+      tapTimer = null;
+    }
     els.mapView.hidden = true;
     els.appView.hidden = false;
   }
