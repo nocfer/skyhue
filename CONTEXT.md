@@ -111,10 +111,18 @@ wrapped in `unsafeHTML`. **Watch out:** a few i18n strings carry markup
 (`spots.dirNote`, `foot.credits`, `home.headline`), so `t()` output that renders
 as content must go through `unsafeHTML`, not a bare interpolation.
 
-Two deliberate imperative exceptions remain: the **shared menu** (`bindMoreMenu`
-— open/close state, used by the home screen too) and the **Leaflet mini-map**
-mount (`mountMiniMap` post-render in `renderResults`). The store contract is
-unchanged: `subscribe(render)` drives the lit diff.
+**Favorites** (`favorites.js`) and the **search autocomplete** (`suggest.js`)
+are migrated too: cards/suggestions are lit templates, the favorites list is a
+keyed `repeat(favs, f => f.id, …)` so a delete never leaves a card showing a
+neighbour's stale enriched score, and the compare modal renders into an overlay
+element. Async score/time enrichment (`enrichFavoriteCards`) still fills the
+`data-*` slots imperatively after render — the same escape-hatch pattern as the
+mini-map mount.
 
-Still on `innerHTML` string templates (a later screen-by-screen follow-up):
-`favorites.js` and `suggest.js` — `escapeHtml` remains **mandatory** there.
+Deliberate imperative exceptions that stay on `innerHTML` strings: the **shared
+menu** (`bindMoreMenu` / `moreMenuHtml` — open/close state, reused by home;
+bound once-per-node to avoid stacking listeners on the lit-preserved node), the
+**Leaflet mini-map** mount (`mountMiniMap`), and all of **`map.js`** (panel,
+legend, spot popups — imperative Leaflet glue). `escapeHtml` remains **mandatory**
+in that string-template code — e.g. `s.name` from Overpass in `spotPopupHtml`.
+The store contract is unchanged: `subscribe(render)` drives the lit diff.

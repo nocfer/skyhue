@@ -16,3 +16,4 @@
 // modules and their transitive deps work offline after the first load.
 export { html, render, nothing } from "https://esm.sh/lit-html@3.2.1";
 export { unsafeHTML } from "https://esm.sh/lit-html@3.2.1/directives/unsafe-html.js";
+export { repeat } from "https://esm.sh/lit-html@3.2.1/directives/repeat.js";

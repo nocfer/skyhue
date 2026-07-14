@@ -3,17 +3,13 @@
 // `skyhue:analyze` event (handled in main.js) rather than importing the
 // controller, so this module stays a leaf with no cycle back to main.js.
 //
-// NOTE: `innerHTML` string templates — user text (place labels) goes through
-// `escapeHtml` (the lit-html migration hasn't reached this screen; see CLAUDE.md).
+// Rendered with lit-html: place labels are bare `${…}` interpolations (lit
+// auto-escapes), and the trusted string helpers (skySwatch/scoreNumeral/icon)
+// are wrapped in `unsafeHTML`. Score/time are filled in after render by
+// enrichFavoriteCards — an imperative escape hatch over the data-* slots.
 
 import { state, els } from "./state.js";
-import {
-  eventNoun,
-  fmtTime,
-  fmtWeekdayShort,
-  isToday,
-  escapeHtml,
-} from "./format.js";
+import { eventNoun, fmtTime, fmtWeekdayShort, isToday } from "./format.js";
 import { t } from "./i18n.js";
 import { getFavorites, removeFavorite } from "./store.js";
 import { fetchForecast, nextSunset, conditionsAtTime } from "./api.js";
@@ -21,6 +17,68 @@ import { computeSunsetScore, scoreLabel } from "./score.js";
 import { skyGradient, skyGradientCss } from "./sky.js";
 import { scoreHue, scoreNumeral, skySwatch } from "./ui.js";
 import { icon } from "./icons.js";
+import { html, render, nothing, unsafeHTML, repeat } from "./render.js";
+
+/** Dispatch the shared analyze event for a favorite id. */
+function loadFavorite(id) {
+  const f = getFavorites().find((x) => x.id === id);
+  if (f)
+    window.dispatchEvent(
+      new CustomEvent("skyhue:analyze", {
+        detail: {
+          latitude: f.latitude,
+          longitude: f.longitude,
+          label: f.label,
+        },
+      }),
+    );
+}
+
+/** One favorite card. Keyed by id (see repeat) so a delete never leaves a
+ *  card showing a neighbour's stale enriched score. */
+function favCardTemplate(f) {
+  return html`
+    <div
+      class="place"
+      role="button"
+      tabindex="0"
+      data-id=${f.id}
+      @click=${(/** @type {MouseEvent} */ e) => {
+        if (/** @type {Element} */ (e.target).closest("[data-del]")) return;
+        loadFavorite(f.id);
+      }}
+      @keydown=${(/** @type {KeyboardEvent} */ e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          loadFavorite(f.id);
+        }
+      }}
+    >
+      ${unsafeHTML(skySwatch({ size: "md" }))}
+      <span class="place__body">
+        <span class="place__name">${f.label}</span>
+        <span class="place__when" data-when>${t("fav.calc")}</span>
+      </span>
+      <span class="place__scorebox">
+        <span class="score score--m place__score" data-score>—</span>
+        <span class="place__word" data-word></span>
+      </span>
+      <button
+        class="place__del"
+        data-del=${f.id}
+        title=${t("fav.remove")}
+        aria-label=${t("fav.remove")}
+        @click=${(/** @type {MouseEvent} */ e) => {
+          e.stopPropagation();
+          removeFavorite(f.id);
+          renderFavorites();
+        }}
+      >
+        ×
+      </button>
+    </div>
+  `;
+}
 
 /** Draw the favorite place cards (home): swatch + name + time + score.
  *  Scores/times are filled in asynchronously so they don't block the render. */
@@ -29,73 +87,22 @@ export function renderFavorites() {
   const places = document.getElementById("places");
   if (places) places.hidden = favs.length === 0;
 
-  els.favorites.innerHTML =
-    favs
-      .map(
-        (f) => `
-      <div class="place" role="button" tabindex="0" data-id="${f.id}">
-        ${skySwatch({ size: "md" })}
-        <span class="place__body">
-          <span class="place__name">${escapeHtml(f.label)}</span>
-          <span class="place__when" data-when>${t("fav.calc")}</span>
-        </span>
-        <span class="place__scorebox">
-          <span class="score score--m place__score" data-score>—</span>
-          <span class="place__word" data-word></span>
-        </span>
-        <button class="place__del" data-del="${f.id}" title="${t("fav.remove")}" aria-label="${t(
-          "fav.remove",
-        )}">×</button>
-      </div>`,
-      )
-      .join("") +
-    (favs.length >= 2
-      ? `<button type="button" class="place-compare" id="fav-compare">${icon(
-          "compass",
-          {
-            size: 15,
-          },
-        )} ${t("fav.compare")}</button>`
-      : "");
+  const compare =
+    favs.length >= 2
+      ? html`<button
+          type="button"
+          class="place-compare"
+          id="fav-compare"
+          @click=${compareFavorites}
+        >
+          ${unsafeHTML(icon("compass", { size: 15 }))} ${t("fav.compare")}
+        </button>`
+      : nothing;
 
-  const load = (id) => {
-    const f = getFavorites().find((x) => x.id === id);
-    if (f)
-      window.dispatchEvent(
-        new CustomEvent("skyhue:analyze", {
-          detail: {
-            latitude: f.latitude,
-            longitude: f.longitude,
-            label: f.label,
-          },
-        }),
-      );
-  };
-  els.favorites
-    .querySelectorAll(".place")
-    .forEach((/** @type {HTMLElement} */ card) => {
-      card.addEventListener("click", (e) => {
-        if (/** @type {Element} */ (e.target).closest("[data-del]")) return;
-        load(card.dataset.id);
-      });
-      card.addEventListener("keydown", (e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          load(card.dataset.id);
-        }
-      });
-    });
-  els.favorites
-    .querySelectorAll("[data-del]")
-    .forEach((/** @type {HTMLElement} */ btn) => {
-      btn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        removeFavorite(btn.dataset.del);
-        renderFavorites();
-      });
-    });
-  const cmp = els.favorites.querySelector("#fav-compare");
-  if (cmp) cmp.addEventListener("click", compareFavorites);
+  render(
+    html`${repeat(favs, (f) => f.id, favCardTemplate)}${compare}`,
+    els.favorites,
+  );
 
   enrichFavoriteCards(favs);
 }
@@ -156,20 +163,29 @@ async function compareFavorites() {
   const noun = eventNoun(state.event);
   const overlay = document.createElement("div");
   overlay.className = "cmp";
-  overlay.innerHTML = `
-    <div class="cmp__box">
-      <header class="cmp__header">
-        <div>
-          <h2 class="cmp__title display">${t("cmp.heading")}</h2>
-          <p class="cmp__sub">${t("cmp.sub." + state.event)}</p>
-        </div>
-        <button class="cmp__close gcircle" aria-label="${t("cmp.close")}">×</button>
-      </header>
-      <div class="cmp__list"><p class="cmp__calc">${t("cmp.calc")}</p></div>
-    </div>`;
-  document.body.appendChild(overlay);
   const close = () => overlay.remove();
-  overlay.querySelector(".cmp__close").addEventListener("click", close);
+  render(
+    html`
+      <div class="cmp__box">
+        <header class="cmp__header">
+          <div>
+            <h2 class="cmp__title display">${t("cmp.heading")}</h2>
+            <p class="cmp__sub">${t("cmp.sub." + state.event)}</p>
+          </div>
+          <button
+            class="cmp__close gcircle"
+            aria-label=${t("cmp.close")}
+            @click=${close}
+          >
+            ×
+          </button>
+        </header>
+        <div class="cmp__list"><p class="cmp__calc">${t("cmp.calc")}</p></div>
+      </div>
+    `,
+    overlay,
+  );
+  document.body.appendChild(overlay);
   overlay.addEventListener("click", (e) => {
     if (e.target === overlay) close();
   });
@@ -201,38 +217,59 @@ async function compareFavorites() {
   if (!list) return;
 
   const [winner, ...rest] = rows;
-  const winnerHtml =
+  const winnerTpl =
     winner && winner.score != null
-      ? `<div class="cmp__winner" style="--hue:${scoreHue(winner.score)}">
-          <span class="cmp__best">${icon("star", { size: 13, fill: true })} ${t("cmp.best")}</span>
+      ? html`<div class="cmp__winner" style="--hue:${scoreHue(winner.score)}">
+          <span class="cmp__best"
+            >${unsafeHTML(icon("star", { size: 13, fill: true }))}
+            ${t("cmp.best")}</span
+          >
           <div class="cmp__winrow">
-            ${skySwatch({ size: "lg", grad: rowGrad(winner) })}
+            ${unsafeHTML(skySwatch({ size: "lg", grad: rowGrad(winner) }))}
             <div class="cmp__wininfo">
-              <strong>${escapeHtml(winner.label)}</strong>
+              <strong>${winner.label}</strong>
               <span class="cmp__time">${when(winner)}</span>
             </div>
             <div class="cmp__winscore">
-              ${scoreNumeral(winner.score, { size: "l", score: winner.score, cls: "cmp__bignum" })}
-              <span class="cmp__label">${t("label." + scoreLabel(winner.score))}</span>
+              ${unsafeHTML(
+                scoreNumeral(winner.score, {
+                  size: "l",
+                  score: winner.score,
+                  cls: "cmp__bignum",
+                }),
+              )}
+              <span class="cmp__label"
+                >${t("label." + scoreLabel(winner.score))}</span
+              >
             </div>
           </div>
         </div>`
-      : "";
+      : nothing;
 
-  const rowsHtml = rest
-    .map(
-      (r, i) => `
+  const rowsTpl = rest.map(
+    (r, i) => html`
       <div class="cmp__row">
         <span class="cmp__rank mono">${i + 2}</span>
-        ${skySwatch({ size: "sm", grad: rowGrad(r) })}
+        ${unsafeHTML(skySwatch({ size: "sm", grad: rowGrad(r) }))}
         <div class="cmp__rowinfo">
-          <strong>${escapeHtml(r.label)}</strong>
+          <strong>${r.label}</strong>
           <span class="cmp__time">${when(r)}</span>
         </div>
-        ${scoreNumeral(r.score ?? "—", { size: "m", score: r.score ?? undefined, cls: "cmp__score" })}
-      </div>`,
-    )
-    .join("");
+        ${unsafeHTML(
+          scoreNumeral(r.score ?? "—", {
+            size: "m",
+            score: r.score ?? undefined,
+            cls: "cmp__score",
+          }),
+        )}
+      </div>
+    `,
+  );
 
-  list.innerHTML = `${winnerHtml}${rowsHtml}<p class="cmp__foot">${t("cmp.foot." + state.event)}</p>`;
+  render(
+    html`${winnerTpl}${rowsTpl}<p class="cmp__foot">
+        ${t("cmp.foot." + state.event)}
+      </p>`,
+    list,
+  );
 }

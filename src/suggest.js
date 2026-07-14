@@ -5,9 +5,10 @@
 // registered when this module is imported (main.js imports it at startup).
 
 import { els } from "./state.js";
-import { setStatus, escapeHtml } from "./format.js";
+import { setStatus } from "./format.js";
 import { t, getLang } from "./i18n.js";
 import { geocode, coordsLabel } from "./api.js";
+import { html, render, nothing } from "./render.js";
 
 /** Ask the controller (main.js) to analyze a place. */
 function dispatchAnalyze(place) {
@@ -68,7 +69,7 @@ function closeSuggest() {
   suggest.matches = [];
   suggest.active = -1;
   els.suggest.hidden = true;
-  els.suggest.innerHTML = "";
+  render(nothing, els.suggest);
   els.input.setAttribute("aria-expanded", "false");
   els.input.removeAttribute("aria-activedescendant");
 }
@@ -80,15 +81,27 @@ function showSuggest(matches) {
   }
   suggest.matches = matches;
   suggest.active = -1;
-  els.suggest.innerHTML = matches
-    .map((m, i) => {
+  // Names/meta come from the geocoder (user-controlled): as bare lit
+  // interpolations they are auto-escaped, so no escapeHtml here. The pick
+  // handler stays delegated on els.suggest (reads data-i) — see below.
+  render(
+    matches.map((m, i) => {
       const meta = [m.admin1, m.country].filter(Boolean).join(", ");
-      return `<li class="suggest__item" role="option" id="suggest-opt-${i}" data-i="${i}" aria-selected="false">
-        <span class="suggest__name">${escapeHtml(m.name)}</span>
-        ${meta ? `<span class="suggest__meta">${escapeHtml(meta)}</span>` : ""}
+      return html`<li
+        class="suggest__item"
+        role="option"
+        id="suggest-opt-${i}"
+        data-i=${i}
+        aria-selected="false"
+      >
+        <span class="suggest__name">${m.name}</span>
+        ${meta
+          ? html`<span class="suggest__meta">${meta}</span>`
+          : nothing}
       </li>`;
-    })
-    .join("");
+    }),
+    els.suggest,
+  );
   els.suggest.hidden = false;
   suggest.open = true;
   els.input.setAttribute("aria-expanded", "true");

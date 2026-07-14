@@ -14,21 +14,23 @@ via `npx` on demand and is never installed into the repo.
 - Type-check: `npm run typecheck` (`checkJs` via `jsconfig.json`; lenient — it
   catches typos / wrong arity / bad payload access, not full typing). Globals the
   app stashes on `window` are declared in `src/globals.d.ts`.
-- **Rendering is migrating from `innerHTML` template strings to lit-html.**
-  Import `html`, `render`, `unsafeHTML` from `src/render.js` (the single choke
-  point pinning the CDN URL — esm.sh, NOT jsdelivr, so directives share one core).
-  In a lit template, user-controlled text (geocoder labels, place names) is a bare
-  `${…}` interpolation and is auto-escaped — no more `escapeHtml`. Trusted
-  HTML-string helpers (`icon`, `scoreNumeral`, `button`) must be wrapped in
-  `unsafeHTML(...)`. The **share-sheet overlay** (`openShareSheet` in `src/share.js`)
-  is the migrated reference pattern; copy it for the other screens. Canvas/PNG share
-  (`shareImage`) is NOT DOM — it stays hand-drawn.
-  - **The migration is only partial** (share sheet only). Everything in
-    `src/views.js`, `src/favorites.js` and `src/suggest.js` is still `innerHTML`
-    template strings, so in that code **`escapeHtml` (from `src/format.js`) is
-    still MANDATORY** on any user-controlled text — the "no more escapeHtml" rule
-    above applies *only inside lit templates*. Finishing the migration screen by
-    screen is a follow-up.
+- **DOM rendering uses lit-html.** Import `html`, `render`, `unsafeHTML`,
+  `nothing`, `repeat` from `src/render.js` (the single choke point pinning the CDN
+  URL — esm.sh, NOT jsdelivr, so directives share one core). In a lit template,
+  user-controlled text (geocoder labels, place names) is a bare `${…}`
+  interpolation and is auto-escaped — no `escapeHtml`. Trusted HTML-string helpers
+  (`icon`, `scoreNumeral`, `button`, `skySwatch`) must be wrapped in
+  `unsafeHTML(...)`. Keyed lists use `repeat(items, i => i.id, tpl)`. The
+  share-sheet overlay (`openShareSheet` in `src/share.js`) is the reference
+  overlay pattern. Canvas/PNG share (`shareImage`) is NOT DOM — it stays hand-drawn.
+  - **Migration status:** the share sheet, the whole results screen
+    (`src/views.js`), favorites (`src/favorites.js`) and the search autocomplete
+    (`src/suggest.js`) are all on lit. What deliberately stays on `innerHTML`
+    string templates: **`src/map.js`** (imperative Leaflet glue — the panel,
+    legend and spot popups) and **`moreMenuHtml`** (shared string reused by home +
+    results). In THAT code **`escapeHtml` (from `src/format.js`) is still
+    MANDATORY** on any user-controlled text (e.g. `s.name` from Overpass in
+    `spotPopupHtml`) — the "no escapeHtml" rule applies *only inside lit templates*.
 - **Everything in the codebase is English** — code, comments, commit messages,
   test descriptions. The only Italian allowed is user-facing content: the `it`
   dictionary values in `src/i18n.js` and the IT fallback copy in `index.html`.
@@ -151,3 +153,17 @@ via `npx` on demand and is never installed into the repo.
 If you do spawn an Explore agent (e.g. because the user asked for one, or because a sub-task requires it), include the following in the agent prompt:
 
 > This project has tokensave initialised (.tokensave/ exists). Use `tokensave_context` as your ONLY exploration tool. Call it with your question in plain English. Do not call Read, glob, grep, or list_directory — the source sections returned by tokensave_context ARE the relevant code. Follow the call budget in the tool description. Pass `seen_node_ids` from each response to the next call's `exclude_node_ids`.
+
+## Agent skills
+
+### Issue tracker
+
+Local markdown — issues and specs live as files under `.scratch/<feature-slug>/`. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five canonical triage roles, each label string equal to its name (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context — one `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
