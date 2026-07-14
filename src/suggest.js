@@ -95,9 +95,7 @@ function showSuggest(matches) {
         aria-selected="false"
       >
         <span class="suggest__name">${m.name}</span>
-        ${meta
-          ? html`<span class="suggest__meta">${meta}</span>`
-          : nothing}
+        ${meta ? html`<span class="suggest__meta">${meta}</span>` : nothing}
       </li>`;
     }),
     els.suggest,
