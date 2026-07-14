@@ -30,10 +30,13 @@
 :root {
   /* --- §1.1 Color (dark theme, default) ---------------------------------- */
   --bg: #120a16; /* screen / content background */
-  /* Warm glow at the bottom of the page (.sky). Theme-aware, NOT imagery: on
-     near-black it's a whisper; on light cream the same alpha reads as a pink
-     wash, so the light theme dials it down (see the light block). */
-  --page-glow: rgba(255, 150, 110, 0.1);
+  /* Whole page background (.sky) as a VALUE token, not just a color: a theme
+     can differ in the entire composition (layer count, positions) without
+     forking the rule — the contract is "themes change tokens, never rules".
+     Dark: a warm glow rising from the bottom over near-black. */
+  --page-bg:
+    radial-gradient(120vw 50vh at 50% 118%, rgba(255, 150, 110, 0.1), transparent 62%),
+    var(--bg);
   --surface: #171020; /* sheets, panels, map bottom sheet */
   --card: rgba(255, 255, 255, 0.05); /* card fill */
   --card-2: rgba(255, 255, 255, 0.035); /* quieter cards */
@@ -167,8 +170,11 @@
    NOT redefined: it stays identical to the dark theme. */
 :root[data-theme='light'] {
   --bg: #fdf7ef;
-  /* Fainter than dark: on cream the warm glow otherwise reads as a pink wash. */
-  --page-glow: rgba(255, 150, 110, 0.04);
+  /* Faint warm tint over cream — the dark glow's alpha would read as pink here.
+     Same composition as dark; only the values differ (the whole point of A). */
+  --page-bg:
+    radial-gradient(120vw 50vh at 50% 118%, rgba(255, 150, 110, 0.04), transparent 62%),
+    var(--bg);
   --surface: #ffffff;
   --card: #ffffff;
   --card-2: #fbf7f2;
@@ -438,19 +444,14 @@ body {
   }
 }
 
-/* Background: warm glow from below (the sun just dipped under the horizon)
-   fading into near-black. Same idea as the sunset gradient, but subtle and
-   without jumps: the page stays dark and premium. */
-/* Page background: solid warm near-black. The dramatic "skies" now live in
-   the heroes (home / results), no longer as a full-page halo. A whisper of
-   warmth remains at the bottom for continuity. */
+/* Page background: a whisper of warmth at the bottom over the base colour. The
+   dramatic "skies" live in the heroes now, not here. Both themes share this one
+   rule; the per-theme look is entirely in --page-bg (see the token blocks). */
 .sky {
   position: fixed;
   inset: 0;
   z-index: -1;
-  background:
-    radial-gradient(120vw 50vh at 50% 118%, var(--page-glow), transparent 62%),
-    var(--bg);
+  background: var(--page-bg);
 }
 
 .app {

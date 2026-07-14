@@ -42,6 +42,15 @@ via `npx` on demand and is never installed into the repo.
   **token layer** (`:root` / `:root[data-theme='light']` in `styles.css`) and a
   small set of **primitives**. Do not introduce a raw color/space/radius/font
   literal in a screen where a token or primitive exists.
+- **Themes change tokens, never rules.** The ONLY theme-scoped selector allowed
+  is the token block `:root[data-theme='light'] { --… }`. A theme-scoped
+  *component* rule (`:root[data-theme='light'] .sky { … }`) is a **fork**: it
+  silently shadows the base rule in one theme, so editing the base rule appears
+  to do nothing. When a theme needs to look different, put the difference in a
+  token — including a **whole-value token** when the difference is structural,
+  not just a color. `--page-bg` is the reference: the entire page background
+  (gradient composition and all) is a value token, so `.sky` stays a single
+  rule and each theme supplies its own value.
 - **Primitives live in two places:**
   - `src/ui.js` — pure string helpers (no DOM, no state, no i18n): `scoreNumeral`,
     `skySwatch`, `statCell`, `sectionHeader`, `chip`, `card`, `button`, `scoreHue`.
