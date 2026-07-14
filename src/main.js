@@ -158,7 +158,7 @@ function renderResults(data, scored) {
           ${whyTemplate(data, {
             onToggleDrivers: (btn) => toggleCollapse(btn, "#drivers"),
           })}
-          ${lookAtTemplate(sun, tw, event)}
+          ${lookAtTemplate(sun, event)}
           ${pointTemplate(data, { onOpenMap: openBigMap })}
         </div>
         <div class="rcol rcol--b">

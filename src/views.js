@@ -787,7 +787,7 @@ export function hourlyTemplate({ timeline }, tw, event) {
   `;
 }
 
-/* Golden/blue hour chips (reused in "Where to look" and the hourly trend). */
+/* Golden/blue hour chips, shown in the sunset-arc (hourly trend) section. */
 function lightChipsHtml(tw, event) {
   const fmtRange = (a, b) => (a && b ? `${fmtTime(a)}–${fmtTime(b)}` : "—");
   const goldenRange =
@@ -804,8 +804,9 @@ function lightChipsHtml(tw, event) {
       </div>`;
 }
 
-/* "Where to look": compass + direction text + golden/blue hour chips. */
-export function lookAtTemplate(sun, tw, event) {
+/* "Where to look": compass + direction text. The golden/blue hour chips live
+ * in the sunset-arc section (the temporal view), not here. */
+export function lookAtTemplate(sun, event) {
   return html`
     <section class="sect">
       ${unsafeHTML(sectionHeader(t("section.lookAt")))}
@@ -824,7 +825,6 @@ export function lookAtTemplate(sun, tw, event) {
           </p>
         </div>
       </div>
-      ${unsafeHTML(lightChipsHtml(tw, event))}
     </section>
   `;
 }
