@@ -1269,6 +1269,36 @@ body {
 .search__geo:active {
   transform: translateY(1px);
 }
+.search__clear {
+  position: relative;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  display: grid;
+  place-content: center;
+  border: 0;
+  border-radius: var(--r-tile);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: color 0.15s ease, transform 0.12s ease;
+}
+/* Touch area ≥44px without altering the button's visual size (a11y). */
+.search__clear::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 44px;
+  height: 44px;
+  transform: translate(-50%, -50%);
+}
+.search__clear:hover {
+  color: var(--text);
+}
+.search__clear:active {
+  transform: translateY(1px);
+}
 
 /* Suggestions below the pill. */
 .suggest {

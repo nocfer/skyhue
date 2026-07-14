@@ -128,6 +128,7 @@ function chooseSuggest(i) {
   if (!m) return;
   const place = matchToPlace(m);
   els.input.value = place.label;
+  syncClearBtn();
   chosenPlace = place; // so the next submit doesn't re-geocode the label
   closeSuggest();
   dispatchAnalyze(place);
@@ -144,8 +145,14 @@ async function querySuggest(query) {
   }
 }
 
+// Show the clear (×) button only when the field has text.
+function syncClearBtn() {
+  if (els.clearBtn) els.clearBtn.hidden = els.input.value.length === 0;
+}
+
 els.input.addEventListener("input", () => {
   const q = els.input.value.trim();
+  syncClearBtn();
   chosenPlace = null; // the user is editing: the previous selection no longer applies
   clearTimeout(suggestTimer);
   if (q.length < 2) {
@@ -186,6 +193,14 @@ els.suggest.addEventListener("pointerdown", (e) => {
 
 els.input.addEventListener("blur", () => {
   setTimeout(closeSuggest, 120);
+});
+
+els.clearBtn?.addEventListener("click", () => {
+  els.input.value = "";
+  // Reuse the input handler's teardown (closes the dropdown, invalidates
+  // in-flight requests, resets chosenPlace) instead of duplicating it here.
+  els.input.dispatchEvent(new Event("input"));
+  els.input.focus();
 });
 
 els.geoBtn.addEventListener("click", () => {

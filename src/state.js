@@ -16,6 +16,7 @@ export const els = {
   form: $("search-form"),
   input: /** @type {HTMLInputElement} */ ($("search-input")),
   suggest: $("search-suggest"),
+  clearBtn: $("clear-btn"),
   geoBtn: $("geo-btn"),
   results: $("results"),
   status: $("status"),
