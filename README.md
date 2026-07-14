@@ -1,128 +1,130 @@
+**English** · [Italiano](README.it.md)
+
 # 🌅 SkyHue — Sunset Score
 
-Un'app web che stima **quanto sarà bello il prossimo tramonto** combinando
-**dati meteo in tempo reale**, **dati astronomici** e un **algoritmo di
-punteggio** con relativa **spiegazione in linguaggio naturale**.
+A web app that estimates **how beautiful the next sunset will be** by combining
+**real-time weather**, **astronomical data** and a **scoring algorithm** with a
+matching **natural-language explanation**.
 
-Nessuna API key, nessun build step: solo HTML + CSS + JavaScript a moduli ES.
-I dati arrivano da [Open-Meteo](https://open-meteo.com) — meteo, dati astronomici
-e qualità dell'aria (gratuito, CORS abilitato).
+No API key, no build step: just HTML + CSS + ES-module JavaScript. Data comes
+from [Open-Meteo](https://open-meteo.com) — weather, astronomy and air quality
+(free, CORS-enabled).
 
-## Cosa fa
+## What it does
 
-1. **Località** — cerca una città (geocoding Open-Meteo) o usa la geolocalizzazione del browser.
-2. **Meteo in tempo reale** — copertura nuvolosa bassa/media/alta, visibilità, umidità, temperatura all'ora dell'evento.
-3. **Qualità dell'aria** — aerosol optical depth e PM2.5: un pulviscolo moderato accende i rossi, la foschia li spegne.
-4. **Percorso della luce** — campiona le nuvole basse/medie/alte a 40–250 km **lungo il raggio verso il sole**: un fronte lontano blocca la luce radente anche con cielo locale perfetto, una via libera può accendere il deck da sotto. Pesa sul punteggio, appare tra le spiegazioni e come cella nelle condizioni.
-5. **Dati astronomici** — orario di alba/tramonto, azimut/direzione del sole (algoritmo solare NOAA), fase lunare.
-6. **Sunset & Sunrise Score (0–100)** — punteggio con etichetta qualitativa, sia per il tramonto sia per l'alba.
-7. **Previsione multi-giorno** — striscia dei prossimi 7 giorni, ognuno col suo punteggio.
-8. **Timeline oraria** — andamento del punteggio nelle ore attorno all'evento.
-9. **Spiegazione** — perché quel punteggio: _"nuvole basse all'orizzonte"_, _"nuvole alte favorevoli"_, _"visibilità eccellente"_, _"foschia da particolato"_, ecc.
-10. **Anteprima del cielo** — un gradiente che simula i colori attesi in base a punteggio, nuvole e aerosol.
-11. **Bussola del sole** — dove guardare all'orizzonte (azimut sorgere/tramontare).
-12. **Mappa del punto** — mini-mappa Leaflet del punto analizzato con **marker colorato per punteggio** e un **raggio verso il sole** (dove guarderà all'orizzonte), più coordinate richieste e cella di griglia meteo effettiva.
-13. **Preferiti** — salva le tue località (localStorage) e ricaricale con un tap.
-14. **Condivisione** — link diretto alla località+evento (Web Share API o copia link).
-15. **Dove andare a guardarlo** — punti panoramici vicini da OpenStreetMap (viewpoint, fari, promontori, spiagge) **valutati qualitativamente**: si campiona la quota del terreno lungo il raggio verso il sole (Elevation API di Open-Meteo) per stimare se l'orizzonte è libero o ostruito e se c'è mare aperto (raggio ~25 km, con stima dei minuti in auto). Ogni meta mostra **due punteggi distinti**: l'**affaccio** (il numero grande — quanto è buona la *vista*: orizzonte libero, mare aperto, tipo di luogo; indipendente dal meteo) e il **cielo** (chip 🌅 — il *Sunset Score* calcolato col meteo di quel punto specifico). Per le mete finaliste i due punteggi vengono **combinati** nel ranking (l'affaccio pesa di più; il cielo, quasi uniforme sull'area, affina l'ordine). Su richiesta, una **stima da coordinate** (griglia + quote) propone anche punti *non mappati* su OSM, valutandone l'affaccio.
-16. **Schermata mappa** (`#map`) — mappa interattiva (Leaflet, caricato on-demand): **tocca un punto qualsiasi** e ottieni Sunset Score, direzione del sole e affaccio in quel punto, poi apri il dettaglio completo.
+1. **Location** — search a city (Open-Meteo geocoding) or use the browser's geolocation.
+2. **Real-time weather** — low/mid/high cloud cover, visibility, humidity and temperature at the event's hour.
+3. **Air quality** — aerosol optical depth and PM2.5: moderate particulate lights up the reds, haze dims them.
+4. **Light path** — samples low/mid/high cloud from 40–250 km **along the ray toward the sun**: a distant front blocks the grazing light even under a perfect local sky, while a clear path can light the deck from below. It weighs on the score, appears in the explanations and as a cell in the conditions.
+5. **Astronomy** — sunrise/sunset time, sun azimuth/direction (NOAA solar algorithm), moon phase.
+6. **Sunset & Sunrise Score (0–100)** — a score with a qualitative label, for both sunset and sunrise.
+7. **Multi-day forecast** — a strip of the next 7 days, each with its own score.
+8. **Hourly timeline** — how the score trends through the hours around the event.
+9. **Explanation** — why that score: _"low cloud on the horizon"_, _"favorable high cloud"_, _"excellent visibility"_, _"particulate haze"_, etc.
+10. **Sky preview** — a gradient that simulates the expected colors from score, cloud and aerosol.
+11. **Sun compass** — where to look on the horizon (sunrise/sunset azimuth).
+12. **Point map** — a Leaflet mini-map of the analyzed point with a **score-colored marker** and a **ray toward the sun** (where it will sit on the horizon), plus the requested coordinates and the actual weather grid cell.
+13. **Favorites** — save your locations (localStorage) and reload them with a tap.
+14. **Sharing** — a direct link to the location+event (Web Share API or copy link).
+15. **Where to go and watch it** — nearby scenic spots from OpenStreetMap (viewpoints, lighthouses, headlands, beaches), **rated qualitatively**: the terrain elevation is sampled along the ray toward the sun (Open-Meteo's Elevation API) to estimate whether the horizon is clear or obstructed and whether there's open sea (~25 km radius, with an estimated drive time). Each destination shows **two distinct scores**: the **view** (the big number — how good the *outlook* is: clear horizon, open sea, kind of place; weather-independent) and the **sky** (🌅 chip — the *Sunset Score* computed with that specific point's weather). For the finalist destinations the two scores are **combined** in the ranking (the view weighs more; the sky, nearly uniform over the area, refines the order). On demand, a **coordinate-based estimate** (grid + elevations) also proposes points *not mapped* on OSM, rating their outlook.
+16. **Map screen** (`#map`) — an interactive map (Leaflet, loaded on demand): **tap anywhere** to get a Sunset Score, sun direction and outlook at that point, then open the full detail. Tapping a suggested spot opens a **card** with the cloud split (low/mid/high) and air clarity, plus **directions** (Apple / Google / OSM).
 
-## Come funziona il punteggio
+## How the score works
 
-Il tramonto migliore richiede **nuvole alte/medie parziali** (i cirri catturano
-il colore), **orizzonte libero da nuvole basse** (che bloccherebbero il sole) e
-**atmosfera limpida**. L'algoritmo (`src/score.js`):
+The best sunset needs **partial high/mid cloud** (cirrus catches the color), a
+**horizon clear of low cloud** (which would block the sun) and a **clear
+atmosphere**. The algorithm (`src/score.js`):
 
-- parte da una **base garantita** (0,35): anche un cielo terso "vale" qualcosa;
-- premia con una curva a campana le **nuvole alte (~50%)** e **medie (~45%)** → _drama_;
-- valuta la **trasparenza** da visibilità e umidità → _clarity_;
-- applica una **penalità moltiplicativa** per le **nuvole basse** (bloccano l'orizzonte);
-- penalizza l'**overcast del deck opaco** (nuvole basse+medie che coprono il cielo):
-  i **cirri alti**, anche fitti, restano traslucidi e **non** contano come overcast;
-- modula col **pulviscolo** (`aerosol`): moderato accende i rossi, eccessivo li spegne;
-- valuta il **percorso della luce** (`src/lightpath.js`): campiona le nuvole a
-  **40/90/160/250 km lungo il raggio verso il sole** — la luce radente che colora
-  il tramonto passa da lì prima di raggiungere le nuvole sopra di te. Un fronte
-  lontano la spegne anche con cielo locale perfetto; una via libera può accendere
-  il deck "da sotto". Il fattore è opzionale: senza campioni il punteggio resta
-  quello di sempre.
+- starts from a **guaranteed base** (0.35): even a clear sky is "worth" something;
+- rewards **high cloud (~50%)** and **mid cloud (~45%)** with a bell curve → _drama_;
+- rates **transparency** from visibility and humidity → _clarity_;
+- applies a **multiplicative penalty** for **low cloud** (it blocks the horizon);
+- penalizes **opaque-deck overcast** (low+mid cloud covering the sky):
+  **high cirrus**, even dense, stays translucent and does **not** count as overcast;
+- modulates with **particulate** (`aerosol`): moderate lights up the reds, excessive dims them;
+- evaluates the **light path** (`src/lightpath.js`): samples cloud at
+  **40/90/160/250 km along the ray toward the sun** — the grazing light that
+  colors the sunset passes through there before reaching the cloud above you. A
+  distant front kills it even under a perfect local sky; a clear path can light
+  the deck "from below". The factor is optional: with no samples the score stays
+  as it always was.
 
 ```
-raw   = 100 · (0,35 + 0,45·drama + 0,20·clarity)          // 0,35 = base garantita
-score = raw · (1 − 0,85·nuvole_basse) · (1 − 0,9·overcast) · aerosol · percorso
-percorso = 1 − 0,45·(1 − pathClear)                       // assente → 1 (neutro)
+raw   = 100 · (0.35 + 0.45·drama + 0.20·clarity)          // 0.35 = guaranteed base
+score = raw · (1 − 0.85·low_cloud) · (1 − 0.9·overcast) · aerosol · path
+path  = 1 − 0.45·(1 − pathClear)                          // absent → 1 (neutral)
 ```
 
-Un cielo terso vale ~55 (bello ma piatto); cirri parziali con orizzonte libero
-salgono a 75–95; nuvole basse fitte o cielo coperto crollano sotto 25.
+A clear sky is worth ~55 (nice but flat); partial cirrus with a clear horizon
+climbs to 75–95; dense low cloud or overcast sky drops below 25.
 
-## Avvio
+## Getting started
 
-Serve un piccolo static server (i moduli ES non si aprono da `file://`):
+You need a small static server (ES modules won't open from `file://`):
 
 ```bash
-# opzione 1 — Python
+# option 1 — Python
 python3 -m http.server 8000
-# opzione 2 — npm (usa lo stesso comando)
+# option 2 — npm (runs the same command)
 npm start
 ```
 
-Poi apri <http://localhost:8000>.
+Then open <http://localhost:8000>.
 
-## Test
+## Tests
 
-L'algoritmo è puro e testabile senza rete o browser:
+The algorithm is pure and testable without network or browser:
 
 ```bash
-npm test        # oppure: node --test
+npm test        # or: node --test
 ```
 
-## Struttura
+## Structure
 
 ```
-index.html            markup dell'app + registrazione service worker
-manifest.webmanifest  PWA: installabile su home screen
-sw.js                 service worker: guscio offline + cache API
-icon.svg              icona dell'app
-src/styles.css        tema "tramonto"
-src/api.js            Open-Meteo: geocoding, previsioni, qualità dell'aria
-src/astronomy.js      posizione solare (NOAA), fase lunare
-src/score.js          algoritmo Sunset Score + spiegazione  ← cuore testabile
-src/sky.js            palette del cielo previsto (gradiente)
-src/spots.js          punti panoramici vicini (OpenStreetMap/Overpass)
-src/lightpath.js      nuvole lungo il raggio verso il sole (percorso della luce)
-src/store.js          preferiti in localStorage
-src/cache.js          cache a due livelli (memoria + IndexedDB) delle risposte di rete
-src/main.js           orchestrazione e rendering
-test/score.test.js    test dell'algoritmo
-test/lightpath.test.js test del campionamento lungo il raggio (fusi, degradi)
-test/sky.test.js      test della palette
-test/spots.test.js    test di distanza/rilevamento
-test/cache.test.js    test della cache (TTL, riuso, errori)
+index.html            app markup + service worker registration
+manifest.webmanifest  PWA: installable to the home screen
+sw.js                 service worker: offline shell + API cache
+icon.svg              app icon
+src/styles.css        "sunset" theme
+src/api.js            Open-Meteo: geocoding, forecast, air quality
+src/astronomy.js      solar position (NOAA), moon phase
+src/score.js          Sunset Score algorithm + explanation  ← testable core
+src/sky.js            expected-sky palette (gradient)
+src/spots.js          nearby scenic spots (OpenStreetMap/Overpass)
+src/lightpath.js      cloud along the ray toward the sun (light path)
+src/store.js          favorites in localStorage
+src/cache.js          two-tier cache (memory + IndexedDB) of network responses
+src/main.js           orchestration and rendering
+test/score.test.js    algorithm tests
+test/lightpath.test.js ray-sampling tests (timezones, degradations)
+test/sky.test.js      palette tests
+test/spots.test.js    distance/bearing tests
+test/cache.test.js    cache tests (TTL, reuse, errors)
 ```
 
-## Mappa interattiva & performance
+## Interactive map & performance
 
-Sulla schermata mappa (`#map`) ogni tap valuta il punto (meteo, aria, quote del
-terreno e punti Overpass nel raggio di 25 km). Toccando più punti in sequenza:
+On the map screen (`#map`) each tap evaluates the point (weather, air, terrain
+elevations and Overpass spots within 25 km). Tapping several points in a row:
 
-- le richieste della valutazione **precedente vengono annullate** (`AbortController`)
-  invece di accumularsi — comprese le costose query Overpass — così la rete non
-  si satura e vince sempre l'ultimo tap;
-- le risposte sono messe in **cache a due livelli** (`src/cache.js`) per
-  coordinate arrotondate: **memoria** (L1) per la sessione corrente e
-  **IndexedDB** (L2) per sopravvivere a reload e sessioni successive. Ritoccare
-  la stessa zona è immediato e non re-interroga Overpass. Le quote del terreno
-  (immutabili), i POI (quasi statici), il geocoding e i toponimi (Nominatim,
-  ~1 req/s) hanno TTL lunghi; il meteo e la qualità dell'aria ~30 min. Fuori dal
-  browser (test) IndexedDB non c'è e si degrada a sola memoria.
+- the **previous** evaluation's requests are **aborted** (`AbortController`)
+  instead of piling up — including the costly Overpass queries — so the network
+  doesn't saturate and the last tap always wins;
+- responses are held in a **two-tier cache** (`src/cache.js`) keyed by rounded
+  coordinates: **memory** (L1) for the current session and **IndexedDB** (L2) to
+  survive reloads and later sessions. Revisiting the same area is instant and
+  doesn't re-query Overpass. Terrain elevations (immutable), POIs (near-static),
+  geocoding and place names (Nominatim, ~1 req/s) get long TTLs; weather and air
+  quality ~30 min. Outside the browser (tests) there's no IndexedDB and it
+  degrades to memory only.
 
 ## PWA & offline
 
-L'app è installabile (Aggiungi a schermata Home) e funziona offline: il
-service worker mette in cache il guscio e l'ultima risposta delle API, così
-l'ultima località resta consultabile senza rete.
+The app is installable (Add to Home Screen) and works offline: the service
+worker caches the shell and the last API response, so the last location stays
+viewable without a network.
 
-## Licenza
+## License
 
 MIT
