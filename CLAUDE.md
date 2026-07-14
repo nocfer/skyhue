@@ -137,6 +137,27 @@ via `npx` on demand and is never installed into the repo.
 9. **Bash tool resets `cwd` between calls** and `cd` mid-command can prompt. Use
    absolute paths; start background servers with `(cmd &)`.
 
+10. **CI has THREE gates, not one — reproduce ALL of them before pushing a fix.**
+    The `CI` workflow runs, and all must pass: **Biome** (`npx -y @biomejs/biome@2
+    ci .` — this checks lint AND *format*), **checkJs** (`npm run typecheck`), and
+    **tests** (`npm test`). A `--log-failed` dump often shows only the first job's
+    output, so "fixing what the log shows" and pushing frequently trips the next
+    gate on the very next run (cost us two extra red pushes once). Before every
+    push, run all three locally and confirm each exits `0`:
+    ```
+    npx -y @biomejs/biome@2 ci . ; echo $?   # 0 (warnings are OK; only errors fail)
+    npm run typecheck ; echo $?              # 0
+    npm test ; echo $?                       # 0
+    ```
+    Notes: (a) Biome `ci` includes formatting — a compact hand-written
+    `try{…}catch{}` or inline array reflows and fails format; run `npm run format`
+    (or `biome format --write`) first. (b) `checkJs` flags `.style`/`HTMLElement`
+    members on `querySelector` results (typed `Element`) — cast with the repo
+    idiom `/** @type {HTMLElement} */ (el)`, and put the cast in a **plain
+    statement/variable**, not mid-expression: Biome's formatter relocates a
+    JSDoc-cast comment and silently changes what it casts. (c) A shell-file edit
+    still needs `npm run stamp` before commit (`stamp:check` is its own gate).
+
 ## Verifying a change end-to-end (quick recipe)
 
 1. `rm -rf /tmp/skyprof` (kill stale SW cache), start a static server.
