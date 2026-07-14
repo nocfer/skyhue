@@ -30,6 +30,10 @@
 :root {
   /* --- §1.1 Color (dark theme, default) ---------------------------------- */
   --bg: #120a16; /* screen / content background */
+  /* Warm glow at the bottom of the page (.sky). Theme-aware, NOT imagery: on
+     near-black it's a whisper; on light cream the same alpha reads as a pink
+     wash, so the light theme dials it down (see the light block). */
+  --page-glow: rgba(255, 150, 110, 0.1);
   --surface: #171020; /* sheets, panels, map bottom sheet */
   --card: rgba(255, 255, 255, 0.05); /* card fill */
   --card-2: rgba(255, 255, 255, 0.035); /* quieter cards */
@@ -163,6 +167,8 @@
    NOT redefined: it stays identical to the dark theme. */
 :root[data-theme='light'] {
   --bg: #fdf7ef;
+  /* Fainter than dark: on cream the warm glow otherwise reads as a pink wash. */
+  --page-glow: rgba(255, 150, 110, 0.04);
   --surface: #ffffff;
   --card: #ffffff;
   --card-2: #fbf7f2;
@@ -443,7 +449,7 @@ body {
   inset: 0;
   z-index: -1;
   background:
-    radial-gradient(120vw 50vh at 50% 118%, rgba(255, 150, 110, 0.1), transparent 62%),
+    radial-gradient(120vw 50vh at 50% 118%, var(--page-glow), transparent 62%),
     var(--bg);
 }
 
@@ -939,23 +945,6 @@ body {
   dominant-baseline: middle;
 }
 
-/* Light theme: background with a warm halo on ivory, consistent with the dark theme. */
-:root[data-theme='light'] .sky {
-  background:
-    radial-gradient(
-      110vw 66vh at 50% 86vh,
-      rgba(255, 178, 120, 0.55) 0%,
-      rgba(255, 140, 95, 0.26) 26%,
-      rgba(251, 244, 236, 0) 58%
-    ),
-    radial-gradient(
-      160vw 120vh at 50% 92vh,
-      rgba(255, 150, 170, 0.24) 22%,
-      rgba(255, 205, 150, 0.12) 55%,
-      rgba(251, 244, 236, 0) 82%
-    ),
-    linear-gradient(180deg, #fdf7ef 0%, #fcefe4 60%, #fbe6d6 100%);
-}
 
 /* ==========================================================================
    "Atmosphere" redesign — new components (home 2a + results 1b/3a-3d)
