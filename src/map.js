@@ -132,6 +132,26 @@ function spotPopupHtml(s) {
   </div>`;
 }
 
+/** Add a colored, clickable marker per suggested spot to a Leaflet group.
+ *  Called by buildSunsetOverlays, and again on its own when a tap's background
+ *  Overpass search resolves after the point was already drawn. */
+function addSpotMarkers(L, group, spots, onSpotClick) {
+  (spots || []).forEach((s) => {
+    const c = SENT[s.verdict?.sentiment] || SENT.neutral;
+    const m = L.marker([s.lat, s.lon], {
+      icon: L.divIcon({
+        className: "spotmark",
+        html: `<span class="spotmark__dot" style="--c:${c}"></span>`,
+        iconSize: [16, 16],
+        iconAnchor: [8, 8],
+      }),
+    })
+      .addTo(group)
+      .bindPopup(spotPopupHtml(s));
+    if (onSpotClick) m.on("click", () => onSpotClick(s));
+  });
+}
+
 /**
  * Draws all the "sunset" overlays into a Leaflet group: ray towards the sun
  * (halo + dashes), sun at the horizon, visibility circle, markers for the
@@ -180,21 +200,10 @@ function buildSunsetOverlays(
     }).addTo(group);
   }
 
-  // Markers for the suggested spots, colored by view quality.
-  (spots || []).forEach((s) => {
-    const c = SENT[s.verdict?.sentiment] || SENT.neutral;
-    const m = L.marker([s.lat, s.lon], {
-      icon: L.divIcon({
-        className: "spotmark",
-        html: `<span class="spotmark__dot" style="--c:${c}"></span>`,
-        iconSize: [16, 16],
-        iconAnchor: [8, 8],
-      }),
-    })
-      .addTo(group)
-      .bindPopup(spotPopupHtml(s));
-    if (onSpotClick) m.on("click", () => onSpotClick(s));
-  });
+  // Markers for the suggested spots, colored by view quality. Extracted so a
+  // tap can render the point immediately and add these later, when the (slow)
+  // Overpass spot search resolves — see evaluatePoint.
+  addSpotMarkers(L, group, spots, onSpotClick);
 
   // The sun at the horizon, at the end of the ray (glow via CSS).
   L.marker([end.lat, end.lon], {
@@ -526,47 +535,42 @@ async function evaluatePoint(lat, lon) {
     const eventDate = new Date(iso);
     const sun = sunPosition(eventDate, lat, lon);
 
-    // View from the tapped point + search for suggested spots nearby,
-    // so every element of the legend shows up on the map.
+    // The view verdict needs terrain elevations along the ray toward the sun.
+    // That's a fast, bounded fetch — await it. The nearby-spot search, by
+    // contrast, is an Overpass query (slow, sometimes many seconds); it must NOT
+    // gate the score/verdict/point, so it runs in the background below and its
+    // markers are added when it lands.
     let horizon = null;
-    let spots = [];
     try {
       const pts = SAMPLE_DISTANCES.map((d) =>
         d === 0 ? { lat, lon } : destinationPoint(lat, lon, sun.azimuth, d),
       );
-      const [el, near] = await Promise.all([
-        fetchElevations(pts, { signal }),
-        nearbySpots(lat, lon, sun.azimuth, { signal }).catch((err) => {
-          if (err?.name === "AbortError") throw err; // evaluation superseded
-          return [];
-        }),
-      ]);
+      const el = await fetchElevations(pts, { signal });
       const ahead = SAMPLE_DISTANCES.slice(1).map((distKm, k) => ({
         distKm,
         elev: el[k + 1],
       }));
       horizon = evaluateHorizon(el[0], ahead);
-      spots = near;
     } catch (err) {
       if (err?.name === "AbortError" || signal.aborted) return; // superseded by a new tap
-      console.warn("Elevations/spots not available:", err);
+      console.warn("Elevations not available:", err);
     }
     const verdict = spotVerdict("viewpoint", horizon);
 
     if (token !== evalToken) return; // superseded by a more recent tap
 
-    // Full overlays for the tapped point: point + ray + sun + visibility
-    // circle + markers for the suggested spots (consistent with the legend).
+    // Render the point + score + verdict now — no waiting on the spot search.
     clearTap(); // the pick marker is replaced by the score-colored dot below
     tapLayer = window.L.featureGroup().addTo(map);
-    buildSunsetOverlays(window.L, tapLayer, {
+    const layer = tapLayer;
+    buildSunsetOverlays(window.L, layer, {
       lat,
       lon,
       azimuth: sun.azimuth,
       score,
       event,
       visibility: cond.visibility,
-      spots,
+      spots: [],
       onSpotClick: (s) => selectPoint(s.lat, s.lon),
     });
 
@@ -580,6 +584,18 @@ async function evaluatePoint(lat, lon) {
       visibility: cond.visibility,
       elevation: forecast.elevation,
     });
+
+    // Background: the slow Overpass spot search. Add its markers to the layer
+    // already on the map, if this evaluation is still the current one.
+    nearbySpots(lat, lon, sun.azimuth, { signal })
+      .then((near) => {
+        if (token !== evalToken || signal.aborted || !near?.length) return;
+        addSpotMarkers(window.L, layer, near, (s) => selectPoint(s.lat, s.lon));
+      })
+      .catch((err) => {
+        if (err?.name !== "AbortError")
+          console.warn("Nearby spots not available:", err);
+      });
   } catch (err) {
     if (err?.name === "AbortError" || signal.aborted || token !== evalToken)
       return;
