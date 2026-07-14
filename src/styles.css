@@ -759,6 +759,14 @@ body {
   color: var(--muted);
   font-size: 0.8rem;
 }
+/* Honest caveat: this row's conditions are the analyzed point's, not the
+   spot's own — see spotConditions(approx). Quieter than the data above it. */
+.mappop__approx {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-style: italic;
+  opacity: 0.85;
+}
 .mappop__acts {
   margin-top: 0.6rem;
   display: flex;

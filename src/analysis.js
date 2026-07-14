@@ -369,22 +369,26 @@ async function loadSky(list) {
 }
 
 /**
- * Conditions to display for a spot's card: the spot's own weather when we
- * fetched it (top finalists, see loadSky), otherwise the analyzed point's
- * conditions — near-identical over the ~20 km spots span, and free (no fetch).
- * Returns null when there is no forecast yet.
- * @returns {(ReturnType<typeof conditionsAtTime> & ReturnType<typeof airAtTime>) | null}
+ * Conditions to display for a spot's card. `approx` distinguishes the two
+ * sources so the card can be honest about them: `false` is the spot's own
+ * weather (fetched for the top finalists, see loadSky); `true` is the analyzed
+ * point's weather, reused as an area estimate — near-identical over the ~20 km
+ * spots span, and free (no fetch). Returns null when there is no forecast yet.
+ * @returns {{cond: (ReturnType<typeof conditionsAtTime> & ReturnType<typeof airAtTime>), approx: boolean} | null}
  */
 export function spotConditions(spot) {
-  if (spot?.cond) return spot.cond;
+  if (spot?.cond) return { cond: spot.cond, approx: false };
   if (!state.forecast) return null;
   const day =
     dailyList(state.forecast)[state.dayIndex] ?? dailyList(state.forecast)[0];
   if (!day) return null;
   const iso = day[state.event];
   return {
-    ...conditionsAtTime(state.forecast, iso),
-    ...airAtTime(state.air, iso),
+    cond: {
+      ...conditionsAtTime(state.forecast, iso),
+      ...airAtTime(state.air, iso),
+    },
+    approx: true,
   };
 }
 

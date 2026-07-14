@@ -111,16 +111,25 @@ const IMG = {
 
 const SENT = { good: "#ffce6f", bad: "#d85a3c", neutral: "#9c9086" };
 
-/** The spot's display name, escaped for innerHTML (see below). */
+/** The spot's display name, raw (unescaped). Use for lit sinks (which escape on
+ *  their own) and other non-HTML consumers. */
+function spotLabel(s) {
+  return s.name || t(kindInfo(s.kind).labelKey);
+}
+
+/** The spot's display name, escaped for the innerHTML popup (see below). */
 function spotName(s) {
-  return escapeHtml(s.name || t(kindInfo(s.kind).labelKey));
+  return escapeHtml(spotLabel(s));
 }
 
 /** Cloud split + air-clarity block for the card — the free-but-unused forecast
- *  detail that explains the sky score. Empty string when we have no forecast. */
+ *  detail that explains the sky score. Empty string when we have no forecast.
+ *  When the data is the analyzed point's rather than the spot's own (approx),
+ *  the card says so instead of passing it off as spot-specific. */
 function spotCondHtml(s) {
-  const cond = spotConditions(s);
-  if (!cond) return "";
+  const res = spotConditions(s);
+  if (!res) return "";
+  const { cond, approx } = res;
   const cells = [
     ["low", cond.cloudCoverLow],
     ["mid", cond.cloudCoverMid],
@@ -135,10 +144,11 @@ function spotCondHtml(s) {
   const haze = Number.isFinite(cond.visibility)
     ? condDesc("vis", cond.visibility / 1000).text
     : "";
-  if (!cells && !haze) return "";
+  if (!cells.length && !haze) return "";
   return `<div class="mappop__cond">
     ${cells ? `<div class="mappop__cloud">${icon("cloud", { size: 14 })}${cells}</div>` : ""}
     ${haze ? `<div class="mappop__haze">${haze}</div>` : ""}
+    ${approx ? `<div class="mappop__approx">${t("mappop.areaEstimate")}</div>` : ""}
   </div>`;
 }
 
@@ -178,7 +188,7 @@ function spotPopupEl(s, { onEvaluate }) {
   const el = document.createElement("div");
   el.innerHTML = spotPopupHtml(s);
   el.querySelector('[data-act="dir"]')?.addEventListener("click", () =>
-    openDirectionsSheet({ lat: s.lat, lon: s.lon, name: spotName(s) }),
+    openDirectionsSheet({ lat: s.lat, lon: s.lon, name: spotLabel(s) }),
   );
   const evalBtn = el.querySelector('[data-act="eval"]');
   if (evalBtn && onEvaluate)

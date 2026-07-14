@@ -118,6 +118,7 @@ const DICT = {
     "mappop.view": "affaccio",
     "mappop.sky": "cielo",
     "mappop.towards": "verso {dir}",
+    "mappop.areaEstimate": "stima sull'area",
 
     "label.exceptional": "Infuocato",
     "label.great": "Intenso",
@@ -455,6 +456,7 @@ const DICT = {
     "mappop.view": "view",
     "mappop.sky": "sky",
     "mappop.towards": "towards {dir}",
+    "mappop.areaEstimate": "area estimate",
 
     "label.exceptional": "Fiery",
     "label.great": "Vivid",
