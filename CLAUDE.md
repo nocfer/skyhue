@@ -158,6 +158,14 @@ via `npx` on demand and is never installed into the repo.
     JSDoc-cast comment and silently changes what it casts. (c) A shell-file edit
     still needs `npm run stamp` before commit (`stamp:check` is its own gate).
 
+    **A pre-push hook automates all of this.** Run `npm run install:hooks` once
+    per clone — it writes `.git/hooks/pre-push` (a thin shim; the repo's global
+    tokensave chain hook already delegates to it) that execs the committed
+    `tools/pre-push.sh`, which runs the four gates above in CI order and blocks a
+    red push. `npm run ci:local` runs the same checks manually. Bypass in a pinch
+    with `git push --no-verify`. The hook is NOT auto-installed (git can't run a
+    hook that installs hooks), so a fresh clone must run `install:hooks`.
+
 ## Verifying a change end-to-end (quick recipe)
 
 1. `rm -rf /tmp/skyprof` (kill stale SW cache), start a static server.

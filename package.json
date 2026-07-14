@@ -11,7 +11,9 @@
     "stamp:check": "node tools/stamp-sw.mjs --check",
     "lint": "npx -y @biomejs/biome@2 check .",
     "format": "npx -y @biomejs/biome@2 format --write .",
-    "typecheck": "npx -y -p typescript@5 tsc --noEmit -p jsconfig.json"
+    "typecheck": "npx -y -p typescript@5 tsc --noEmit -p jsconfig.json",
+    "ci:local": "npm test && npm run stamp:check && npx -y @biomejs/biome@2 ci . && npm run typecheck",
+    "install:hooks": "node tools/install-hooks.mjs"
   },
   "keywords": [
     "sunset",
