@@ -386,3 +386,7 @@ initFromUrl();
 // watchdog guards against. Without this the watchdog misfires every session,
 // unregistering the service worker and clearing caches on each fresh load.
 window.__skyhueBooted = true;
+
+// Additive presentation layer: scroll-reveal animations + scroll-guide arrow.
+// Self-contained; observes #results and reacts to render(). See animate.js.
+import "./animate.js";
