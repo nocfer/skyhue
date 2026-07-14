@@ -326,10 +326,13 @@ function setup() {
   // result and restart the hero — freezing the numeral at 0. The meter fill's
   // inline width is set by the app and animated via WAAPI (which doesn't
   // rewrite inline style), so it stays stable and is safe to key on.
+  const meterfill = /** @type {HTMLElement} */ (
+    results.querySelector(".rhero__meterfill")
+  );
   const key =
     (results.querySelector(".verdict__headline")?.textContent || "") +
     "|" +
-    (results.querySelector(".rhero__meterfill")?.style.width || "") +
+    (meterfill?.style.width || "") +
     "|" +
     secList.length;
   const isNew = key !== lastKey;
@@ -346,7 +349,7 @@ function setup() {
   secs = secList;
 
   if (reduce()) {
-    secs.forEach((el) => {
+    secs.forEach((/** @type {HTMLElement} */ el) => {
       el.style.opacity = "";
       el.style.transform = "";
     });
@@ -355,7 +358,7 @@ function setup() {
 
   if (isNew) heroEntrance(results);
 
-  secs.forEach((el) => {
+  secs.forEach((/** @type {HTMLElement} */ el) => {
     el.style.opacity = "0";
     el.style.transform = "translateY(24px)";
   });
