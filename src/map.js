@@ -167,7 +167,14 @@ function buildSunsetOverlays(
   { lat, lon, azimuth, score, event, visibility, spots, onSpotClick },
 ) {
   const color = scoreColor(score);
-  const end = destinationPoint(lat, lon, azimuth, 12); // ~12 km towards the sun
+  // Place the sun exactly on the rim of tonight's visibility circle, so the
+  // ray always reaches the dashed edge and the three read as one statement:
+  // hazy air pulls the sun in close, clear air pushes it to the horizon of
+  // what you can see. Falls back to a fixed 12 km when we have no visibility
+  // reading (the circle isn't drawn then either).
+  const hasVis = Number.isFinite(visibility) && visibility > 0;
+  const sunKm = hasVis ? visibility / 1000 : 12;
+  const end = destinationPoint(lat, lon, azimuth, sunKm);
   const ray = [
     [lat, lon],
     [end.lat, end.lon],
@@ -188,7 +195,7 @@ function buildSunsetOverlays(
   }).addTo(group);
 
   // Visibility circle: how far the atmosphere lets you see clearly.
-  if (Number.isFinite(visibility) && visibility > 0) {
+  if (hasVis) {
     L.circle([lat, lon], {
       radius: visibility,
       color: IMG.vis,
