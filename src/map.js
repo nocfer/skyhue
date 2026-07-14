@@ -19,6 +19,7 @@ import {
 import { icon } from "./icons.js";
 import { scoreNumeral, skySwatch, button, scoreHue } from "./ui.js";
 import { t, cardinal, getLang } from "./i18n.js";
+import { escapeHtml } from "./format.js";
 
 const LEAFLET_CSS =
   "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css";
@@ -122,7 +123,10 @@ function spotPopupHtml(s) {
   const url = `https://www.openstreetmap.org/?mlat=${s.lat.toFixed(5)}&mlon=${s.lon.toFixed(
     5,
   )}#map=15/${s.lat.toFixed(4)}/${s.lon.toFixed(4)}`;
-  const name = s.name || t(kindInfo(s.kind).labelKey);
+  // s.name comes from Overpass/OSM (external, arbitrary text) and goes into
+  // innerHTML here — this is the imperative Leaflet escape hatch, not lit, so
+  // escapeHtml is mandatory (see CLAUDE.md).
+  const name = escapeHtml(s.name || t(kindInfo(s.kind).labelKey));
   return `<div class="mappop">
     <strong class="mappop__name">${name}</strong>
     ${scores.length ? `<div class="mappop__scores">${scores.join(" · ")}</div>` : ""}
