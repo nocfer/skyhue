@@ -43,10 +43,7 @@ function favCardTemplate(f) {
       role="button"
       tabindex="0"
       data-id=${f.id}
-      @click=${(/** @type {MouseEvent} */ e) => {
-        if (/** @type {Element} */ (e.target).closest("[data-del]")) return;
-        loadFavorite(f.id);
-      }}
+      @click=${() => loadFavorite(f.id)}
       @keydown=${(/** @type {KeyboardEvent} */ e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
@@ -65,7 +62,6 @@ function favCardTemplate(f) {
       </span>
       <button
         class="place__del"
-        data-del=${f.id}
         title=${t("fav.remove")}
         aria-label=${t("fav.remove")}
         @click=${(/** @type {MouseEvent} */ e) => {
