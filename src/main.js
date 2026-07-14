@@ -241,11 +241,18 @@ function closeAllMenus() {
   });
 }
 
-/** Wire one menu instance (a `.menu` root): open/close + the two toggles. */
+/** Wire one menu instance (a `.menu` root): open/close + the two toggles.
+ *  Idempotent: on the results screen the menu markup is an `unsafeHTML` block
+ *  whose node lit PRESERVES across re-renders (the string is unchanged unless
+ *  theme/language flips), but renderResults() re-runs this on every render. A
+ *  plain addEventListener would then stack one toggle listener per render, and
+ *  an even number of them cancel out (open-then-close) so the menu looks dead.
+ *  Bind each node only once; a replaced node (theme/lang change) rebinds fresh. */
 function bindMoreMenu(root) {
-  const btn = root.querySelector(".more-btn");
+  const btn = /** @type {HTMLElement} */ (root.querySelector(".more-btn"));
   const pop = /** @type {HTMLElement} */ (root.querySelector(".more-menu"));
-  if (!btn || !pop) return;
+  if (!btn || !pop || btn.dataset.menuBound) return;
+  btn.dataset.menuBound = "1";
   btn.addEventListener("click", (e) => {
     e.stopPropagation();
     const willOpen = pop.hidden;
