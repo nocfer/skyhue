@@ -13,7 +13,7 @@ import { skyGradient, skyGradientCss } from "./sky.js";
 import { scoreNumeral } from "./ui.js";
 import { icon, ICONS } from "./icons.js";
 import { scoreLabel } from "./score.js";
-import { html, render as litRender, unsafeHTML } from "./render.js";
+import { html, render as litRender, unsafeHTML, nothing } from "./render.js";
 
 /** Build a shareable link to the current state (place + event). */
 function buildShareUrl() {
@@ -295,6 +295,69 @@ export function openShareSheet(data) {
         >
           ${t("share.copy")}
         </button>
+      </div>
+    </div>
+  `;
+  litRender(sheet, overlay);
+  document.addEventListener("keydown", onKey);
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) close();
+  });
+  document.body.appendChild(overlay);
+}
+
+/**
+ * Directions chooser: pick a maps provider and open turn-by-turn routing to a
+ * spot. Destination only — the origin is omitted so the maps app uses the
+ * device's own location (no geolocation permission needed here). No travel mode
+ * is requested; each app uses its default.
+ */
+export function openDirectionsSheet({ lat, lon, name }) {
+  const dest = `${lat.toFixed(6)},${lon.toFixed(6)}`;
+  const providers = [
+    {
+      key: "apple",
+      href: `https://maps.apple.com/?daddr=${encodeURIComponent(dest)}`,
+    },
+    {
+      key: "google",
+      href: `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(dest)}`,
+    },
+    {
+      key: "osm",
+      href: `https://www.openstreetmap.org/directions?to=${encodeURIComponent(dest)}`,
+    },
+  ];
+  const overlay = document.createElement("div");
+  overlay.className = "sheet-scrim";
+  const close = () => {
+    overlay.remove();
+    document.removeEventListener("keydown", onKey);
+  };
+  const onKey = (e) => {
+    if (e.key === "Escape") close();
+  };
+  // lit-html: `name` is a plain interpolation (auto-escaped). The provider rows
+  // are real <a> links opening in a new tab; a tap dismisses the sheet too.
+  const sheet = html`
+    <div class="sheet" role="dialog" aria-modal="true">
+      <span class="sheet__handle" aria-hidden="true"></span>
+      <h2 class="sheet__title display">${t("directions.title")}</h2>
+      ${name ? html`<p class="sheet__sub">${name}</p>` : nothing}
+      <div class="sheet__stack">
+        ${providers.map(
+          (p) => html`
+            <a
+              class="btn btn--ghost sheet__ghost"
+              href=${p.href}
+              target="_blank"
+              rel="noopener"
+              @click=${close}
+            >
+              ${unsafeHTML(icon("compass", { size: 18 }))} ${t("directions." + p.key)}
+            </a>
+          `,
+        )}
       </div>
     </div>
   `;

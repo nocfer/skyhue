@@ -70,6 +70,10 @@ const DICT = {
     "spot.openOsm": "Apri in OSM ↗",
     "spot.viewQuality": "Qualità dell’affaccio",
     "spot.skyTitle": "Punteggio del cielo in quel punto",
+    "spot.evaluate": "Valuta questo punto",
+    "cloud.low": "Basse",
+    "cloud.mid": "Medie",
+    "cloud.high": "Alte",
 
     "fav.compare": "Confronta",
     "fav.remove": "Rimuovi",
@@ -332,6 +336,10 @@ const DICT = {
     "share.image": "Condividi immagine",
     "share.save": "Salva immagine",
     "share.copy": "Copia link",
+    "directions.title": "Come arrivare",
+    "directions.apple": "Apple Maps",
+    "directions.google": "Google Maps",
+    "directions.osm": "OpenStreetMap",
   },
 
   en: {
@@ -399,6 +407,10 @@ const DICT = {
     "spot.openOsm": "Open in OSM ↗",
     "spot.viewQuality": "View quality",
     "spot.skyTitle": "Sky score at this spot",
+    "spot.evaluate": "Evaluate this spot",
+    "cloud.low": "Low",
+    "cloud.mid": "Mid",
+    "cloud.high": "High",
 
     "fav.compare": "Compare",
     "fav.remove": "Remove",
@@ -653,6 +665,10 @@ const DICT = {
     "share.image": "Share image",
     "share.save": "Save image",
     "share.copy": "Copy link",
+    "directions.title": "Get directions",
+    "directions.apple": "Apple Maps",
+    "directions.google": "Google Maps",
+    "directions.osm": "OpenStreetMap",
   },
 };
 

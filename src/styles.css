@@ -664,7 +664,10 @@ body {
 }
 .leaflet-popup-content-wrapper,
 .leaflet-popup-tip {
-  background: var(--elevated);
+  /* !important: Leaflet's own stylesheet is injected at runtime (after this
+     file) and its default white background otherwise wins on equal specificity
+     — which left the dark-theme popup white with near-white text (invisible). */
+  background: var(--elevated) !important;
   color: var(--text);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
 }
@@ -717,6 +720,58 @@ body {
   margin-top: 0.35rem;
   color: var(--link-text);
   font-weight: 600;
+}
+
+/* Spot card (big map): the popup grows into a readable card with the cloud
+   split + air clarity that explain the sky score, then two full-width actions.
+   Kept legible on a phone — rows wrap, nothing scrolls sideways. */
+.mappop--card {
+  min-width: 0;
+  max-width: 15rem;
+}
+.mappop__cond {
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--hairline);
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.mappop__cloud {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.15rem 0.6rem;
+  color: var(--text);
+  font-size: 0.8rem;
+}
+.mappop__cloud .ico {
+  color: var(--muted);
+  margin-right: 0.1rem;
+}
+.mappop__cloudcell {
+  white-space: nowrap;
+}
+.mappop__cloudk {
+  color: var(--muted);
+}
+.mappop__haze {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+.mappop__acts {
+  margin-top: 0.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.mappop__act {
+  width: 100%;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
 }
 
 /* Symbol legend on the big map (Leaflet control, collapsible). */
@@ -2544,6 +2599,28 @@ body {
 /* The row's two ghost Buttons share the space equally. */
 .sheet__ghost {
   flex: 1 1 0;
+}
+/* Spot name under the directions-sheet title. */
+.sheet__sub {
+  margin: -0.7rem 0 1.1rem;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+/* Directions provider list: full-width rows, each a comfortable tap target. */
+.sheet__stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+.sheet__stack .sheet__ghost {
+  flex: none;
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  text-decoration: none;
 }
 @media (prefers-reduced-motion: reduce) {
   .sheet-scrim,

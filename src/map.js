@@ -20,6 +20,9 @@ import { icon } from "./icons.js";
 import { scoreNumeral, skySwatch, button, scoreHue } from "./ui.js";
 import { t, cardinal, getLang } from "./i18n.js";
 import { escapeHtml } from "./format.js";
+import { spotConditions } from "./analysis.js";
+import { condDesc } from "./conds.js";
+import { openDirectionsSheet } from "./share.js";
 
 const LEAFLET_CSS =
   "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css";
@@ -107,6 +110,42 @@ const IMG = {
 };
 
 const SENT = { good: "#ffce6f", bad: "#d85a3c", neutral: "#9c9086" };
+
+/** The spot's display name, escaped for innerHTML (see below). */
+function spotName(s) {
+  return escapeHtml(s.name || t(kindInfo(s.kind).labelKey));
+}
+
+/** Cloud split + air-clarity block for the card — the free-but-unused forecast
+ *  detail that explains the sky score. Empty string when we have no forecast. */
+function spotCondHtml(s) {
+  const cond = spotConditions(s);
+  if (!cond) return "";
+  const cells = [
+    ["low", cond.cloudCoverLow],
+    ["mid", cond.cloudCoverMid],
+    ["high", cond.cloudCoverHigh],
+  ]
+    .filter(([, v]) => Number.isFinite(v))
+    .map(
+      ([k, v]) =>
+        `<span class="mappop__cloudcell"><span class="mappop__cloudk">${t("cloud." + k)}</span> ${Math.round(v)}%</span>`,
+    )
+    .join("");
+  const haze = Number.isFinite(cond.visibility)
+    ? condDesc("vis", cond.visibility / 1000).text
+    : "";
+  if (!cells && !haze) return "";
+  return `<div class="mappop__cond">
+    ${cells ? `<div class="mappop__cloud">${icon("cloud", { size: 14 })}${cells}</div>` : ""}
+    ${haze ? `<div class="mappop__haze">${haze}</div>` : ""}
+  </div>`;
+}
+
+// The spot card, anchored on its marker. `s.name` comes from Overpass/OSM
+// (external, arbitrary text) and goes into innerHTML here — this is the
+// imperative Leaflet escape hatch, not lit, so escapeHtml is mandatory (see
+// CLAUDE.md). The action buttons carry `data-act`; spotPopupEl wires them.
 function spotPopupHtml(s) {
   const scores = [];
   if (s.verdict?.score != null)
@@ -120,26 +159,42 @@ function spotPopupHtml(s) {
     );
   if (s.dir) meta.push(t("mappop.towards", { dir: cardinal(s.dir) }));
   if (Number.isFinite(s.driveMin)) meta.push(`~${s.driveMin} ${t("unit.min")}`);
-  const url = `https://www.openstreetmap.org/?mlat=${s.lat.toFixed(5)}&mlon=${s.lon.toFixed(
-    5,
-  )}#map=15/${s.lat.toFixed(4)}/${s.lon.toFixed(4)}`;
-  // s.name comes from Overpass/OSM (external, arbitrary text) and goes into
-  // innerHTML here — this is the imperative Leaflet escape hatch, not lit, so
-  // escapeHtml is mandatory (see CLAUDE.md).
-  const name = escapeHtml(s.name || t(kindInfo(s.kind).labelKey));
-  return `<div class="mappop">
-    <strong class="mappop__name">${name}</strong>
+  return `<div class="mappop mappop--card">
+    <strong class="mappop__name">${spotName(s)}</strong>
     ${scores.length ? `<div class="mappop__scores">${scores.join(" · ")}</div>` : ""}
     ${s.verdict?.code ? `<div class="mappop__verdict spot--${s.verdict.sentiment}">${t("verdict." + s.verdict.code)}</div>` : ""}
     ${meta.length ? `<div class="mappop__meta">${meta.join(" · ")}</div>` : ""}
-    <a href="${url}" target="_blank" rel="noopener">${t("spot.openOsm")}</a>
+    ${spotCondHtml(s)}
+    <div class="mappop__acts">
+      <button type="button" class="btn btn--primary mappop__act" data-act="dir">${icon("compass", { size: 16 })} ${t("directions.title")}</button>
+      <button type="button" class="btn btn--ghost mappop__act" data-act="eval">${t("spot.evaluate")}</button>
+    </div>
   </div>`;
 }
 
-/** Add a colored, clickable marker per suggested spot to a Leaflet group.
+/** Build the spot card as a DOM element and bind its two actions once. Leaflet
+ *  reuses the same element across opens, so listeners never stack. */
+function spotPopupEl(s, { onEvaluate }) {
+  const el = document.createElement("div");
+  el.innerHTML = spotPopupHtml(s);
+  el.querySelector('[data-act="dir"]')?.addEventListener("click", () =>
+    openDirectionsSheet({ lat: s.lat, lon: s.lon, name: spotName(s) }),
+  );
+  const evalBtn = el.querySelector('[data-act="eval"]');
+  if (evalBtn && onEvaluate)
+    evalBtn.addEventListener("click", () => onEvaluate(s));
+  return el;
+}
+
+/** Add a colored marker per suggested spot to a Leaflet group.
  *  Called by buildSunsetOverlays, and again on its own when a tap's background
- *  Overpass search resolves after the point was already drawn. */
-function addSpotMarkers(L, group, spots, onSpotClick) {
+ *  Overpass search resolves after the point was already drawn.
+ *  @param {{card?:boolean, onEvaluate?:Function, onSpotTap?:Function}} [opts]
+ *    card: bind the tappable spot card (big map). onEvaluate: the card's
+ *    "evaluate this spot" action. onSpotTap: a plain marker-click handler used
+ *    by the static mini-map to expand to the big map (no card there). */
+function addSpotMarkers(L, group, spots, opts = {}) {
+  const { card, onEvaluate, onSpotTap } = opts;
   (spots || []).forEach((s) => {
     const c = SENT[s.verdict?.sentiment] || SENT.neutral;
     const m = L.marker([s.lat, s.lon], {
@@ -149,10 +204,14 @@ function addSpotMarkers(L, group, spots, onSpotClick) {
         iconSize: [16, 16],
         iconAnchor: [8, 8],
       }),
-    })
-      .addTo(group)
-      .bindPopup(spotPopupHtml(s));
-    if (onSpotClick) m.on("click", () => onSpotClick(s));
+    }).addTo(group);
+    if (card)
+      m.bindPopup(spotPopupEl(s, { onEvaluate }), {
+        className: "mappop-popup",
+        maxWidth: 264,
+        minWidth: 200,
+      });
+    if (onSpotTap) m.on("click", () => onSpotTap(s));
   });
 }
 
@@ -163,12 +222,13 @@ function addSpotMarkers(L, group, spots, onSpotClick) {
  * mini-map and the big map so the two behave the same way.
  * @param {*} L Leaflet
  * @param {*} group featureGroup to add the layers to
- * @param {{lat,lon,azimuth,score,event,visibility,spots,onSpotClick?}} o
+ * @param {{lat,lon,azimuth,score,event,visibility,spots,spotOpts?}} o
+ *   spotOpts is forwarded to addSpotMarkers (card vs. tap-to-expand).
  */
 function buildSunsetOverlays(
   L,
   group,
-  { lat, lon, azimuth, score, event, visibility, spots, onSpotClick },
+  { lat, lon, azimuth, score, event, visibility, spots, spotOpts },
 ) {
   const color = scoreColor(score);
   // Place the sun exactly on the rim of tonight's visibility circle, so the
@@ -214,7 +274,7 @@ function buildSunsetOverlays(
   // Markers for the suggested spots, colored by view quality. Extracted so a
   // tap can render the point immediately and add these later, when the (slow)
   // Overpass spot search resolves — see evaluatePoint.
-  addSpotMarkers(L, group, spots, onSpotClick);
+  addSpotMarkers(L, group, spots, spotOpts);
 
   // The sun at the horizon, at the end of the ray (glow via CSS).
   L.marker([end.lat, end.lon], {
@@ -315,6 +375,9 @@ export async function mountMiniMap(
     event,
     visibility,
     spots,
+    // Static preview: no card here. A spot tap expands to the big map (where the
+    // card lives), matching a tap on the map area below.
+    spotOpts: onExpand ? { onSpotTap: () => onExpand() } : undefined,
   });
 
   // A click on the map area (not on a marker: Leaflet doesn't propagate marker
@@ -458,7 +521,7 @@ function renderContext() {
     event: ctx.event,
     visibility: ctx.visibility,
     spots: ctx.spots,
-    onSpotClick: (s) => selectPoint(s.lat, s.lon),
+    spotOpts: { card: true, onEvaluate: (s) => selectPoint(s.lat, s.lon) },
   });
 
   const bounds = contextLayer.getBounds();
@@ -582,7 +645,7 @@ async function evaluatePoint(lat, lon) {
       event,
       visibility: cond.visibility,
       spots: [],
-      onSpotClick: (s) => selectPoint(s.lat, s.lon),
+      spotOpts: { card: true, onEvaluate: (s) => selectPoint(s.lat, s.lon) },
     });
 
     renderPanel({
@@ -601,7 +664,10 @@ async function evaluatePoint(lat, lon) {
     nearbySpots(lat, lon, sun.azimuth, { signal })
       .then((near) => {
         if (token !== evalToken || signal.aborted || !near?.length) return;
-        addSpotMarkers(window.L, layer, near, (s) => selectPoint(s.lat, s.lon));
+        addSpotMarkers(window.L, layer, near, {
+          card: true,
+          onEvaluate: (s) => selectPoint(s.lat, s.lon),
+        });
       })
       .catch((err) => {
         if (err?.name !== "AbortError")

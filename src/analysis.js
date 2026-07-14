@@ -335,6 +335,9 @@ async function loadSky(list) {
           ...conditionsAtTime(f, iso),
           ...airAtTime(state.air, iso),
         };
+        // Keep the conditions on the spot — the map's spot card surfaces the
+        // cloud split and haze, not just the derived score (see spotConditions).
+        s.cond = cond;
         return computeSunsetScore(cond).score;
       } catch (err) {
         console.warn("Sky score for the spot not available:", err);
@@ -363,6 +366,26 @@ async function loadSky(list) {
       a.dist - b.dist,
   );
   update(); // scores/order mutated in place on the spot objects — just redraw
+}
+
+/**
+ * Conditions to display for a spot's card: the spot's own weather when we
+ * fetched it (top finalists, see loadSky), otherwise the analyzed point's
+ * conditions — near-identical over the ~20 km spots span, and free (no fetch).
+ * Returns null when there is no forecast yet.
+ * @returns {(ReturnType<typeof conditionsAtTime> & ReturnType<typeof airAtTime>) | null}
+ */
+export function spotConditions(spot) {
+  if (spot?.cond) return spot.cond;
+  if (!state.forecast) return null;
+  const day =
+    dailyList(state.forecast)[state.dayIndex] ?? dailyList(state.forecast)[0];
+  if (!day) return null;
+  const iso = day[state.event];
+  return {
+    ...conditionsAtTime(state.forecast, iso),
+    ...airAtTime(state.air, iso),
+  };
 }
 
 /** Compute score + explanation for a day's event (sunrise/sunset). */
