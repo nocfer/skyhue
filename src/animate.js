@@ -4,11 +4,30 @@
 // (#results), and after every render() it:
 //   • plays a hero entrance (sky settle, sun rise + pulse, headline + eyebrow
 //     reveal, score count-up, 0→N meter fill) once per newly-shown result;
-//   • reveals each section as it scrolls into view (IntersectionObserver +
-//     a rAF safety sweep so a fast flick / jump-to-bottom never leaves a gap),
+//   • reveals each section in TWO tiers as it scrolls into view (see below),
 //     with tailored flourishes: week-ribbon dot pops, "how it adds up" bar
 //     growth, the sunset-arc line drawing itself, the compass needle sweep,
 //     predicted-colour swatch stagger, and stat/driver/spot card stagger.
+//
+// TWO-TIER REVEAL (why the timing is split):
+//   The reveal both signals "there's more below" AND rewards arrival, and those
+//   want opposite trigger positions. So each section reveals in two beats:
+//     • CUE (Tier 1): the section CONTAINER does a soft fade+drift, fired EARLY
+//       — as the section crests the fold (CUE_LINE ≈ 92% of viewport). It fires
+//       before the gaze arrives ON PURPOSE: it is the cheap "keep scrolling"
+//       pull, and nothing important is lost if it is under-attended.
+//     • PAYLOAD (Tier 2): everything INSIDE the container (the flourishes) is
+//       held until the section has climbed into the attention zone
+//       (PAY_LINE ≈ 65%), then performed. These are the money shots, gated
+//       behind attention.
+//   Classification is automatic: DOM nesting IS the split — the container is the
+//   cue, its descendants are the payload. See fireCue / firePayload.
+//
+//   Flash-free priming: when the cue fires we BUILD every payload animation but
+//   leave it PAUSED (fill:both holds keyframe 0 → the element is primed to its
+//   hidden/zeroed state using the very keyframes it will later animate). When
+//   the payload line is crossed we .play() them. One source of truth, no
+//   separate "initial state" table to drift out of sync.
 //
 // prefers-reduced-motion: reduce  → everything is shown instantly, no motion.
 //
@@ -19,6 +38,18 @@
 // a flourish.
 // ---------------------------------------------------------------------------
 
+// Two trigger lines, as a fraction of viewport height from the top.
+const CUE_LINE = 0.92; // section top crests here → Tier-1 cue (frame drifts in)
+const PAY_LINE = 0.65; // section top reaches here → Tier-2 payload (flourishes)
+const CUE_DUR = 700; // soft frame fade+drift; longer so it lives as it climbs
+// On the FIRST paint, below-hero sections already in view hold until the hero
+// headline lands (~1.3s), then cascade cue→payload — so the eye finishes the
+// hero, then is drawn downward. CUE_LEAD is the extra beat that keeps the frame
+// leading its own payload in that held cascade (during scroll the two are
+// already separated by CUE_LINE→PAY_LINE travel, so no lead is added).
+const HERO_HOLD = 1300;
+const CUE_LEAD = 220;
+
 const EASE = "cubic-bezier(0.2,0.7,0.2,1)";
 const reduce = () => {
   try {
@@ -28,10 +59,20 @@ const reduce = () => {
   }
 };
 
+// When `sink` is a non-null array (set only while buildPayload runs), every
+// animation created here is collected into it so the caller can pause the whole
+// payload up front and play it on the payload trigger. Null everywhere else, so
+// the hero entrance and pulses are unaffected.
+let sink = null;
 function anim(el, kf, opt) {
   if (!el?.animate) return null;
   try {
-    return el.animate(kf, Object.assign({ easing: EASE, fill: "both" }, opt));
+    const a = el.animate(
+      kf,
+      Object.assign({ easing: EASE, fill: "both" }, opt),
+    );
+    if (sink) sink.push(a);
+    return a;
   } catch {
     return null;
   }
@@ -90,37 +131,107 @@ function pulse(el, mag = 1.12) {
 }
 
 // --------------------------- per-render state ------------------------------
-let io = null;
+let ioCue = null; // fires the Tier-1 cue as a section crests CUE_LINE
+let ioPay = null; // fires the Tier-2 payload as a section reaches PAY_LINE
 let sweepRaf = null; // coalesced safety-sweep handle
 let onScroll = null;
-let revealed = new WeakSet();
+let cued = new WeakSet(); // sections whose cue has fired
+let paid = new WeakSet(); // sections whose payload has fired
+let payloadAnims = new WeakMap(); // section → its paused payload animations
+let liveAnims = []; // every section anim (cue + payload) of the current pass
+let gen = 0; // bumped each pass; invalidates deferred plays from an old pass
 let secs = []; // current result's reveal targets
 let lastKey = "";
+let heroAt = 0; // performance.now() by which the hero headline has landed
 
-// Reveal a section once and stop observing it.
-function hit(el) {
-  if (revealed.has(el)) return;
-  revealed.add(el);
-  if (io) io.unobserve(el);
-  onReveal(el);
+// How long a just-triggered reveal must wait for the hero entrance to finish.
+// Zero once the hero has landed, so only the first-paint sections are held.
+const heroWait = () => Math.max(0, heroAt - performance.now());
+
+// Tier 1 — reveal the section CONTAINER (soft fade+drift), and prime its
+// payload: build every flourish animation now but leave it paused, so the
+// contents are held at keyframe 0 (hidden/zeroed) the instant the frame appears.
+function fireCue(el) {
+  if (cued.has(el)) return;
+  cued.add(el);
+  if (ioCue) ioCue.unobserve(el);
+  const cue = anim(
+    el,
+    [
+      { opacity: 0, transform: "translateY(20px)" },
+      { opacity: 1, transform: "translateY(0)" },
+    ],
+    { delay: heroWait(), duration: CUE_DUR },
+  );
+  if (cue) liveAnims.push(cue);
+  buildPayload(el);
 }
 
-// Safety net: reveal anything already past the trigger line so a fast flick /
-// jump-to-bottom never leaves a section stuck hidden. Coalesced to one per frame.
+// Tier 2 — play the (already built + primed) payload. If the payload line was
+// crossed before the cue line (a jump-to-bottom), build it here first.
+function firePayload(el) {
+  if (paid.has(el)) return;
+  paid.add(el);
+  if (ioPay) ioPay.unobserve(el);
+  if (!payloadAnims.has(el)) fireCue(el);
+  const list = payloadAnims.get(el) || [];
+  // Capture the pass: a deferred play must not revive animations that a newer
+  // render has since torn down and cancelled (play() on a cancelled anim would
+  // restart it).
+  const myGen = gen;
+  const play = () => {
+    if (myGen !== gen) return;
+    list.forEach((a) => {
+      try {
+        a.play();
+      } catch {}
+    });
+  };
+  // A held cascade (first paint) leads the payload behind the frame by CUE_LEAD;
+  // during scroll the two tiers are already separated by their trigger lines.
+  const w = heroWait();
+  const wait = w > 0 ? w + CUE_LEAD : 0;
+  if (wait > 0) setTimeout(play, wait);
+  else play();
+}
+
+// Build the payload animations for a section, paused. Idempotent per section.
+function buildPayload(el) {
+  if (payloadAnims.has(el)) return;
+  const list = [];
+  sink = list;
+  try {
+    paintFlourishes(el);
+  } catch {
+    /* keep going */
+  } finally {
+    sink = null;
+  }
+  list.forEach((a) => {
+    try {
+      a.pause();
+    } catch {}
+  });
+  payloadAnims.set(el, list);
+  liveAnims.push(...list);
+}
+
+// Safety net: drive both tiers for anything already past its line so a fast
+// flick / jump-to-bottom never leaves a section stuck. Coalesced to one/frame.
 function sweep() {
   sweepRaf = null;
   const results = document.getElementById("results");
   if (!results || results.hasAttribute("hidden")) return;
-  const trigger = innerHeight * 0.82;
+  const cueLine = innerHeight * CUE_LINE;
+  const payLine = innerHeight * PAY_LINE;
   const atEnd =
     innerHeight + scrollY >= document.documentElement.scrollHeight - 4;
   secs.forEach((el) => {
-    if (revealed.has(el)) return;
-    if (atEnd || el.getBoundingClientRect().top < trigger) {
-      try {
-        hit(el);
-      } catch {}
-    }
+    const top = el.getBoundingClientRect().top;
+    try {
+      if (top < cueLine) fireCue(el);
+      if (atEnd || top < payLine) firePayload(el);
+    } catch {}
   });
 }
 
@@ -131,8 +242,11 @@ function stagger(els, base = 160, gap = 90) {
   });
 }
 
-function onReveal(el) {
-  anim(el, revealKf(), { delay: 60, duration: 620 });
+// The Tier-2 payload: every flourish INSIDE a section container. Called only
+// via buildPayload (with `sink` set), so each anim() here is collected, paused,
+// and later played on the payload trigger. The container's own reveal is the
+// Tier-1 cue (fireCue) and is deliberately NOT animated here.
+function paintFlourishes(el) {
   try {
     // Card grids: reveal children in sequence.
     const grid = el.querySelector(".statgrid, .drivers, .spots");
@@ -292,9 +406,24 @@ function heroEntrance(results) {
 
 // ------------------------------- orchestration -----------------------------
 function teardown() {
-  if (io) {
-    io.disconnect();
-    io = null;
+  // Start a new generation and cancel the previous pass's section animations,
+  // so a superseded render (partial → full data) can't leave orphaned paused
+  // animations behind — which could win the compositing race and pin a section
+  // (e.g. the week ribbon) hidden.
+  gen++;
+  liveAnims.forEach((a) => {
+    try {
+      a.cancel();
+    } catch {}
+  });
+  liveAnims = [];
+  if (ioCue) {
+    ioCue.disconnect();
+    ioCue = null;
+  }
+  if (ioPay) {
+    ioPay.disconnect();
+    ioPay = null;
   }
   if (sweepRaf) {
     cancelAnimationFrame(sweepRaf);
@@ -341,11 +470,13 @@ function setup() {
   // etc.): the observers from the first pass are still live and own the reveal
   // state. Tearing down here would re-hide already-revealed sections and restart
   // the hero, so bail out and leave the running pass in charge.
-  if (!isNew && io) return;
+  if (!isNew && ioCue) return;
   lastKey = key;
 
   teardown();
-  revealed = new WeakSet();
+  cued = new WeakSet();
+  paid = new WeakSet();
+  payloadAnims = new WeakMap();
   secs = secList;
 
   if (reduce()) {
@@ -356,23 +487,48 @@ function setup() {
     return;
   }
 
-  if (isNew) heroEntrance(results);
+  if (isNew) {
+    heroEntrance(results);
+    // First paint: hold below-hero reveals until the hero headline has landed,
+    // then let them cascade. (headline delay 440 + duration 900 ≈ HERO_HOLD.)
+    heroAt = performance.now() + HERO_HOLD;
+  }
 
+  // Prime the containers hidden; the cue's first keyframe matches this offset so
+  // there is no jump when it fires. Contents are primed later, by buildPayload.
   secs.forEach((/** @type {HTMLElement} */ el) => {
     el.style.opacity = "0";
-    el.style.transform = "translateY(24px)";
+    el.style.transform = "translateY(20px)";
   });
 
-  io = new IntersectionObserver(
+  // Two observers, one per tier. Negative bottom rootMargin shrinks the root so
+  // "intersecting" means the section top has crossed the line: 8% inset → the
+  // cue at 92%, 35% inset → the payload at 65%. threshold 0 = fire on first px.
+  ioCue = new IntersectionObserver(
     (ents) => {
       ents.forEach((en) => {
-        if (en.isIntersecting) hit(en.target);
+        if (en.isIntersecting) fireCue(en.target);
       });
     },
-    { threshold: 0.1, rootMargin: "0px 0px -18% 0px" },
+    {
+      threshold: 0,
+      rootMargin: `0px 0px -${Math.round((1 - CUE_LINE) * 100)}% 0px`,
+    },
+  );
+  ioPay = new IntersectionObserver(
+    (ents) => {
+      ents.forEach((en) => {
+        if (en.isIntersecting) firePayload(en.target);
+      });
+    },
+    {
+      threshold: 0,
+      rootMargin: `0px 0px -${Math.round((1 - PAY_LINE) * 100)}% 0px`,
+    },
   );
   secs.forEach((el) => {
-    io.observe(el);
+    ioCue.observe(el);
+    ioPay.observe(el);
   });
 
   // A coalesced safety sweep on scroll reveals anything already past the trigger
