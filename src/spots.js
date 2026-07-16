@@ -371,25 +371,94 @@ export async function reverseGeocode(lat, lon, lang = "it") {
   );
 }
 
-/** Runs an Overpass query trying the endpoints in sequence (form-urlencoded). */
+// If a hedged endpoint stays silent this long, ALSO try the next one in
+// parallel (don't wait for it to fail). The mirrors have very different, often
+// multi-second latencies; the primary is regularly overloaded. Hedging turns
+// "stall on the slow one, then fall back" into "whichever answers first wins",
+// which is the whole cold-start / first-search cost (later searches hit the 6h
+// SPOTS cache). In the common case the first mirror answers inside the window
+// and only one request is made.
+const OVERPASS_HEDGE_MS = 2500;
+// Hard cap on the whole query regardless of hedging, so a batch of slow mirrors
+// can't pin the "where to watch" section in its loading state forever.
+const OVERPASS_TIMEOUT_MS = 20000;
+
+/**
+ * Runs an Overpass query, hedging across the endpoints (form-urlencoded): fire
+ * the first, and if it is still silent after OVERPASS_HEDGE_MS fire the next in
+ * parallel; a failing endpoint advances to the next immediately. Resolves with
+ * the first successful response and aborts the losers.
+ */
 async function overpassQuery(q, signal) {
-  let lastErr;
-  for (const endpoint of OVERPASS_ENDPOINTS) {
-    try {
-      const res = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: "data=" + encodeURIComponent(q),
-        signal,
-      });
-      if (!res.ok) throw new Error(`Overpass ${res.status}`);
-      return await res.json();
-    } catch (err) {
-      // Evaluation cancelled (new tap): stop right away, don't fall back
-      // to the next endpoint.
-      if (err?.name === "AbortError" || signal?.aborted) throw err;
-      lastErr = err;
-    }
+  if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+  const body = "data=" + encodeURIComponent(q);
+  // One controller cancels every in-flight hedge once we settle (or on abort).
+  const ctrl = new AbortController();
+  const onAbort = () => ctrl.abort();
+  signal?.addEventListener("abort", onAbort, { once: true });
+
+  try {
+    return await new Promise((resolve, reject) => {
+      let settled = false;
+      let next = 0; // index of the next endpoint to fire
+      let pending = 0; // in-flight requests
+      let lastErr;
+      let hedgeTimer = null;
+
+      const settle = (fn, val) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(hedgeTimer);
+        clearTimeout(overall);
+        ctrl.abort(); // cancel the other in-flight hedges
+        fn(val);
+      };
+      const win = (data) => settle(resolve, data);
+      const fail = (err) =>
+        settle(reject, err ?? new Error("Overpass non raggiungibile"));
+
+      const overall = setTimeout(
+        () => fail(lastErr ?? new Error("Overpass timeout")),
+        OVERPASS_TIMEOUT_MS,
+      );
+
+      const fire = () => {
+        if (settled || next >= OVERPASS_ENDPOINTS.length) return;
+        const endpoint = OVERPASS_ENDPOINTS[next++];
+        pending++;
+        // Pre-arm the next hedge; a fast success/failure clears or supersedes it.
+        clearTimeout(hedgeTimer);
+        if (next < OVERPASS_ENDPOINTS.length)
+          hedgeTimer = setTimeout(fire, OVERPASS_HEDGE_MS);
+        fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body,
+          signal: ctrl.signal,
+        })
+          .then((res) => {
+            if (!res.ok) throw new Error(`Overpass ${res.status}`);
+            return res.json();
+          })
+          .then(win)
+          .catch((err) => {
+            pending--;
+            // Our own abort fired: a peer already won (ignore), or the CALLER
+            // cancelled — surface that as an AbortError, matching the old path.
+            if (ctrl.signal.aborted) {
+              if (signal?.aborted)
+                fail(new DOMException("Aborted", "AbortError"));
+              return;
+            }
+            lastErr = err;
+            if (next < OVERPASS_ENDPOINTS.length)
+              fire(); // this one failed early → try the next now, don't wait
+            else if (pending === 0) fail(lastErr); // all fired, none left
+          });
+      };
+      fire();
+    });
+  } finally {
+    signal?.removeEventListener("abort", onAbort);
   }
-  throw lastErr ?? new Error("Overpass non raggiungibile");
 }
