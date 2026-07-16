@@ -449,21 +449,23 @@ function setup() {
   if (!secList.length && !results.querySelector(".rhero")) return;
 
   // Signature identifying the current result. It must be built ONLY from DOM
-  // the animations don't touch: the count-up mutates the score numeral's
-  // textContent (and that is a childList change our own MutationObserver sees),
-  // so keying off it would make every count-up frame look like a brand-new
-  // result and restart the hero — freezing the numeral at 0. The meter fill's
-  // inline width is set by the app and animated via WAAPI (which doesn't
-  // rewrite inline style), so it stays stable and is safe to key on.
-  const meterfill = /** @type {HTMLElement} */ (
-    results.querySelector(".rhero__meterfill")
-  );
-  const key =
-    (results.querySelector(".verdict__headline")?.textContent || "") +
-    "|" +
-    (meterfill?.style.width || "") +
-    "|" +
-    secList.length;
+  // that is both (a) untouched by our own animations and (b) invariant to the
+  // score. A single search fires a CASCADE of re-renders as background data
+  // arrives (forecast → light-path loading → spots → light-path ready), and the
+  // last of those refines the score — which moves the headline verdict, the
+  // meter width AND the "top sunset" banner (a section, so secList.length). Any
+  // of those in the key makes each background refinement look like a brand-new
+  // result: full teardown + re-prime every section to hidden + hero restart,
+  // i.e. the screen flickers once per background fetch. So key ONLY on the
+  // place label and the eyebrow (when · event · time): both change on a real
+  // new search / event / day toggle, neither moves as the score settles. (The
+  // count-up also rules out the score numeral: it mutates textContent every
+  // frame, which our MutationObserver sees.)
+  const loc = (results.querySelector(".rhero__loc")?.textContent || "").trim();
+  const eyebrow = (
+    results.querySelector(".rhero__eyebrow")?.textContent || ""
+  ).trim();
+  const key = `${loc}|${eyebrow}`;
   const isNew = key !== lastKey;
 
   // Same result, spurious re-render (our own count-up mutation, spots loading,
