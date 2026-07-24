@@ -1560,7 +1560,12 @@ body {
   background: var(--sun-disc);
   filter: blur(1px); /* soft radial glow, no hard edge (mock 1b) */
   z-index: 1;
-  animation: sunpulse 2.8s ease-in-out infinite;
+  /* The pulse is owned by the JS layer (animate.js pulse()), which gates it on
+     reduced-motion and tears it down between renders. A CSS `animation` here
+     would drive `transform` from a second engine, fighting the JS hero entrance
+     from frame 0 and beating against the JS pulse afterwards → stutter. Layer
+     promotion keeps the blurred glow from re-rasterizing on every scale frame. */
+  will-change: transform;
 }
 .rhero__verdict {
   position: relative;
