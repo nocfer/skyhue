@@ -383,6 +383,17 @@ const OVERPASS_HEDGE_MS = 2500;
 // can't pin the "where to watch" section in its loading state forever.
 const OVERPASS_TIMEOUT_MS = 20000;
 
+// Overpass reports "server too busy" / a dispatcher timeout as a `remark` inside
+// an otherwise-200 JSON body (with no `elements`), e.g. "runtime error: … The
+// server is probably too busy to handle your request." Left alone that parses
+// cleanly, so the hedge counts it as a WIN — returning empty spots AND caching
+// them for 6h. We match those error remarks and throw so the request is treated
+// as a failure: the hedge falls through to another mirror, and `cached` (which
+// only stores on success) never persists the empty result. Benign remarks
+// (performance tips) don't match and pass through.
+const OVERPASS_ERROR_REMARK =
+  /runtime error|timeout|too busy|rate_?limited|out of memory|quota/i;
+
 /**
  * Runs an Overpass query, hedging across the endpoints (form-urlencoded): fire
  * the first, and if it is still silent after OVERPASS_HEDGE_MS fire the next in
@@ -436,9 +447,17 @@ async function overpassQuery(q, signal) {
           body,
           signal: ctrl.signal,
         })
-          .then((res) => {
+          .then(async (res) => {
+            // 504/429 (too busy) come back as an error status with an HTML body
+            // — never parse it, just fail so the hedge tries the next mirror.
             if (!res.ok) throw new Error(`Overpass ${res.status}`);
-            return res.json();
+            // A dispatcher timeout can also arrive as 200: either an HTML page
+            // (res.json() throws → caught → fallback) or JSON carrying an error
+            // `remark` with no elements. Catch the latter explicitly.
+            const data = await res.json();
+            if (data?.remark && OVERPASS_ERROR_REMARK.test(data.remark))
+              throw new Error(`Overpass busy: ${data.remark}`);
+            return data;
           })
           .then(win)
           .catch((err) => {
